@@ -4,7 +4,7 @@ import './core/encode.js';
 import './core/decode.js';
 
 // Image data
-import { VImageData, VEncodedImageData, registerCodec } from './data.js';
+import { VImageData, VEncodedImageData, registerCodec } from './image.js';
 
 // Enums
 import { VFormats, VFlags } from './core/enums.js';

@@ -13,7 +13,7 @@ export class DataBuffer extends Uint8Array {
 
 		// @ts-expect-error When initializing a Uint8Array from another array, byteOffset and length
 		// are disregarded for some reason. This is just a quick hack to make it work as expected.
-		if (!(buffer instanceof ArrayBuffer) && byteOffset !== 0 && length !== undefined) buffer = buffer.buffer;
+		if ('buffer' in buffer && byteOffset !== 0 && length !== undefined) buffer = buffer.buffer;
 
 		// @ts-expect-error JUST MAKE IT WORK.
 		super(buffer, byteOffset, length);
@@ -24,7 +24,13 @@ export class DataBuffer extends Uint8Array {
 		this.little = little;
 	}
 
-	goto(position: number) {
+	subview(start: number=this.pointer, length: number=this.length-this.pointer) {
+		const buf = new DataBuffer(this.buffer, start, length);
+		buf.set_endian(this.little);
+		return buf;
+	}
+
+	seek(position: number) {
 		this.pointer = position;
 	}
 

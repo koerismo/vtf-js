@@ -4,18 +4,25 @@ import { VFormats } from './core/enums.js';
 export type VPixelArray = Uint8Array|Uint16Array|Uint32Array|Float32Array;
 
 /** An object that defines an image encoder/decoder for a given format. */
-export interface ImageCodec {
+export interface VCodec {
 	bpp: number,
+	length(width: number, height: number): number;
 	encode(data: VImageData): VEncodedImageData;
 	decode(data: VEncodedImageData): VImageData;
 }
 
 /** All currently-registered image codecs. */
-export const ImageCodecs: {[key in VFormats]?: ImageCodec} = {};
+export const VCodecs: {[key in VFormats]?: VCodec} = {};
 
 /** Register an image encoder/decoder for the specified format. */
-export function registerCodec(format: VFormats, codec: ImageCodec) {
-	ImageCodecs[format] = codec;
+export function registerCodec(format: VFormats, codec: VCodec) {
+	VCodecs[format] = codec;
+}
+
+export function getCodec(format: VFormats): VCodec {
+	const codec = VCodecs[format];
+	if (!codec) throw(`Could not get codec for format ${VFormats[format]}!`);
+	return codec;
 }
 
 /** Decoded RGBA image data. */

@@ -5,6 +5,10 @@ export interface VConstructorOptions {
 	version?: 1|2|3|4|5|6;
 	format?: VFormats;
 	flags?: number;
+
+	reflectivity?: Float32Array;
+	first_frame?: number;
+	bump_scale?: number;
 }
 
 export class Vtf {
@@ -13,6 +17,10 @@ export class Vtf {
 	public format: VFormats;
 	public flags: number;
 
+	public reflectivity: Float32Array;
+	public first_frame: number;
+	public bump_scale: number;
+
 	constructor(data: VDataProvider, options?: VConstructorOptions) {
 		this.data = data;
 
@@ -20,13 +28,40 @@ export class Vtf {
 		this.version = options.version ?? 4;
 		this.format = options.format ?? VFormats.RGBA8888;
 		this.flags = options.flags ?? 0x0;
+
+		this.reflectivity = options.reflectivity ?? new Float32Array([0,0,0]);
+		this.first_frame = options.first_frame ?? 0;
+		this.bump_scale = options.bump_scale ?? 1.0;
 	}
 
 	encode(): ArrayBuffer {
 		throw('Vtf.encode: Implementation override not present!');
 	}
 
-	static decode(data: ArrayBuffer): Vtf {
+	static decode(data: ArrayBuffer): Vtf;
+	static decode(data: ArrayBuffer, header_only: false): Vtf;
+	static decode(data: ArrayBuffer, header_only: true): VHeaderInfo;
+	static decode(data: ArrayBuffer, header_only: boolean=false): Vtf|VHeaderInfo {
 		throw('Vtf.decode: Implementation override not present!');
 	}
+}
+
+export class VHeaderInfo {
+	version: number;
+	width: number;
+	height: number;
+	flags: number;
+	frames: number;
+	first_frame: number;
+	reflectivity: Float32Array;
+	bump_scale: number;
+	format: VFormats;
+	mipmaps: number;
+	thumb_format: VFormats;
+	thumb_width: number;
+	thumb_height: number;
+	slices: number;
+
+	compression: number;
+	compressed_lengths?: number[][][][];
 }
