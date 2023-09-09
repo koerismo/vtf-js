@@ -1,5 +1,5 @@
 /** Generic Vec3 type helper. */
-export interface Vec3 {[key: number]: number};
+export interface Vec3 {[key: number]: number}
 export type TypedArray = Uint8Array|Int8Array|Uint16Array|Int16Array|Uint32Array|Int32Array|Float32Array|Float64Array;
 export const VecType = Float32Array;
 

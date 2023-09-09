@@ -1,17 +1,16 @@
-import { VDataCollection } from './providers.js';
 import { getHeaderLength, getFaceCount } from './utils.js';
-import { Vtf, VHeaderInfo } from '../vtf.js';
+import { Vtf, VFileHeader } from '../vtf.js';
 import { DataBuffer } from '../util/buffer.js';
-import { VFlags, VFormats } from './enums.js';
+import { VFormats } from './enums.js';
 import { getCodec } from '../image.js';
 import { VResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags } from './resources.js';
 
 function read_format(id: number) {
-	if (VFormats[id] == undefined) throw(`Encountered invalid format (id=${id}) in header!`);
+	if (VFormats[id] == undefined) throw new Error(`Encountered invalid format (id=${id}) in header!`);
 	return id;
 }
 
-function parseAXC(header: VHeader, buffer: DataBuffer, info: VHeaderInfo) {
+function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader) {
 	const face_count = getFaceCount(info);
 
 	if (header.flags & 0x2) {
@@ -20,7 +19,7 @@ function parseAXC(header: VHeader, buffer: DataBuffer, info: VHeaderInfo) {
 		return;
 	}
 
-	const view = buffer.subview(header.start);
+	const view = buffer.ref(header.start);
 	const length = view.read_u32();
 	info.compression = view.read_i32();
 
@@ -40,25 +39,25 @@ function parseAXC(header: VHeader, buffer: DataBuffer, info: VHeaderInfo) {
 }
 
 // @ts-expect-error Overloads break for some reason?
-Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VHeaderInfo {
-	const info = new VHeaderInfo();
+Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VFileHeader {
+	const info = new VFileHeader();
 	const view = new DataBuffer(data);
 	view.set_endian(true);
 
 	const sign = view.read_str(4);
-	if (sign !== 'VTF\0') throw(`Vtf.decode: Encountered invalid file signature! ("${sign}")`);
+	if (sign !== 'VTF\0') throw new Error(`Vtf.decode: Encountered invalid file signature! ("${sign}")`);
 
 	// File format version
 	const seven         = view.read_u32();
 	info.version        = view.read_u32();
 	if (seven !== 7 || info.version < 1 || info.version > 6)
-		throw(`Vtf.decode: Encountered invalid format version! (${seven}.${info.version})`)
+		throw new Error(`Vtf.decode: Encountered invalid format version! (${seven}.${info.version})`)
 
 	// Other properties
 	const expected_length = getHeaderLength(info.version);
 	const header_length = view.read_u32();
 	if (header_length < expected_length)
-		throw(`Vtf.decode: Encountered invalid header length! (${header_length})`);
+		throw new Error(`Vtf.decode: Encountered invalid header length! (${header_length})`);
 
 	info.width          = view.read_u16();
 	info.height         = view.read_u16();
@@ -80,9 +79,13 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VHeade
 	info.thumb_height   = view.read_u8();
 
 	// v7.2 +
-	info.slices         = info.version > 1 ? 1 : view.read_u16();
+	info.slices         = info.version > 1 ? view.read_u16() : 1;
 
 	if (header_only) return info;
+
+	let body: VBodyResource|undefined;
+	const headers: VHeader[] = [];
+	const meta: VResource[] = [];
 
 	let resource_count = 0;
 	if (info.version >= 3) {
@@ -90,56 +93,68 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VHeade
 		resource_count = view.read_u32();
 		view.pad(8);
 	}
+	else {
+		const body_offset = header_length + getCodec(info.thumb_format).length(info.thumb_width, info.thumb_height);
+		body = VBodyResource.decode(new VHeader(VHeaderTags.TAG_BODY, 0x0, body_offset), view, info);
+	}
 
 	// Parse resource headers
 
-	const headers: VHeader[] = [];
-	head: for ( let i=0; i<resource_count; i++ ) {
+	let last_data_header: number|null = null;
+	for ( let i=0; i<resource_count; i++ ) {
 		const header = new VHeader(
 			view.read_str(3),
 			view.read_u8(),
 			view.read_u32()
 		);
 
-		switch (header.tag) {
-			case VHeaderTags.TAG_AXC:
-				parseAXC(header, view, info);
-				continue head;
-
-			case VHeaderTags.TAG_THUMB:
-				continue head;
+		// TODO: "special" header tags, especially for unofficial features, are BAD. This needs to be rewritten!
+		if (header.tag === VHeaderTags.TAG_AXC) {
+			decode_axc(header, view, info);
+			continue;
 		}
 
 		headers.push(header);
-		if (headers.length > 1 && header.hasData()) headers[headers.length-1].end = header.start;
+		if (header.hasData()) {
+			if (last_data_header !== null) headers[last_data_header].end = header.start;
+			last_data_header = headers.length-1;
+		}
+	}
+
+	if (last_data_header !== null) {
+		headers[last_data_header].end = view.length;
 	}
 
 	// Parse resource bodies
 
-	let body_resource: VBodyResource|undefined;
-	const resources: VResource[] = [];
-
 	for ( let i=0; i<resource_count; i++ ) {
 		const header = headers[i];
 
-		switch (header.tag) {
-			case VHeaderTags.TAG_BODY:
-				body_resource = VBodyResource.decode(header, view, info);
-				break;
-
-			default:
-				const decoder = VResourceTypes[header.tag] ?? VResource;
-				resources[i] = decoder.decode(header, view, info);
+		if (header.tag === VHeaderTags.TAG_BODY) {
+			body = VBodyResource.decode(header, view, info);
+			continue;
 		}
+
+		if (header.tag === VHeaderTags.TAG_THUMB) {
+			continue;
+		}
+
+		let data: DataBuffer|undefined;
+		if (!(header.flags & 0x2))
+			data = view.ref(header.start, header.end - header.start);
+
+		const type = VResourceTypes[header.tag] ?? VResource;
+		meta.push(type.decode(header, data, info));
 	}
 
-	if (!body_resource)
-		throw('Vtf does not contain body resource!');
+	if (!body)
+		throw new Error('Vtf.decode: Vtf does not contain a body resource!');
 
-	return new Vtf(body_resource.images, {
+	return new Vtf(body.images, {
 		version: <(1|2|3|4|5|6)>info.version,
 		format: info.format,
 		flags: info.flags,
+		meta: meta,
 		reflectivity: info.reflectivity,
 		first_frame: info.first_frame,
 		bump_scale: info.bump_scale

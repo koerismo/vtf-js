@@ -6,6 +6,9 @@ import './core/decode.js';
 // Image data
 import { VImageData, VEncodedImageData, registerCodec } from './image.js';
 
+// Builtin codecs
+import './image/rgba.js';
+
 // Enums
 import { VFormats, VFlags } from './core/enums.js';
 
