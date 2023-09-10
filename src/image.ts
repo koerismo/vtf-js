@@ -37,10 +37,6 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		this.height = height;
 	}
 
-	encode(format: VFormats): VEncodedImageData {
-		throw new Error('Not implemented!');
-	}
-
 	convert<T extends VPixelArrayConstructor>(type: T): VImageData<InstanceType<T>> {
 		if (this.data instanceof type.constructor) return <VImageData<InstanceType<T>>>(this as unknown);
 
@@ -73,9 +69,5 @@ export class VEncodedImageData {
 		this.width = width;
 		this.height = height;
 		this.format = format;
-	}
-
-	decode(): VImageData {
-		throw new Error('Not implemented!');
 	}
 }

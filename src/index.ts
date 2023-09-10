@@ -4,7 +4,7 @@ import './core/encode.js';
 import './core/decode.js';
 
 // Image data
-import { VImageData, VEncodedImageData, registerCodec } from './image.js';
+import { VImageData, VEncodedImageData, registerCodec, getCodec } from './image.js';
 
 // Builtin codecs
 import './image/rgba.js';
@@ -35,4 +35,5 @@ export {
 	VSliceCollection,
 
 	registerCodec,
+	getCodec,
 }

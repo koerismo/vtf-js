@@ -1,7 +1,7 @@
 import { VEncodedImageData, VImageData, getCodec } from '../image.js';
 import { DataBuffer } from '../util/buffer.js';
 import { VFileHeader } from '../vtf.js';
-import { VDataCollection } from './providers.js';
+import { VDataCollection, VDataProvider } from './providers.js';
 import { getFaceCount, getMipSize } from './utils.js';
 
 export const VResourceTypes: {[key: string]: typeof VResource} = {};
@@ -46,7 +46,7 @@ export class VResource {
 		this.data = data;
 	}
 
-	hasData() {
+	hasData(): boolean {
 		return !(this.flags & 0x2);
 	}
 
@@ -61,9 +61,9 @@ export class VResource {
 }
 
 export class VBodyResource extends VResource {
-	images: VDataCollection;
+	images: VDataProvider;
 
-	constructor(flags: number, images: VDataCollection) {
+	constructor(flags: number, images: VDataProvider) {
 		super(VHeaderTags.TAG_BODY, flags);
 		this.images = images;
 	}
