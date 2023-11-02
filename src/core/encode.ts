@@ -50,7 +50,6 @@ Vtf.prototype.encode = function(this: Vtf): ArrayBuffer {
 
 	const [width, height] = this.data.getSize();
 	const info = VFileHeader.fromVtf(this);
-	console.log('mipcount:', info.mipmaps);
 
 	// Other properties
 	header.write_u16(width);
@@ -87,8 +86,8 @@ Vtf.prototype.encode = function(this: Vtf): ArrayBuffer {
 
 	// Compression chunk?
 	if (info.compression !== 0) {
-		if (info.compressed_lengths == null) throw('bad');
-		if (info.version < 6) throw('bad');
+		if (info.compressed_lengths == null) throw new Error('Compression header is not present. If this error is thrown, something has gone very very wrong!');
+		if (info.version < 6) throw new Error('Compression requires VTF version 6+');
 
 		const face_count = getFaceCount(info);
 		const axc_length = 8 + info.frames * info.mipmaps * info.slices * face_count * 4;

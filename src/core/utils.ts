@@ -18,7 +18,7 @@ export function getFaceCount(info: VFileHeader): 1|6|7 {
 	return is_env ? 6 : 1;
 }
 
-export function getThumbMip(width: number, height: number) {
+export function getThumbMip(width: number, height: number, target=16) {
 	const size = Math.max(width, height);
-	return Math.ceil(Math.log2(size)) - 4;
+	return Math.ceil(Math.log2(size)) - Math.log2(target);
 }

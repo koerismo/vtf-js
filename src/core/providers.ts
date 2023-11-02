@@ -1,5 +1,5 @@
 import { VImageData } from './image.js';
-import { getMipSize } from './utils.js';
+import { getMipSize, getThumbMip } from './utils.js';
 
 export enum VResizeKernel {
 	Nearest = 0,
@@ -31,6 +31,10 @@ export class VDataCollection implements VDataProvider {
 	}
 
 	getImage(mip: number, frame: number, face: number, slice: number): VImageData {
+		if (mip > this.__mipmaps.length) throw new Error(`Mipmap ${mip} does not exist in VDataCollection!`);
+		if (frame > this.__mipmaps[mip].length) throw new Error(`Frame ${frame} does not exist in VDataCollection!`);
+		if (face > this.__mipmaps[mip][frame].length) throw new Error(`Face ${face} does not exist in VDataCollection!`);
+		if (slice > this.__mipmaps[mip][frame][face].length) throw new Error(`Slice ${slice} does not exist in VDataCollection!`);
 		return this.__mipmaps[mip][frame][face][slice];
 	}
 
@@ -56,12 +60,16 @@ export class VMipmapProvider implements VDataProvider {
 	constructor(frames: VImageData[][][], options?: VMipmapProviderOptions) {
 		this.__frames = frames;
 
-		if (!options) return;
-		this.__mipmapCount = options.mipmaps ?? 3;
-		this.__resizeMethod = options.method ?? VResizeKernel.Linear;
+		const first_image = this.getImage(0,0,0,0);
+		this.__mipmapCount = options?.mipmaps ?? getThumbMip(first_image.width, first_image.height, 1);
+		this.__resizeMethod = options?.method ?? VResizeKernel.Linear;
 	}
 
 	getImage(mip: number, frame: number, face: number, slice: number): VImageData {
+		if (frame > this.__frames.length) throw new Error(`Frame ${frame} does not exist in VMipmapProvider!`);
+		if (face > this.__frames[frame].length) throw new Error(`Face ${face} does not exist in VMipmapProvider!`);
+		if (slice > this.__frames[frame][face].length) throw new Error(`Slice ${slice} does not exist in VMipmapProvider!`);
+
 		// TODO: Replace terrible bad code with actual resizing code!
 		const original = this.__frames[frame][face][slice];
 		const [width, height] = this.getSize(mip, frame, face, slice);

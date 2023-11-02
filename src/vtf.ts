@@ -80,9 +80,9 @@ export class VFileHeader {
 		header.bump_scale = vtf.bump_scale;
 		header.format = vtf.format;
 		header.mipmaps = vtf.data.mipmapCount();
-		header.thumb_format = VFormats.DXT1;
-		header.thumb_width = 0;
-		header.thumb_height = 0;
+		// header.thumb_format = VFormats.DXT1;
+		// header.thumb_width = 0;
+		// header.thumb_height = 0;
 		header.slices = vtf.data.sliceCount();
 		header.compression = 0;
 		return header;
