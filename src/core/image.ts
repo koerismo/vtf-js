@@ -1,4 +1,4 @@
-import { VFormats } from './core/enums.js';
+import { VFormats } from './enums.js';
 
 /** An array of decoded RGBA pixels. */
 export type VPixelArray = Uint8Array|Uint16Array|Uint32Array|Float32Array;
@@ -55,6 +55,10 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 
 		return new VImageData(out, this.width, this.height);
 	}
+
+	encode(format: VFormats): VEncodedImageData {
+		return getCodec(format).encode(this);
+	}
 }
 
 /** VTF-encoded image data. */
@@ -69,5 +73,9 @@ export class VEncodedImageData {
 		this.width = width;
 		this.height = height;
 		this.format = format;
+	}
+
+	decode(): VImageData {
+		return getCodec(this.format).decode(this);
 	}
 }

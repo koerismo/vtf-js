@@ -51,7 +51,7 @@ export class Vtf {
 }
 
 export class VFileHeader {
-	version: number;
+	version: 1|2|3|4|5|6;
 	width: number;
 	height: number;
 	flags: number;
@@ -68,4 +68,23 @@ export class VFileHeader {
 
 	compression: number;
 	compressed_lengths?: number[][][][];
+
+	static fromVtf(vtf: Vtf): VFileHeader {
+		const header = new VFileHeader();
+		header.version = vtf.version;
+		[header.width, header.height] = vtf.data.getSize();
+		header.flags = vtf.flags;
+		header.frames = vtf.data.frameCount();
+		header.first_frame = vtf.first_frame;
+		header.reflectivity = vtf.reflectivity;
+		header.bump_scale = vtf.bump_scale;
+		header.format = vtf.format;
+		header.mipmaps = vtf.data.mipmapCount();
+		header.thumb_format = VFormats.DXT1;
+		header.thumb_width = 0;
+		header.thumb_height = 0;
+		header.slices = vtf.data.sliceCount();
+		header.compression = 0;
+		return header;
+	}
 }

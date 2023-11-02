@@ -1,4 +1,4 @@
-import type { VImageData } from '../image.js';
+import { VImageData } from './image.js';
 import { getMipSize } from './utils.js';
 
 export enum VResizeKernel {
@@ -35,6 +35,7 @@ export class VDataCollection implements VDataProvider {
 	}
 
 	getSize(mip: number=0, frame: number=0, face: number=0, slice: number=0): [number, number] {
+		if (this.__mipmaps.length <= mip) throw new Error(`Mipmap ${mip} does not exist in VDataCollection!`);
 		const img = this.__mipmaps[mip][frame][face][slice];
 		return [img.width, img.height];
 	}
@@ -61,8 +62,11 @@ export class VMipmapProvider implements VDataProvider {
 	}
 
 	getImage(mip: number, frame: number, face: number, slice: number): VImageData {
-		// TODO: FUCK !!!!!
-		return this.__frames[frame][face][slice];
+		// TODO: Replace terrible bad code with actual resizing code!
+		const original = this.__frames[frame][face][slice];
+		const [width, height] = this.getSize(mip, frame, face, slice);
+		const mip_length = width * height * 4;
+		return new VImageData(original.data.slice(0, mip_length), width, height);
 	}
 
 	getSize(mip: number=0, frame: number=0, face: number=0, slice: number=0): [number, number] {

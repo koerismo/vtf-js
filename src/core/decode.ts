@@ -2,7 +2,7 @@ import { getHeaderLength, getFaceCount } from './utils.js';
 import { Vtf, VFileHeader } from '../vtf.js';
 import { DataBuffer } from '../util/buffer.js';
 import { VFormats } from './enums.js';
-import { getCodec } from '../image.js';
+import { getCodec } from './image.js';
 import { VResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags } from './resources.js';
 
 function read_format(id: number) {
@@ -41,6 +41,8 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader) {
 // @ts-expect-error Overloads break for some reason?
 Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VFileHeader {
 	const info = new VFileHeader();
+	info.compression = 0;
+
 	const view = new DataBuffer(data);
 	view.set_endian(true);
 
@@ -49,7 +51,7 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VFileH
 
 	// File format version
 	const seven         = view.read_u32();
-	info.version        = view.read_u32();
+	info.version        = <(1|2|3|4|5|6)>view.read_u32();
 	if (seven !== 7 || info.version < 1 || info.version > 6)
 		throw new Error(`Vtf.decode: Encountered invalid format version! (${seven}.${info.version})`)
 
@@ -108,9 +110,11 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VFileH
 			view.read_u32()
 		);
 
-		// TODO: "special" header tags, especially for unofficial features, are BAD. This needs to be rewritten!
+		// TODO: "special" header tags, especially for unofficial features, are BAD.
 		if (header.tag === VHeaderTags.TAG_AXC) {
 			decode_axc(header, view, info);
+			if (last_data_header !== null) headers[last_data_header].end = header.start;
+			last_data_header = null;
 			continue;
 		}
 
@@ -130,18 +134,18 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VFileH
 	for ( let i=0; i<resource_count; i++ ) {
 		const header = headers[i];
 
+		let data: DataBuffer|undefined;
+		if (!(header.flags & 0x2))
+			data = view.ref(header.start, header.end - header.start);
+
 		if (header.tag === VHeaderTags.TAG_BODY) {
-			body = VBodyResource.decode(header, view, info);
+			body = VBodyResource.decode(header, data!, info);
 			continue;
 		}
 
 		if (header.tag === VHeaderTags.TAG_THUMB) {
 			continue;
 		}
-
-		let data: DataBuffer|undefined;
-		if (!(header.flags & 0x2))
-			data = view.ref(header.start, header.end - header.start);
 
 		const type = VResourceTypes[header.tag] ?? VResource;
 		meta.push(type.decode(header, data, info));
@@ -150,13 +154,5 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VFileH
 	if (!body)
 		throw new Error('Vtf.decode: Vtf does not contain a body resource!');
 
-	return new Vtf(body.images, {
-		version: <(1|2|3|4|5|6)>info.version,
-		format: info.format,
-		flags: info.flags,
-		meta: meta,
-		reflectivity: info.reflectivity,
-		first_frame: info.first_frame,
-		bump_scale: info.bump_scale
-	});
+	return new Vtf(body.images, info);
 }
