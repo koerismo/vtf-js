@@ -134,7 +134,7 @@ registerCodec(VFormats.BGR888, {
 function single_channel_codec(fmt_id: VFormats, arrtype: VPixelArrayConstructor=Uint8Array): VCodec {
 	return {
 		length(width: number, height: number) {
-			return width * height;
+			return width * height * arrtype.BYTES_PER_ELEMENT / 8;
 		},
 
 		encode(image: VImageData): VEncodedImageData {
@@ -170,3 +170,4 @@ registerCodec(VFormats.I8, single_channel_codec(VFormats.I8));
 registerCodec(VFormats.A8, single_channel_codec(VFormats.A8));
 registerCodec(VFormats.P8, single_channel_codec(VFormats.P8));
 registerCodec(VFormats.R32F, single_channel_codec(VFormats.R32F, Float32Array));
+registerCodec(VFormats.RGBA16161616, single_channel_codec(VFormats.RGBA16161616, Uint16Array));

@@ -58,9 +58,9 @@ registerCodec(VFormats.DXT1, {
 					continue;
 				}
 
-				for (let by=ay; by<4; by++) {
+				for (let by=ay; by<4; by++) { // by=ay is intentional. This prevents us from doing too many repeat calculations.
 					if (y+by > height) continue;
-				for (let bx=by; bx<4; bx++) {
+				for (let bx=0; bx<4; bx++) {
 					if (x+bx > width) continue;
 					const b_index = (block_index + bx + by*width) * 4;
 
@@ -166,11 +166,11 @@ registerCodec(VFormats.DXT1, {
 		} // for (let x=0; x<width; x+=4)
 
 		const TOTAL_OTHER = TIMES.total - TIMES.comparison - TIMES.lerping;
-		console.log(
-			'---\nComparison:', TIMES.comparison / TIMES.total * 100,
-			'%\nLerping:', TIMES.lerping / TIMES.total * 100,
-			'%\nOther:', TOTAL_OTHER / TIMES.total * 100,
-			'%\nTotal:', TIMES.total, 'ms');
+		// console.log(
+		// 	'---\nComparison:', TIMES.comparison / TIMES.total * 100,
+		// 	'%\nLerping:', TIMES.lerping / TIMES.total * 100,
+		// 	'%\nOther:', TOTAL_OTHER / TIMES.total * 100,
+		// 	'%\nTotal:', TIMES.total, 'ms');
 
 		return new VEncodedImageData(target, image.width, image.height, VFormats.DXT1);
 	},

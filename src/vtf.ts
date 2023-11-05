@@ -1,6 +1,7 @@
 import type { VDataProvider } from './core/providers.js';
 import { VFormats } from './core/enums.js';
 import { VResource } from './core/resources.js';
+import { getThumbMip } from './core/utils.js';
 
 export interface VConstructorOptions {
 	version?: 1|2|3|4|5|6;
@@ -11,6 +12,7 @@ export interface VConstructorOptions {
 	reflectivity?: Float32Array;
 	first_frame?: number;
 	bump_scale?: number;
+	compression?: number;
 }
 
 export class Vtf {
@@ -23,19 +25,23 @@ export class Vtf {
 	public reflectivity: Float32Array;
 	public first_frame: number;
 	public bump_scale: number;
+	public compression: number;
 
 	constructor(data: VDataProvider, options?: VConstructorOptions) {
 		this.data = data;
 
-		if (!options) return;
-		this.version = options.version ?? 4;
-		this.format = options.format ?? VFormats.RGBA8888;
-		this.flags = options.flags ?? 0x0;
-		this.meta = options.meta ?? [];
+		this.version = options?.version ?? 4;
+		this.format = options?.format ?? VFormats.RGBA8888;
+		this.flags = options?.flags ?? 0x0;
+		this.meta = options?.meta ?? [];
 
-		this.reflectivity = options.reflectivity ?? new Float32Array([0,0,0]);
-		this.first_frame = options.first_frame ?? 0;
-		this.bump_scale = options.bump_scale ?? 1.0;
+		const smallest_mip_index = getThumbMip(...this.data.getSize(0,0,0,0), 1);
+		const smallest_mip = this.data.getImage(smallest_mip_index, 0, 0, 0).convert(Float32Array).data.slice(0,3);
+
+		this.reflectivity = options?.reflectivity ?? smallest_mip;
+		this.first_frame = options?.first_frame ?? 0;
+		this.bump_scale = options?.bump_scale ?? 1.0;
+		this.compression = options?.compression ?? 0;
 	}
 
 	encode(): ArrayBuffer {
@@ -80,11 +86,8 @@ export class VFileHeader {
 		header.bump_scale = vtf.bump_scale;
 		header.format = vtf.format;
 		header.mipmaps = vtf.data.mipmapCount();
-		// header.thumb_format = VFormats.DXT1;
-		// header.thumb_width = 0;
-		// header.thumb_height = 0;
 		header.slices = vtf.data.sliceCount();
-		header.compression = 0;
+		header.compression = vtf.compression;
 		return header;
 	}
 }

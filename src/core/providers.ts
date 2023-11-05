@@ -1,4 +1,5 @@
 import { VImageData } from './image.js';
+import { resizeNearest } from './resize.js';
 import { getMipSize, getThumbMip } from './utils.js';
 
 export enum VResizeKernel {
@@ -70,11 +71,11 @@ export class VMipmapProvider implements VDataProvider {
 		if (face > this.__frames[frame].length) throw new Error(`Face ${face} does not exist in VMipmapProvider!`);
 		if (slice > this.__frames[frame][face].length) throw new Error(`Slice ${slice} does not exist in VMipmapProvider!`);
 
-		// TODO: Replace terrible bad code with actual resizing code!
 		const original = this.__frames[frame][face][slice];
 		const [width, height] = this.getSize(mip, frame, face, slice);
-		const mip_length = width * height * 4;
-		return new VImageData(original.data.slice(0, mip_length), width, height);
+
+		// TODO: Use anything that is *not* nearest sampling for mipmaps. NICE maybe?
+		return resizeNearest(original, width, height);
 	}
 
 	getSize(mip: number=0, frame: number=0, face: number=0, slice: number=0): [number, number] {

@@ -113,21 +113,25 @@ export class VBodyResource extends VResource {
 		const view = new DataBuffer(length);
 		view.set_endian(true);
 
-		info.compressed_lengths = new Array(info.mipmaps);
-		for ( let x=info.mipmaps-1; x>=0; x-- ) { // mipmaps
-			info.compressed_lengths[x] = new Array(info.frames);
-			for ( let y=0; y<info.frames; y++ ) { // frames
-				info.compressed_lengths[x][y] = new Array(face_count);
-				for ( let z=0; z<face_count; z++ ) { // faces
-					info.compressed_lengths[x][y][z] = new Array(info.slices);
-					for ( let w=0; w<info.slices; w++ ) { // slices
-						let data = codec.encode(this.images.getImage(x, y, z, w)).data;
+		const cl_mipmaps = info.compressed_lengths = new Array(info.mipmaps);
+		for ( let x=info.mipmaps-1; x >= 0; x-- ) { // mipmaps
+			const cl_frames = cl_mipmaps[x] = new Array(info.frames);
+
+			for ( let y=0; y < info.frames; y++ ) { // frames
+				const cl_faces = cl_frames[y] = new Array(face_count);
+
+				for ( let z=0; z < face_count; z++ ) { // faces
+					const cl_slices = cl_faces[z] = new Array(info.slices);
+
+					for ( let w=0; w < info.slices; w++ ) { // slices
+						const slice = this.images.getImage(x, y, z, w);
+						let data = codec.encode(slice).data;
 
 						if (info.compression !== 0) {
-							data = deflate(data);
+							data = deflate(data, { level: <-1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>info.compression });
 						}
 
-						info.compressed_lengths![x][y][z][w] = data.length;
+						cl_slices[w] = data.length;
 						view.write_u8(data);
 					}
 				}
