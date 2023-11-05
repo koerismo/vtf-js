@@ -15,42 +15,10 @@ function dxt5Length(w: number, h: number) {
 	return Math.ceil(w / 4) * Math.ceil(h / 4) * 16;
 }
 
-/* function getImageBlock(image: VImageData, x: number, y: number): Uint8Array {
-	const src = image.data;
-	const out = new Uint8Array(16 * 4);
-	const newline = image.width * 4;
-	const start = x + y * newline;
-
-	for ( let i=0; i<4; i++ ) {
-		if (y+i >= image.height) continue;
-		const i16 = i*16;
-		const iN = i*newline;
-		for ( let j=0; j<4; j++ ) {
-			if (x+j >= image.width) continue;
-			const out_ind = j*4 + i16;
-			const src_ind = start + j*4 + iN;
-			out[out_ind]     = src[src_ind];
-			out[out_ind + 1] = src[src_ind + 1];
-			out[out_ind + 2] = src[src_ind + 2];
-			out[out_ind + 3] = src[src_ind + 3];
-		}
-	}
-
-	return out;
-}
-
-function blockifyImage(image: VImageData, callback: (data: Uint8Array) => void) {
-	for (let y=0; y<image.height; y+=4) {
-		for (let x=0; x<image.width; x+=4) {
-			callback(getImageBlock(image, x, y));
-		}
-	}
-}
- */
-
 const TIMES = {
 	comparison: 0,
 	lerping: 0,
+	total: 0,
 }
 
 registerCodec(VFormats.DXT1, {
@@ -153,10 +121,11 @@ registerCodec(VFormats.DXT1, {
 
 				if (has_alpha) {
 					if (src[s+3] > ALPHA_TRESHOLD) {
-						const rounded = Math.round(fit*2);
 						let remapped = 0;
-						if      (rounded === 1) remapped = 2;
-						else if (rounded === 2) remapped = 1;
+						switch (Math.round(fit*2)) {
+							case 1: { remapped = 2; break }
+							case 2: { remapped = 1; break }
+						}
 						indices[i] = remapped;
 					}
 					else {
@@ -164,12 +133,12 @@ registerCodec(VFormats.DXT1, {
 					}
 				}
 				else {
-					// set_blend_index(ix, iy, Math.round(fit*3))
-					const blend_index = Math.round(fit*3);
 					let remapped = 0;
-					if      (blend_index === 1) remapped = 2;
-					else if (blend_index === 2) remapped = 3;
-					else if (blend_index === 3) remapped = 1;
+					switch (Math.round(fit*3)) {
+						case 1: { remapped = 2; break }
+						case 2: { remapped = 3; break }
+						case 3: { remapped = 1; break }
+					}
 					indices[i] = remapped;
 				}
 
@@ -191,12 +160,17 @@ registerCodec(VFormats.DXT1, {
 			const TIME_BLOCK_END = performance.now();
 			TIMES.comparison += TIME_COLORS_CHOSEN - TIME_BLOCK_START;
 			TIMES.lerping += TIME_INDEXING_END - TIME_INDEXING_START;
+			TIMES.total += TIME_BLOCK_END - TIME_BLOCK_START;
 
 		} // for (let y=0; y<height; y+=4)
 		} // for (let x=0; x<width; x+=4)
 
-		const TOTAL_TIME = TIMES.comparison + TIMES.lerping;
-		console.log('Comparison:', TIMES.comparison / TOTAL_TIME * 100, '%\nLerping:', TIMES.lerping / TOTAL_TIME * 100, '%\nTotal:', TOTAL_TIME, 'ms');
+		const TOTAL_OTHER = TIMES.total - TIMES.comparison - TIMES.lerping;
+		console.log(
+			'---\nComparison:', TIMES.comparison / TIMES.total * 100,
+			'%\nLerping:', TIMES.lerping / TIMES.total * 100,
+			'%\nOther:', TOTAL_OTHER / TIMES.total * 100,
+			'%\nTotal:', TIMES.total, 'ms');
 
 		return new VEncodedImageData(target, image.width, image.height, VFormats.DXT1);
 	},

@@ -57,9 +57,10 @@ export function mult(out: Vec3, a: Vec3, b: Vec3) {
 
 export function dot(a: Vec3, b: Vec3) {
 	return (
-	  a[0] * b[0]
-	+ a[1] * b[1]
-	+ a[2] * b[2]);
+		a[0] * b[0] +
+		a[1] * b[1] +
+		a[2] * b[2]
+	);
 }
 
 /** Scales A by B */
@@ -95,13 +96,20 @@ export function dist2(a: Vec3, b: Vec3) {
 
 /** Returns Source as a float between A=0 and B=1. */
 export function fit(source: Vec3, a: Vec3, b: Vec3) {
-	// (B - A)(C - A) / dist(A, B)^2
+	// (B - A) • (C - A) / dist(A, B)^2
 
-	const ba = sub(new VecType(3), b, a);
-	const ca = sub(new VecType(3), source, a);
 	const d = dist2(a, b);
 	if (d === 0) return 0.5;
-	const result = dot(ba, ca) / d;
+
+	// const ba = sub(create(), b, a);
+	// const ca = sub(create(), source, a);
+	// const result = dot(ba, ca) / d;
+
+	const result = (
+		(b[0] - a[0]) * (source[0] - a[0]) +
+		(b[1] - a[1]) * (source[1] - a[1]) +
+		(b[2] - a[2]) * (source[2] - a[2])
+	) / d;
 
 	if (result < 0) return 0;
 	if (result > 1) return 1;
