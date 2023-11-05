@@ -28,6 +28,7 @@ export function copy(out: Vec3, source: ArrayLike<number>, index: number=0) {
 	out[0] = source[index];
 	out[1] = source[index+1];
 	out[2] = source[index+2];
+	return out;
 }
 
 /** Adds A and B */
@@ -35,6 +36,7 @@ export function add(out: Vec3, a: Vec3, b: Vec3) {
 	out[0] = a[0] + b[0];
 	out[1] = a[1] + b[1];
 	out[2] = a[2] + b[2];
+	return out;
 }
 
 /** Subtracts B from A */
@@ -42,6 +44,7 @@ export function sub(out: Vec3, a: Vec3, b: Vec3) {
 	out[0] = a[0] - b[0];
 	out[1] = a[1] - b[1];
 	out[2] = a[2] - b[2];
+	return out;
 }
 
 /** Multiplies A by B */
@@ -49,6 +52,14 @@ export function mult(out: Vec3, a: Vec3, b: Vec3) {
 	out[0] = a[0] * b[0];
 	out[1] = a[1] * b[1];
 	out[2] = a[2] * b[2];
+	return out;
+}
+
+export function dot(a: Vec3, b: Vec3) {
+	return (
+	  a[0] * b[0]
+	+ a[1] * b[1]
+	+ a[2] * b[2]);
 }
 
 /** Scales A by B */
@@ -56,6 +67,7 @@ export function scale(out: Vec3, a: Vec3, b: number) {
 	out[0] = a[0] * b;
 	out[1] = a[1] * b;
 	out[2] = a[2] * b;
+	return out;
 }
 
 /** Returns the length of A */
@@ -83,7 +95,15 @@ export function dist2(a: Vec3, b: Vec3) {
 
 /** Returns Source as a float between A=0 and B=1. */
 export function fit(source: Vec3, a: Vec3, b: Vec3) {
-	const dist_a = dist(a, source);
-	const dist_b = dist(source, b);
-	return dist_a / (dist_a + dist_b);
+	// (B - A)(C - A) / dist(A, B)^2
+
+	const ba = sub(new VecType(3), b, a);
+	const ca = sub(new VecType(3), source, a);
+	const d = dist2(a, b);
+	if (d === 0) return 0.5;
+	const result = dot(ba, ca) / d;
+
+	if (result < 0) return 0;
+	if (result > 1) return 1;
+	return result;
 }

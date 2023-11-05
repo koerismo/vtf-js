@@ -7,7 +7,8 @@ import './core/decode.js';
 import { VImageData, VEncodedImageData, registerCodec, getCodec } from './core/image.js';
 
 // Builtin codecs
-import './image/rgba.js';
+import './formats/rgba.js';
+import './formats/dxt.js';
 
 // Enums
 import { VFormats, VFlags } from './core/enums.js';
@@ -15,6 +16,7 @@ import { VFormats, VFlags } from './core/enums.js';
 // Data collections
 import {
 	VDataCollection,
+	VMipmapProvider,
 	VFrameCollection,
 	VFaceCollection,
 	VSliceCollection } from './core/providers.js';
@@ -30,6 +32,7 @@ export {
 	VEncodedImageData,
 
 	VDataCollection,
+	VMipmapProvider,
 	VFrameCollection,
 	VFaceCollection,
 	VSliceCollection,
