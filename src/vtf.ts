@@ -35,10 +35,16 @@ export class Vtf {
 		this.flags = options?.flags ?? 0x0;
 		this.meta = options?.meta ?? [];
 
-		const smallest_mip_index = getThumbMip(...this.data.getSize(0,0,0,0), 1);
-		const smallest_mip = this.data.getImage(smallest_mip_index, 0, 0, 0).convert(Float32Array).data.slice(0,3);
 
-		this.reflectivity = options?.reflectivity ?? smallest_mip;
+		if (options?.reflectivity) {
+			this.reflectivity = options.reflectivity;
+		}
+		else {
+			const smallest_mip_index = getThumbMip(...this.data.getSize(0,0,0,0), 1);
+			const smallest_mip = this.data.getImage(smallest_mip_index, 0, 0, 0).convert(Float32Array);
+			this.reflectivity = smallest_mip.data.slice(0,3);
+		}
+		
 		this.first_frame = options?.first_frame ?? 0;
 		this.bump_scale = options?.bump_scale ?? 1.0;
 		this.compression = options?.compression ?? 0;

@@ -76,7 +76,8 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VFileH
 	info.mipmaps        = view.read_u8();
 
 	// Thumbnail
-	info.thumb_format   = read_format(view.read_u32());
+	view.pointer += 4;
+	info.thumb_format   = VFormats.DXT1; // read_format(view.read_u32()); // Default cubemap corrupted???
 	info.thumb_width    = view.read_u8();
 	info.thumb_height   = view.read_u8();
 
@@ -97,7 +98,8 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VFileH
 	}
 	else {
 		const body_offset = header_length + getCodec(info.thumb_format).length(info.thumb_width, info.thumb_height);
-		body = VBodyResource.decode(new VHeader(VHeaderTags.TAG_BODY, 0x0, body_offset), view, info);
+		const data = view.ref(body_offset);
+		body = VBodyResource.decode(new VHeader(VHeaderTags.TAG_BODY, 0x0, body_offset), data, info);
 	}
 
 	// Parse resource headers

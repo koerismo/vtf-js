@@ -1,5 +1,7 @@
 import { VFormats } from '../core/enums.js';
 import { VCodec, VEncodedImageData, VImageData, VPixelArrayConstructor, registerCodec } from '../core/image.js';
+import * as V from '../util/vec.js';
+import * as D from '../util/vec.dxt.js';
 
 registerCodec(VFormats.RGBA8888, {
 	length(width, height) {
@@ -131,14 +133,49 @@ registerCodec(VFormats.BGR888, {
 	}
 });
 
+registerCodec(VFormats.RGB565, {
+	length(width, height) {
+		return width * height * 2;
+	},
+
+	encode(image: VImageData): VEncodedImageData {
+		const src = image.convert(Uint8Array).data;
+		const pixels = image.width * image.height;
+
+		const target = new Uint8Array(pixels * 2);
+		const view = new DataView(target.buffer);
+
+		for ( let i=0; i<pixels; i++ ) {
+			view.setUint16(i*2, D.encode565(src, i*4), true);
+		}
+
+		return new VEncodedImageData(target, image.width, image.height, VFormats.RGB565);
+	},
+
+	decode(image: VEncodedImageData): VImageData<Uint8Array> {
+		const src = image.data;
+		const pixels = image.width * image.height;
+		const target = new Float32Array(pixels * 4);
+		const view = new DataView(src.buffer);
+
+		for ( let i=0; i<pixels; i++ ) {
+			const d = i*4;
+			D.decode565(target, view.getUint16(i*2, true), d);
+			target[d+3] = 1.0;
+		}
+
+		return new VImageData(target, image.width, image.height).convert(Uint8Array);
+	}
+});
+
 function single_channel_codec(fmt_id: VFormats, arrtype: VPixelArrayConstructor=Uint8Array): VCodec {
 	return {
 		length(width: number, height: number) {
-			return width * height * arrtype.BYTES_PER_ELEMENT / 8;
+			return width * height * arrtype.BYTES_PER_ELEMENT;
 		},
 
 		encode(image: VImageData): VEncodedImageData {
-			const out = new Uint8Array(image.width * image.height);
+			const out = new Uint8Array(image.width * image.height * arrtype.BYTES_PER_ELEMENT);
 			const src = image.data;
 
 			for ( let i=0; i<out.length; i++) {
@@ -154,7 +191,7 @@ function single_channel_codec(fmt_id: VFormats, arrtype: VPixelArrayConstructor=
 			const src = image.data;
 
 			for ( let i=0; i<pixels; i++ ) {
-				const t = i*4;
+				const t = i * 4 * arrtype.BYTES_PER_ELEMENT;
 				out[t] = src[i];
 				out[t+1] = src[i];
 				out[t+2] = src[i];
@@ -170,4 +207,4 @@ registerCodec(VFormats.I8, single_channel_codec(VFormats.I8));
 registerCodec(VFormats.A8, single_channel_codec(VFormats.A8));
 registerCodec(VFormats.P8, single_channel_codec(VFormats.P8));
 registerCodec(VFormats.R32F, single_channel_codec(VFormats.R32F, Float32Array));
-registerCodec(VFormats.RGBA16161616, single_channel_codec(VFormats.RGBA16161616, Uint16Array));
+

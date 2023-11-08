@@ -62,7 +62,7 @@ export class VMipmapProvider implements VDataProvider {
 		this.__frames = frames;
 
 		const first_image = this.getImage(0,0,0,0);
-		this.__mipmapCount = options?.mipmaps ?? getThumbMip(first_image.width, first_image.height, 1);
+		this.__mipmapCount = options?.mipmaps ?? getThumbMip(first_image.width, first_image.height, 1) + 1;
 		this.__resizeMethod = options?.method ?? VResizeKernel.Linear;
 	}
 

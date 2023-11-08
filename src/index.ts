@@ -4,7 +4,7 @@ import './core/encode.js';
 import './core/decode.js';
 
 // Image data
-import { VImageData, VEncodedImageData, registerCodec, getCodec } from './core/image.js';
+import { VImageData, VEncodedImageData, type VPixelArray, type VPixelArrayConstructor, registerCodec, getCodec } from './core/image.js';
 
 // Builtin codecs
 import './formats/rgba.js';
@@ -30,6 +30,9 @@ export {
 
 	VImageData,
 	VEncodedImageData,
+
+	VPixelArray,
+	VPixelArrayConstructor,
 
 	VDataCollection,
 	VMipmapProvider,

@@ -48,9 +48,9 @@ registerCodec(VFormats.DXT1, {
 
 			// Compare combinations of pixel pairs in the block to find the most contrasting pair
 			for (let ay=0; ay<4; ay++) {
-				if (y+ay > height) continue;
+				if (y+ay >= height) continue;
 			for (let ax=0; ax<4; ax++) {
-				if (x+ax > width) continue;
+				if (x+ax >= width) continue;
 				const a_index = (block_index + ax + ay*width) * 4;
 
 				if (src[a_index+3] <= ALPHA_TRESHOLD) {
@@ -59,9 +59,9 @@ registerCodec(VFormats.DXT1, {
 				}
 
 				for (let by=ay; by<4; by++) { // by=ay is intentional. This prevents us from doing too many repeat calculations.
-					if (y+by > height) continue;
+					if (y+by >= height) continue;
 				for (let bx=0; bx<4; bx++) {
-					if (x+bx > width) continue;
+					if (x+bx >= width) continue;
 					const b_index = (block_index + bx + by*width) * 4;
 
 					if (src[b_index+3] <= ALPHA_TRESHOLD) {
@@ -110,9 +110,9 @@ registerCodec(VFormats.DXT1, {
 			const indices = new Uint8Array(16);
 
 			for ( let iy=0; iy<4; iy++ ) {
-				if (y+iy > height) continue;
+				if (y+iy >= height) continue;
 			for ( let ix=0; ix<4; ix++ ) {
-				if (x+ix > width) continue;
+				if (x+ix >= width) continue;
 				const s = (block_index + ix + iy*width) * 4;
 				const i = (ix + iy*4);
 
@@ -191,8 +191,8 @@ registerCodec(VFormats.DXT1, {
 			const A = src.read_u16();
 			const B = src.read_u16();
 			const alpha_enabled = (A <= B);
-			const color_a = D.decode565(A);
-			const color_b = D.decode565(B);
+			const color_a = D.decode565(V.create(), A);
+			const color_b = D.decode565(V.create(), B);
 
 			const indices_packed = src.read_u32();
 			const get_blend_index = (x: number, y: number) => {
@@ -200,9 +200,9 @@ registerCodec(VFormats.DXT1, {
 			}
 
 			for ( let iy=0; iy<4; iy++ ) {
-				if (y+iy > image.height) continue;
+				if (y+iy >= image.height) continue;
 			for ( let ix=0; ix<4; ix++ ) {
-				if (x+ix > image.width) continue;
+				if (x+ix >= image.width) continue;
 				const blend_index = get_blend_index(ix, iy);
 				let color: V.Vec3;
 				let alpha = 255;

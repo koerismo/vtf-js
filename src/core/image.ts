@@ -57,7 +57,11 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 	}
 
 	encode(format: VFormats): VEncodedImageData {
-		return getCodec(format).encode(this);
+		const codec = getCodec(format);
+		const length = codec.length(this.width, this.height);
+		const out = codec.encode(this);
+		if (out.data.length !== length) throw new Error(`Encoded ${VFormats[format]} image failed length validation! (expected ${length} but got ${out.data.length})`);
+		return out;
 	}
 }
 

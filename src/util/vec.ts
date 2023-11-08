@@ -11,7 +11,8 @@ export function create(x: number=0, y: number=0, z: number=0) {
 
 /** Creates a new Vec3 from the specified array at an optional offset. */
 export function ref(source: TypedArray, index: number=0) {
-	return source.constructor(source.buffer, index, 3);
+	// @ts-expect-error Types don't match up here.
+	return new source.constructor(source.buffer, index, 3);
 }
 
 /** Creates a new Vec3 from the specified array at an optional offset. */

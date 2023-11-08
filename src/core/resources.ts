@@ -124,8 +124,7 @@ export class VBodyResource extends VResource {
 					const cl_slices = cl_faces[z] = new Array(info.slices);
 
 					for ( let w=0; w < info.slices; w++ ) { // slices
-						const slice = this.images.getImage(x, y, z, w);
-						let data = codec.encode(slice).data;
+						let data = this.images.getImage(x, y, z, w).encode(info.format).data;
 
 						if (info.compression !== 0) {
 							data = deflate(data, { level: <-1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>info.compression });
@@ -158,7 +157,6 @@ export class VThumbResource extends VResource {
 	}
 
 	encode(info: VFileHeader): ArrayBuffer {
-		const codec = getCodec(VFormats.DXT1);
-		return codec.encode(this.image).data.buffer;
+		return this.image.encode(VFormats.DXT1).data.buffer;
 	}
 }
