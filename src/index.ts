@@ -8,6 +8,7 @@ import { VImageData, VEncodedImageData, type VPixelArray, type VPixelArrayConstr
 
 // Builtin codecs
 import './formats/rgba.js';
+import './formats/rgba.special.js';
 import './formats/dxt.js';
 
 // Enums
