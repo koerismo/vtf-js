@@ -61,7 +61,7 @@ registerCodec(VFormats.IA88, {
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
 		const pixels = image.width * image.height;
-		const out = new Uint8Array(pixels * 2);
+		const out = new Uint8Array(pixels * 4);
 		const src = image.data;
 
 		for ( let i=0; i<pixels; i++ ) {

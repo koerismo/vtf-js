@@ -3,6 +3,7 @@ import { VFormats } from './enums.js';
 import { VFileHeader, Vtf } from '../vtf.js';
 import { getFaceCount, getHeaderLength, getMipSize, getThumbMip } from './utils.js';
 import { VBodyResource, VHeaderTags, VResource, VThumbResource } from './resources.js';
+import { VImageData } from './image.js';
 
 function write_format(id: number) {
 	if (VFormats[id] == undefined) throw(`Encountered invalid format (id=${id}) in header!`);
@@ -96,15 +97,15 @@ Vtf.prototype.encode = function(this: Vtf): ArrayBuffer {
 	header.write_u32(write_format(info.format));
 	header.write_u8(info.mipmaps);
 
-	// Thumbnail
-	const thumb_mip = getThumbMip(width, height);
-	const [thumb_width, thumb_height] = getMipSize(thumb_mip, width, height); // .map( x => Math.ceil(x / 4) * 4 );
+	// Thumbnail (Fallback to 0x0 if the mipmap is not present)
 	header.write_u32(write_format(VFormats.DXT1));
-	header.write_u8(thumb_width);
-	header.write_u8(thumb_height);
+	const thumb_mip = getThumbMip(width, height);
+	const thumb_image = thumb_mip < info.mipmaps ? this.data.getImage(thumb_mip, 0, 0, 0) : new VImageData(new Uint8Array(0), 0, 0);
+	header.write_u8(thumb_image.width);
+	header.write_u8(thumb_image.height);
 
 	// Initial chunks
-	const thumb_resource = new VThumbResource(0x00, this.data.getImage(thumb_mip, 0, 0, 0));
+	const thumb_resource = new VThumbResource(0x00, thumb_image);
 	const body_resource = new VBodyResource(0x00, this.data);
 	const thumb_data = thumb_resource.encode(info);
 	const body_data = body_resource.encode(info);
