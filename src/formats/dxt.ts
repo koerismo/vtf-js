@@ -21,6 +21,8 @@ const TIMES = {
 	total: 0,
 }
 
+/** DXT1 */
+
 registerCodec(VFormats.DXT1, {
 	length: dxt1Length,
 
@@ -220,6 +222,244 @@ registerCodec(VFormats.DXT1, {
 					else if (blend_index === 1) remapped = 3/3;
 					color = D.blend(remapped, color_a, color_b);
 				}
+
+				const p = ((x+ix) + (y+iy)*width) * 4
+				view.setUint8(p, Math.round(color[0] * 255));
+				view.setUint8(p+1, Math.round(color[1] * 255));
+				view.setUint8(p+2, Math.round(color[2] * 255));
+				view.setUint8(p+3, alpha);
+
+			} // for (let iy=0; iy<height; iy+=4)
+			} // for (let ix=0; ix<width; ix+=4)
+
+		} // for (let y=0; y<height; y+=4)
+		} // for (let x=0; x<width; x+=4)
+
+		return new VImageData(target, image.width, image.height);
+	},
+});
+
+/** DXT5 */
+
+const GT_ALPHA_MIX = {
+	0: 0,
+	1: 1,
+	2: 1/7,
+	3: 2/7,
+	4: 3/7,
+	5: 4/7,
+	6: 5/7,
+	7: 6/7,
+}
+
+const LT_ALPHA_MIX = {
+	0: 0,
+	1: 1,
+	2: 1/5,
+	3: 2/5,
+	4: 3/5,
+	5: 4/5,
+}
+
+const GT_COLOR_MIX = {
+	0: 0,
+	1: 1,
+	2: 1/3,
+	3: 2/3,
+}
+
+function getDXT5AlphaBlend(lt: boolean, index: number) {
+	if (lt) {
+		return LT_ALPHA_MIX[index];
+	}
+	return GT_ALPHA_MIX[index];
+}
+
+function getDXT5ColorBlend(index: number) {
+	return GT_COLOR_MIX[index];
+}
+
+registerCodec(VFormats.DXT5, {
+	length: dxt5Length,
+
+	encode(image: VImageData): VEncodedImageData {
+		throw new Error('DXT5 encoding not implemented!');
+		const src = image.convert(Uint8Array).data;
+		const target = new DataBuffer(dxt5Length(image.width, image.height));
+		target.set_endian(true);
+
+		const width = image.width;
+		const height = image.height;
+		const ALPHA_TRESHOLD = 128;
+
+		// For every 4x4 block
+		for (let y=0; y<height; y+=4) {
+		for (let x=0; x<width; x+=4) {
+
+			const block_index = x + y*width;
+
+			let color_a = D.fromU8(src, block_index * 4);
+			let color_b = D.fromU8(src, block_index * 4);
+			let best_diff = 0;
+			let has_alpha = false;
+
+			// Compare combinations of pixel pairs in the block to find the most contrasting pair
+			for (let ay=0; ay<4; ay++) {
+				if (y+ay >= height) continue;
+			for (let ax=0; ax<4; ax++) {
+				if (x+ax >= width) continue;
+				const a_index = (block_index + ax + ay*width) * 4;
+
+				if (src[a_index+3] <= ALPHA_TRESHOLD) {
+					has_alpha = true;
+					continue;
+				}
+
+				for (let by=ay; by<4; by++) { // by=ay is intentional. This prevents us from doing too many repeat calculations.
+					if (y+by >= height) continue;
+				for (let bx=0; bx<4; bx++) {
+					if (x+bx >= width) continue;
+					const b_index = (block_index + bx + by*width) * 4;
+
+					if (src[b_index+3] <= ALPHA_TRESHOLD) {
+						continue;
+					}
+
+					const new_diff =
+						(src[b_index]   - src[a_index]  )**2 + // R
+						(src[b_index+1] - src[a_index+1])**2 + // G
+						(src[b_index+2] - src[a_index+2])**2;  // B
+
+					if (new_diff > best_diff) {
+						best_diff = new_diff;
+						V.copy(color_a, src, a_index);
+						V.copy(color_b, src, b_index);
+					}
+
+				} // for (let by=0; by<height; by++)
+				} // for (let bx=0; bx<width; bx++)
+
+			} // for (let ay=0; ay<height; ay++)
+			} // for (let ax=0; ax<width; ax++)
+
+			// Write colors to output
+			let A = D.encode565(color_a);
+			let B = D.encode565(color_b);
+
+			// Reorder to make the order of A and B reflect the alpha state.
+			if (A === B) {
+				has_alpha = true;
+			}
+			else if (has_alpha !== (A <= B)) {
+				const _A = A, _color_a = color_a;
+				A = B, B = _A;
+				color_a = color_b, color_b = _color_a;
+			}
+
+			target.write_u16(A);
+			target.write_u16(B);
+
+			// Calculate indices
+			const indices = new Uint8Array(16);
+
+			for ( let iy=0; iy<4; iy++ ) {
+				if (y+iy >= height) continue;
+			for ( let ix=0; ix<4; ix++ ) {
+				if (x+ix >= width) continue;
+				const s = (block_index + ix + iy*width) * 4;
+				const i = (ix + iy*4);
+
+				const color = D.fromU8(src, s);
+				const fit = V.fit(color, color_a, color_b);
+
+				if (has_alpha) {
+					if (src[s+3] > ALPHA_TRESHOLD) {
+						let remapped = 0;
+						switch (Math.round(fit*2)) {
+							case 1: { remapped = 2; break }
+							case 2: { remapped = 1; break }
+						}
+						indices[i] = remapped;
+					}
+					else {
+						indices[i] = 3;
+					}
+				}
+				else {
+					let remapped = 0;
+					switch (Math.round(fit*3)) {
+						case 1: { remapped = 2; break }
+						case 2: { remapped = 3; break }
+						case 3: { remapped = 1; break }
+					}
+					indices[i] = remapped;
+				}
+
+			}
+			}
+
+			// Write indices
+			for ( let i=0; i<16; i+=4 ) {
+				target.write_u8(
+					indices[i  ] << 0 |
+					indices[i+1] << 2 |
+					indices[i+2] << 4 |
+					indices[i+3] << 6
+				);
+			}
+
+		} // for (let y=0; y<height; y+=4)
+		} // for (let x=0; x<width; x+=4)
+
+		return new VEncodedImageData(target, image.width, image.height, VFormats.DXT5);
+	},
+
+	decode(image: VEncodedImageData): VImageData<Uint8Array> {
+		const src = new DataBuffer(image.data);
+		src.set_endian(true);
+
+		const target = new Uint8Array(image.width * image.height * 4);
+		const view = new DataView(target.buffer);
+
+		const width = image.width;
+		const height = image.height;
+
+		for (let y=0; y<height; y+=4) {
+		for (let x=0; x<width; x+=4) {
+
+			const alpha_a_8 = src.read_u8();
+			const alpha_b_8 = src.read_u8();
+			const alpha_mode = (alpha_a_8 <= alpha_b_8);
+
+			// love is in the air? wrong. 48-bit uint
+			const alpha_indices_packed_1 = src.read_u32();
+			const alpha_indices_packed_2 = src.read_u16();
+			const get_alpha_index = (x: number, y: number) => {
+				const i = (3*x + 12*y);
+				if (i < 32) return alpha_indices_packed_1 >> i & 0b111;
+				return alpha_indices_packed_2 >> (i-32) & 0b111;
+			}
+
+			const color_a_565 = src.read_u16();
+			const color_b_565 = src.read_u16();
+			const color_a = D.decode565(V.create(), color_a_565);
+			const color_b = D.decode565(V.create(), color_b_565);
+
+			const color_indices_packed = src.read_u32();
+			const get_color_index = (x: number, y: number) => {
+				return color_indices_packed >> (2*x + 8*y) & 0b11;
+			}
+
+			for ( let iy=0; iy<4; iy++ ) {
+				if (y+iy >= image.height) continue;
+			for ( let ix=0; ix<4; ix++ ) {
+				if (x+ix >= image.width) continue;
+				const color_blend = getDXT5ColorBlend(get_color_index(ix, iy));
+				const alpha_blend_index = get_alpha_index(ix, iy);
+				const alpha_blend = (alpha_blend_index > 5) && alpha_mode ? +(alpha_blend_index === 7) : getDXT5AlphaBlend(alpha_mode, alpha_blend_index);
+
+				const color = D.blend(color_blend, color_a, color_b);
+				const alpha = (alpha_b_8 - alpha_a_8) * alpha_blend + alpha_a_8;
 
 				const p = ((x+ix) + (y+iy)*width) * 4
 				view.setUint8(p, Math.round(color[0] * 255));

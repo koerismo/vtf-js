@@ -2,7 +2,7 @@ import { getHeaderLength, getFaceCount } from './utils.js';
 import { Vtf, VFileHeader } from '../vtf.js';
 import { DataBuffer } from '../util/buffer.js';
 import { VFormats } from './enums.js';
-import { getCodec } from './image.js';
+import { VPixelArrayConstructor, getCodec } from './image.js';
 import { VResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags } from './resources.js';
 
 function read_format(id: number) {
