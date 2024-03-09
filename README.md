@@ -4,23 +4,28 @@
 ## Overview
 `vtf-js` supports encoding and decoding VTF versions `7.1`-`7.6`. Compressed VTFs are encoded and decoded via the `pako` library. A `VtfWorker` object can be passed to encode/decode VTFS in that worker thread rather than in the main thread.
 
-The following formats are supported by default. (However, additional ones can be registered.)
+The following formats are supported by default.
 
 - `RGBA8888`
+- `BGRA8888`
+- `BGRX8888`
 - `ABGR8888`
+- `ARGB8888`
 - `RGB888`
 - `BGR888`
 - `RGB565`
-- `I8`
+- `BGR565`
 - `IA88`
-- `P8`
+- `UV88`
 - `A8`
-- `ARGB8888`
-- `BGRA8888`
+- `I8`
+- `P8` [^1]
 - `DXT1`
 - `DXT3`
 - `DXT5`
-- `BGR565`
+- `R32F`
+- `RGBA16161616`
+- `RGBA32323232F`
 
 ## Examples
 
@@ -29,14 +34,21 @@ The following formats are supported by default. (However, additional ones can be
 import { Vtf, VFormats } from 'vtf-js';
 
 const vtf = Vtf.decode(inbuffer);
-vtf.format = VFormats.RGBA8888;
-const outbuffer = vtf.encode();
+vtf.format = VFormats.RGB565;
+vtf.version = 6;
+vtf.compression = 4;
+const out = vtf.encode();
 ```
 
 ### Create from an ImageData object
 ```ts
-import { Vtf, VFormats, VFrameCollection } from 'vtf-js';
+import { Vtf, VFormats, VFilters, VFrameCollection } from 'vtf-js';
+
+// ...
 
 const frames = new VFrameCollection([image]);
 const vtf = new Vtf(frames, { version: 4, format: VFormats.DXT5 });
 ```
+
+
+[^1]: As the Vtf format does not specify a singular method of defining palettes in the file, vtf-js interprets P8 images as a single-channel greyscale image.

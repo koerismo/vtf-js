@@ -13,25 +13,36 @@ export class DataBuffer extends Uint8Array {
 
 		// @ts-expect-error When initializing a Uint8Array from another array, byteOffset and length
 		// are disregarded for some reason. This is just a quick hack to make it work as expected.
-		if (!(buffer instanceof ArrayBuffer) && byteOffset !== 0 && length !== undefined) buffer = buffer.buffer;
+		if (typeof buffer === 'object' && 'buffer' in buffer && byteOffset !== 0 && length !== undefined) buffer = buffer.buffer;
 
 		// @ts-expect-error JUST MAKE IT WORK.
 		super(buffer, byteOffset, length);
 		this.view = new DataView(this.buffer, this.byteOffset, this.byteLength);
 	}
 
+	/** Sets the default endianness of the DataBuffer. */
 	set_endian(little: boolean) {
 		this.little = little;
 	}
 
-	goto(position: number) {
+	/** Creates a new DataBuffer within the specified bounds. */
+	ref(start=0, length: number=this.length - start) {
+		const buf = new DataBuffer(this.buffer, start, length);
+		buf.set_endian(this.little);
+		return buf;
+	}
+
+	/** Moves the pointer to the specified position. */
+	seek(position: number) {
 		this.pointer = position;
 	}
 
+	/** Increments the pointer by the specified number of bytes. */
 	pad(length: number): void {
 		this.pointer += length;
 	}
 
+	/** Aligns the pointer to the nearest multiple specified, and pads a number of bytes if specified. */
 	align(multiple: number, offset?: number): void {
 		this.pointer = (offset ?? 0) + this.pointer + (multiple - this.pointer % multiple) % multiple;
 	}
@@ -79,7 +90,7 @@ export class DataBuffer extends Uint8Array {
 		return arr;
 	}
 
-	write_u16(value: number|Uint8Array, little: boolean=this.little) {
+	write_u16(value: number|Uint16Array, little: boolean=this.little) {
 		const start = this.pointer;
 
 		if (typeof value === 'number') {
@@ -118,6 +129,62 @@ export class DataBuffer extends Uint8Array {
 
 		this.pointer += value.length * 4;
 		for ( let i=0; i<value.length; i++ ) this.view.setUint32(start + i*4, value[i], little);
+		return;
+	}
+
+	read_i8(): number;
+	read_i8(length: number): Int8Array;
+	read_i8(length?: number) {
+		const start = this.pointer;
+
+		if (length === undefined) {
+			this.pointer ++;
+			return this.view.getInt8(start);
+		}
+
+		this.pointer += length;
+		return new Int8Array(this.slice(start, this.pointer));
+	}
+
+	write_i8(value: number|Int8Array) {
+		const start = this.pointer;
+
+		if (typeof value === 'number') {
+			this.pointer ++;
+			return this.view.setInt8(start, value);
+		}
+
+		this.pointer += value.length;
+		this.set(value, start);
+		return;
+	}
+
+	read_i16(): number;
+	read_i16(length: number, little?: boolean): Int16Array;
+	read_i16(length?: number, little: boolean=this.little) {
+		const start = this.pointer;
+
+		if (length === undefined) {
+			this.pointer += 2;
+			return this.view.getInt16(start, little);
+		}
+
+		this.pointer += length * 2;
+		const arr = new Int16Array(length);
+		for ( let i=0; i<length; i++ ) arr[i] = this.view.getInt16(start + i*2, little);
+		return arr;
+	}
+
+	write_i16(value: number|Int16Array, little: boolean=this.little) {
+		const start = this.pointer;
+
+		if (typeof value === 'number') {
+			this.pointer += 2;
+			return this.view.setInt16(start, value, little);
+		}
+
+		this.pointer += value.length * 2;
+		for ( let i=0; i<value.length; i++ ) this.view.setInt16(start + i*2, value[i], little);
 		return;
 	}
 
@@ -176,6 +243,35 @@ export class DataBuffer extends Uint8Array {
 
 		this.pointer += value.length * 4;
 		for ( let i=0; i<value.length; i++ ) this.view.setFloat32(start + i*4, value[i], little);
+		return;
+	}
+
+	read_f64(): number;
+	read_f64(length: number, little?: boolean): Float64Array;
+	read_f64(length?: number, little: boolean=this.little) {
+		const start = this.pointer;
+
+		if (length === undefined) {
+			this.pointer += 8;
+			return this.view.getFloat64(start, little);
+		}
+
+		this.pointer += length * 8;
+		const arr = new Float64Array(length);
+		for ( let i=0; i<length; i++ ) arr[i] = this.view.getFloat64(start + i*8, little);
+		return arr;
+	}
+
+	write_f64(value: number|Float64Array, little: boolean=this.little) {
+		const start = this.pointer;
+
+		if (typeof value === 'number') {
+			this.pointer += 8;
+			return this.view.setFloat64(start, value, little);
+		}
+
+		this.pointer += value.length * 8;
+		for ( let i=0; i<value.length; i++ ) this.view.setFloat64(start + i*8, value[i], little);
 		return;
 	}
 

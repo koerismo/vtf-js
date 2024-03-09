@@ -1,5 +1,5 @@
 /** Generic Vec3 type helper. */
-export interface Vec3 {[key: number]: number};
+export interface Vec3 {[key: number]: number}
 export type TypedArray = Uint8Array|Int8Array|Uint16Array|Int16Array|Uint32Array|Int32Array|Float32Array|Float64Array;
 export const VecType = Float32Array;
 
@@ -11,7 +11,8 @@ export function create(x: number=0, y: number=0, z: number=0) {
 
 /** Creates a new Vec3 from the specified array at an optional offset. */
 export function ref(source: TypedArray, index: number=0) {
-	return source.constructor(source.buffer, index, 3);
+	// @ts-expect-error Types don't match up here.
+	return new source.constructor(source.buffer, index, 3);
 }
 
 /** Creates a new Vec3 from the specified array at an optional offset. */
@@ -28,6 +29,7 @@ export function copy(out: Vec3, source: ArrayLike<number>, index: number=0) {
 	out[0] = source[index];
 	out[1] = source[index+1];
 	out[2] = source[index+2];
+	return out;
 }
 
 /** Adds A and B */
@@ -35,6 +37,7 @@ export function add(out: Vec3, a: Vec3, b: Vec3) {
 	out[0] = a[0] + b[0];
 	out[1] = a[1] + b[1];
 	out[2] = a[2] + b[2];
+	return out;
 }
 
 /** Subtracts B from A */
@@ -42,6 +45,7 @@ export function sub(out: Vec3, a: Vec3, b: Vec3) {
 	out[0] = a[0] - b[0];
 	out[1] = a[1] - b[1];
 	out[2] = a[2] - b[2];
+	return out;
 }
 
 /** Multiplies A by B */
@@ -49,6 +53,15 @@ export function mult(out: Vec3, a: Vec3, b: Vec3) {
 	out[0] = a[0] * b[0];
 	out[1] = a[1] * b[1];
 	out[2] = a[2] * b[2];
+	return out;
+}
+
+export function dot(a: Vec3, b: Vec3) {
+	return (
+		a[0] * b[0] +
+		a[1] * b[1] +
+		a[2] * b[2]
+	);
 }
 
 /** Scales A by B */
@@ -56,6 +69,7 @@ export function scale(out: Vec3, a: Vec3, b: number) {
 	out[0] = a[0] * b;
 	out[1] = a[1] * b;
 	out[2] = a[2] * b;
+	return out;
 }
 
 /** Returns the length of A */
@@ -83,7 +97,22 @@ export function dist2(a: Vec3, b: Vec3) {
 
 /** Returns Source as a float between A=0 and B=1. */
 export function fit(source: Vec3, a: Vec3, b: Vec3) {
-	const dist_a = dist(a, source);
-	const dist_b = dist(source, b);
-	return dist_a / (dist_a + dist_b);
+	// (B - A) • (C - A) / dist(A, B)^2
+
+	const d = dist2(a, b);
+	if (d === 0) return 0.5;
+
+	// const ba = sub(create(), b, a);
+	// const ca = sub(create(), source, a);
+	// const result = dot(ba, ca) / d;
+
+	const result = (
+		(b[0] - a[0]) * (source[0] - a[0]) +
+		(b[1] - a[1]) * (source[1] - a[1]) +
+		(b[2] - a[2]) * (source[2] - a[2])
+	) / d;
+
+	if (result < 0) return 0;
+	if (result > 1) return 1;
+	return result;
 }
