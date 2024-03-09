@@ -17,10 +17,10 @@ export const VFilters = {
 	Point:		<Filter>{ radius: 0, kernel: () => 1.0 },
 	Triangle:	<Filter>{ radius: 1, kernel: (x) => Math.max(0, 1.44 - Math.abs(x)) },
 	Box:		<Filter>{ radius: 1, kernel: () => 1.0 },
-	Bicubic:	null,
-	Mitchell:	null,
 	Lanczos:	<Filter>{ radius: 3, kernel: (x) => x < 3.0 ? sinc(x) * sinc(x / 3.0) : 0.0 },
 	NICE:		<Filter>{ radius: 3, kernel: (x) => x === 0 ? 1.0 : sinc(x) * sinc(x/3.0) },
+	// Bicubic: null,
+	// Mitchell: null,
 } as const;
 
 
