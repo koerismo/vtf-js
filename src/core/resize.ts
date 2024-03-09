@@ -1,5 +1,30 @@
-import { VImageData } from './image.js';
+import { VImageData, VPixelArray } from './image.js';
+import { clamp } from './utils.js';
 
+interface VResizeOptions {
+	filter: Filter;
+	wrap_h: boolean;
+	wrap_v: boolean;
+}
+
+function sinc(x: number) {
+	if (x === 0) return 1.0;
+	const a = Math.PI * x;
+	return Math.sin(a) / a;
+}
+
+export const VFilters = {
+	Point:		<Filter>{ radius: 0, kernel: () => 1.0 },
+	Triangle:	<Filter>{ radius: 1, kernel: (x) => Math.max(0, 1.44 - Math.abs(x)) },
+	Box:		<Filter>{ radius: 1, kernel: () => 1.0 },
+	Bicubic:	null,
+	Mitchell:	null,
+	Lanczos:	<Filter>{ radius: 3, kernel: (x) => x < 3.0 ? sinc(x) * sinc(x / 3.0) : 0.0 },
+	NICE:		<Filter>{ radius: 3, kernel: (x) => x === 0 ? 1.0 : sinc(x) * sinc(x/3.0) },
+} as const;
+
+
+/** Basic nearest implementation, separate from filter methods. */
 export function resizeNearest(image: VImageData, width: number, height: number) {
 	const src = image.convert(Float32Array).data;
 	const dest = new Float32Array(width * height * 4);
@@ -9,8 +34,8 @@ export function resizeNearest(image: VImageData, width: number, height: number) 
 		const dx = pixel_dest % width;
 		const dy = (pixel_dest - dx) / width;
 
-		const sx = Math.round(dx * (image.width / width));
-		const sy = Math.round(dy * (image.height / height));
+		const sx = Math.floor(dx * (image.width / width));
+		const sy = Math.floor(dy * (image.height / height));
 
 		const pixel_src = sx + sy * image.width;
 		const s = pixel_src * 4;
@@ -24,91 +49,83 @@ export function resizeNearest(image: VImageData, width: number, height: number) 
 	return new VImageData(dest, width, height);
 }
 
-/* export function resizeCubic(image: VImageData, width: number, height: number) {
-	const src = image.convert(Float32Array).data;
-	const dest = new Float32Array(width * height * 4);
+// Some of the below was inspired by the resize-rs project.
+// https://github.com/PistonDevelopers/resize/blob/master/src/lib.rs
 
-	for ( let d=0; d<dest.length; d+=4 ) {
-		const pixel_dest = d / 4;
-		const dx = pixel_dest % width;
-		const dy = (pixel_dest - dx) / width;
+export interface Filter {
+	kernel: (distance: number) => number;
+	radius: number;
+}
 
-		const sx = (dx * (image.width / width));
-		const sy = (dy * (image.height / height));
-
-		const sx_floor = Math.floor(sx);
-		const sy_floor = Math.floor(sy);
-		const sx_ceil = Math.ceil(sx);
-		const sy_ceil = Math.ceil(sy);
-
-		const sx_ratio = (sx - sx_floor);
-		const sy_ratio = (sy - sy_floor);
-
-		const srcPixel = (x: number, y: number) => {
-			return (x + y * image.width) * 4;
-		}
-
-		const lerpPixel = (offset: number) => {
-			return (
-				src[srcPixel(sx_floor, sy_floor)+offset] * (1-sx_ratio) * (1-sy_ratio) +
-				src[srcPixel(sx_ceil, sy_floor)+offset] * (sx_ratio) * (1-sy_ratio) +
-				src[srcPixel(sx_floor, sy_ceil)+offset] * (1-sx_ratio) * (sy_ratio) +
-				src[srcPixel(sx_ceil, sy_ceil)+offset] * (sx_ratio) * (sy_ratio)
+/** Computes the static kernel matrix for a given filter. */
+export function computeKernel(filter: Filter, scale_x: number, scale_y: number): VImageData {
+	const width = Math.ceil(filter.radius*2 * scale_x) + 1;
+	const height = Math.ceil(filter.radius*2 * scale_y) + 1;
+	const center_x = (width-1)/2;
+	const center_y = (height-1)/2;
+	
+	let sum = 0;
+	const kernel = new Float32Array(width * height);
+	for (let y=0; y<height; y++) {
+		for (let x=0; x<width; x++) {
+			sum += (
+				kernel[y * width + x] = filter.kernel(Math.hypot((x - center_x) / scale_x, (y - center_y) / scale_y))
 			);
 		}
-
-		dest[d]   = lerpPixel(0);
-		dest[d+1] = lerpPixel(1);
-		dest[d+2] = lerpPixel(2);
-		dest[d+3] = lerpPixel(3);
 	}
 
-	return new VImageData(dest, width, height);
+	if (sum) for (let i=0; i<kernel.length; i++) kernel[i] /= sum;
+	return new VImageData(kernel, width, height);
 }
 
-export function resizeInverseCubic(image: VImageData, width: number, height: number) {
-	const src = image.convert(Float32Array).data;
-	const dest = new Float32Array(width * height * 4);
+export function resizeFiltered<T extends VPixelArray>(image: VImageData<T>, width: number, height: number, options: VResizeOptions): VImageData<T> {
+	// Shrink <--> Larger ratio > 1
+	// Grow   <--> Smaller ratio < 1
+	const ratio_x = image.width / width;
+	const ratio_y = image.height / height;
 
-	for ( let s=0; s<src.length; s+=4 ) {
-		const pixel_src = s / 4;
-		const sx = pixel_src % image.width;
-		const sy = (pixel_src - sx) / image.width;
+	const kernel = computeKernel(
+		options.filter,
+		Math.max(1, ratio_x),
+		Math.max(1, ratio_y)
+	);
 
-		const dx = (sx * (width / image.width));
-		const dy = (sy * (height / image.height));
+	const start_x = -Math.round(kernel.width / 2);
+	const start_y = -Math.round(kernel.height / 2);
 
-		const dx_floor = Math.floor(dx);
-		const dy_floor = Math.floor(dy);
-		const dx_ceil = Math.ceil(dx);
-		const dy_ceil = Math.ceil(dy);
-
-		const dx_ratio = 1-(dx - dx_floor);
-		const dy_ratio = 1-(dy - dy_floor);
-
-		const destPixel = (x: number, y: number) => {
-			return (x + y * width) * 4;
-		}
-
-		const writePixel = (offset: number) => {
-			const add = src[sx + sy*image.width + offset];
-
-			// top left
-			dest[destPixel(dx_floor, dy_floor)+offset] += add * dx_ratio * dy_ratio
-			// top right
-			dest[destPixel(dx_ceil, dy_floor)+offset] += add * (1-dx_ratio) * dy_ratio
-			// bottom left
-			dest[destPixel(dx_floor, dy_ceil)+offset] += add * dx_ratio * (1-dy_ratio)
-			// bottom right
-			dest[destPixel(dx_ceil, dy_ceil)+offset] += add * (1-dx_ratio) * (1-dy_ratio)
-		}
-
-		writePixel(0);
-		writePixel(1);
-		writePixel(2);
-		writePixel(3);
+	const get_pixel = (x: number, y: number) => {
+		x = options.wrap_h ? (x + image.width) % image.width : clamp(x, 0, image.width-1);
+		y = options.wrap_v ? (y + image.height) % image.height : clamp(y, 0, image.height-1);
+		return (Math.floor(y) * image.width + Math.floor(x)) * 4;
 	}
 
-	return new VImageData(dest, width, height);
+	const input = image.data;
+	const out: T = image.data.constructor(width * height * 4);
+	const scratch = new Float64Array(4);
+
+	// Iterate over destination pixels
+	for (let dy=0; dy<height; dy++) {
+		const sy = Math.floor(dy * ratio_y);
+		for (let dx=0; dx<width; dx++) {
+			const sx = Math.floor(dx * ratio_x);
+
+			const dest = (dy * width + dx) * 4;
+			scratch.fill(0);
+
+			for (let ky=0; ky<kernel.height; ky++) {
+				for (let kx=0; kx<kernel.width; kx++) {
+					const effect = kernel.data[ky * kernel.width + kx];
+					const src = get_pixel(sx + start_x + kx, sy + start_y + ky);
+					scratch[0] += input[src] * effect,
+					scratch[1] += input[src+1] * effect,
+					scratch[2] += input[src+2] * effect,
+					scratch[3] += input[src+3] * effect;
+				}
+			}
+
+			out.set(scratch, dest);
+		}
+	}
+
+	return new VImageData(out, width, height);
 }
-*/

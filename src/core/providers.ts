@@ -1,12 +1,6 @@
 import { VImageData } from './image.js';
-import { resizeNearest } from './resize.js';
+import { resizeNearest, Filter, VFilters, resizeFiltered } from './resize.js';
 import { getMipSize, getThumbMip } from './utils.js';
-
-export enum VResizeKernel {
-	Nearest = 0,
-	Linear,
-	Nice,
-}
 
 /** Defines an interface that can be used to provide image data to the Vtf encoder. */
 export interface VDataProvider {
@@ -19,7 +13,9 @@ export interface VDataProvider {
 }
 
 export interface VMipmapProviderOptions {
-	method?: VResizeKernel;
+	filter?: Filter;
+	wrap_h?: boolean;
+	wrap_v?: boolean;
 	mipmaps?: number;
 }
 
@@ -56,14 +52,18 @@ export class VMipmapProvider implements VDataProvider {
 	protected __frames: VImageData[][][];
 
 	__mipmapCount: number;
-	__resizeMethod: VResizeKernel;
+	__resizeMethod: Filter;
+	__wrapH: boolean;
+	__wrapV: boolean;
 
 	constructor(frames: VImageData[][][], options?: VMipmapProviderOptions) {
 		this.__frames = frames;
 
 		const first_image = this.getImage(0,0,0,0);
 		this.__mipmapCount = options?.mipmaps ?? getThumbMip(first_image.width, first_image.height, 1) + 1;
-		this.__resizeMethod = options?.method ?? VResizeKernel.Linear;
+		this.__resizeMethod = options?.filter ?? VFilters.Triangle;
+		this.__wrapH = options?.wrap_h ?? false;
+		this.__wrapV = options?.wrap_v ?? false;
 	}
 
 	getImage(mip: number, frame: number, face: number, slice: number): VImageData {
@@ -74,8 +74,7 @@ export class VMipmapProvider implements VDataProvider {
 		const original = this.__frames[frame][face][slice];
 		const [width, height] = this.getSize(mip, frame, face, slice);
 
-		// TODO: Use anything that is *not* nearest sampling for mipmaps. NICE maybe?
-		return resizeNearest(original, width, height);
+		return resizeFiltered(original, width, height, { wrap_h: this.__wrapH, wrap_v: this.__wrapV, filter: this.__resizeMethod });
 	}
 
 	getSize(mip: number=0, frame: number=0, face: number=0, slice: number=0): [number, number] {

@@ -1,4 +1,4 @@
-import { VImageData } from '../dist/image.js';
+import { VImageData } from '../dist/core/image.js';
 import assert from 'node:assert';
 
 describe('VImageData', () => {

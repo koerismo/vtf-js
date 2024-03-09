@@ -22,3 +22,7 @@ export function getThumbMip(width: number, height: number, target=16) {
 	const size = Math.max(width, height);
 	return Math.ceil(Math.log2(size)) - Math.log2(target);
 }
+
+export function clamp(x: number, a: number, b: number) {
+	return x < a ? a : (x > b ? b : x);
+}
