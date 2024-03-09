@@ -2,7 +2,7 @@
 *A javascript IO library for the Valve Texture Format.*
 
 ## Overview
-`vtf-js` supports encoding and decoding VTF versions `7.1`-`7.6`. Compressed VTFs are encoded and decoded via the `pako` library. A `VtfWorker` object can be passed to encode/decode VTFS in that worker thread rather than in the main thread.
+`vtf-js` is a canvas-independent library for reading and authoring Vtfs. The library supports encoding and decoding VTF versions 7.1 - 7.6, including Strata-format compressed Vtfs. Mipmap generation is automated by default, however interfaces for manually specifying image data for each mipmap are also available (see `VDataCollection`).
 
 The following formats are supported by default.
 
