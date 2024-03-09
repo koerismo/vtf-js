@@ -1,0 +1,16 @@
+[lib]
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[package]
+name = "vtf-js"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+flate2 = "1.0.28"
+resize = "0.8.4"
+squish = "1.0.0"
+wasm-bindgen = "0.2.92"

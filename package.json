@@ -8,7 +8,9 @@
 	"main": "dist/index.js",
 	"scripts": {
 		"test": "mocha",
-		"build": "tsc"
+		"build": "tsc",
+		"build-wasm": "cd wasm && wasm-pack build && cd ../",
+		"build-all": "npm run build && npm run build-wasm"
 	},
 	"repository": {
 		"type": "git",

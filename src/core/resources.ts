@@ -4,7 +4,7 @@ import { VFileHeader } from '../vtf.js';
 import { VFormats } from './enums.js';
 import { VDataCollection, VDataProvider } from './providers.js';
 import { getFaceCount, getMipSize } from './utils.js';
-import { deflate, inflate, inflateRaw } from 'pako';
+import { inflate, deflate } from '../../wasm/pkg/vtf_js.js';
 
 export const VResourceTypes: {[key: string]: typeof VResource} = {};
 export function registerResourceType(resource: typeof VResource) {
@@ -127,7 +127,7 @@ export class VBodyResource extends VResource {
 						let data = this.images.getImage(x, y, z, w).encode(info.format).data;
 
 						if (info.compression !== 0) {
-							data = deflate(data, { level: <-1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>info.compression });
+							data = deflate(data, info.compression);
 						}
 
 						cl_slices[w] = data.length;

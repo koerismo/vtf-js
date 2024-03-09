@@ -1,2 +1,7 @@
-dist/
-node_modules/
+# Main
+/dist/
+/node_modules/
+
+# WASM Library
+/wasm/pkg/
+/wasm/target/
