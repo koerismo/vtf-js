@@ -6,6 +6,9 @@ import './core/decode.js';
 // Image data
 import { VImageData, VEncodedImageData, type VPixelArray, type VPixelArrayConstructor, registerCodec, getCodec } from './core/image.js';
 
+// Resizing filters
+import { VFilters, type Filter } from './core/resize.js';
+
 // Builtin codecs
 import './formats/rgba.js';
 import './formats/rgba.special.js';
@@ -43,4 +46,7 @@ export {
 
 	registerCodec,
 	getCodec,
+
+	VFilters,
+	Filter,
 }

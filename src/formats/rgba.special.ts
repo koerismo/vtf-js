@@ -39,6 +39,41 @@ registerCodec(VFormats.RGB565, {
 	}
 });
 
+registerCodec(VFormats.BGR565, {
+	length(width, height) {
+		return width * height * 2;
+	},
+
+	encode(image: VImageData): VEncodedImageData {
+		const src = image.convert(Uint8Array).data;
+		const pixels = image.width * image.height;
+
+		const target = new Uint8Array(pixels * 2);
+		const view = new DataView(target.buffer);
+
+		for ( let i=0; i<pixels; i++ ) {
+			view.setUint16(i*2, D.encode565(src, i*4, 2, 1, 0), true);
+		}
+
+		return new VEncodedImageData(target, image.width, image.height, VFormats.RGB565);
+	},
+
+	decode(image: VEncodedImageData): VImageData<Uint8Array> {
+		const src = image.data;
+		const pixels = image.width * image.height;
+		const target = new Float32Array(pixels * 4);
+		const view = new DataView(src.buffer);
+
+		for ( let i=0; i<pixels; i++ ) {
+			const d = i*4;
+			D.decode565(target, view.getUint16(i*2, true), d, 2, 1, 0);
+			target[d+3] = 1.0;
+		}
+
+		return new VImageData(target, image.width, image.height).convert(Uint8Array);
+	}
+});
+
 registerCodec(VFormats.IA88, {
 	length(width, height) {
 		return width * height * 2;

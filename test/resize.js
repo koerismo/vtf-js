@@ -26,14 +26,14 @@ describe('Resize functions', async () => {
 		writeOutputImage('./test/out/resize/nearest_l.png', output_l);
 	});
 
-	it('Kernel generator', () => {
-		console.log(computeKernel({
-			radius: 1,
-			kernel: function(x) {
-				return Math.max(0, 1.44 - x);
-			}
-		}, 2, 1));
-	});
+	// it('Kernel generator', () => {
+	// 	console.log(computeKernel({
+	// 		radius: 1,
+	// 		kernel: function(x) {
+	// 			return Math.max(0, 1.44 - x);
+	// 		}
+	// 	}, 2, 1));
+	// });
 
 	it('Triangle', async () => {
 		const output_s = resizeFiltered(input, 32, 32, { filter: VFilters.Triangle });

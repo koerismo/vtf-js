@@ -1,7 +1,7 @@
 import { VImageData, VPixelArray } from './image.js';
 import { clamp } from './utils.js';
 
-interface VResizeOptions {
+export interface VResizeOptions {
 	filter: Filter;
 	wrap_h: boolean;
 	wrap_v: boolean;
@@ -13,6 +13,7 @@ function sinc(x: number) {
 	return Math.sin(a) / a;
 }
 
+/** @see {@link Filter} */
 export const VFilters = {
 	Point:		<Filter>{ radius: 0, kernel: () => 1.0 },
 	Triangle:	<Filter>{ radius: 1, kernel: (x) => Math.max(0, 1.44 - Math.abs(x)) },
@@ -52,6 +53,7 @@ export function resizeNearest(image: VImageData, width: number, height: number) 
 // Some of the below was inspired by the resize-rs project.
 // https://github.com/PistonDevelopers/resize/blob/master/src/lib.rs
 
+/** Defines a filter that can be used to resize images. */
 export interface Filter {
 	kernel: (distance: number) => number;
 	radius: number;
@@ -78,9 +80,8 @@ export function computeKernel(filter: Filter, scale_x: number, scale_y: number):
 	return new VImageData(kernel, width, height);
 }
 
+/** Resizes the specified image to a new shape. Currently, upscaling will produce pixelated results. */
 export function resizeFiltered<T extends VPixelArray>(image: VImageData<T>, width: number, height: number, options: VResizeOptions): VImageData<T> {
-	// Shrink <--> Larger ratio > 1
-	// Grow   <--> Smaller ratio < 1
 	const ratio_x = image.width / width;
 	const ratio_y = image.height / height;
 

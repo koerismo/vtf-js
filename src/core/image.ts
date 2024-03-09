@@ -1,4 +1,5 @@
 import { VFormats } from './enums.js';
+import { VResizeOptions, resizeFiltered } from './resize.js';
 
 /** An array of decoded RGBA pixels. */
 export type VPixelArray = Uint8Array|Uint16Array|Uint32Array|Float32Array;
@@ -62,6 +63,11 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		const out = codec.encode(this);
 		if (out.data.length !== length) throw new Error(`Encoded ${VFormats[format]} image failed length validation! (expected ${length} but got ${out.data.length})`);
 		return out;
+	}
+
+	resize(width: number, height: number, options: VResizeOptions) {
+		if (width > this.width || height > this.height) throw new Error(`Image upsampling is not supported at this time!`);
+		return resizeFiltered(this, width, height, options);
 	}
 }
 

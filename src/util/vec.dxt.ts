@@ -12,19 +12,19 @@ export function fromU8(source: ArrayLike<number>, index=0) {
 }
 
 /** Encodes a RGB888 Vec3 as a 565 16-bit int. */
-export function encode565(a: Uint8Array, index=0) {
+export function encode565(a: Uint8Array, index=0, r=0, g=1, b=2) {
 	return (
-		((Math.round(a[index]   / 0xff * 0b11111)  << 11) & 0b1111100000000000) |
-		((Math.round(a[index+1] / 0xff * 0b111111) << 5)  & 0b0000011111100000) |
-		((Math.round(a[index+2] / 0xff * 0b11111)  << 0)  & 0b0000000000011111)
+		((Math.round(a[index+r] / 0xff * 0b11111)  << 11) & 0b1111100000000000) |
+		((Math.round(a[index+g] / 0xff * 0b111111) << 5)  & 0b0000011111100000) |
+		((Math.round(a[index+b] / 0xff * 0b11111)  << 0)  & 0b0000000000011111)
 	);
 }
 
 /** Decodes a 16-bit int as an RGB323232F Vec3. */
-export function decode565(out: Float32Array, a: number, offset: number=0): Float32Array {
-	out[offset]   = (((a & 0b1111100000000000) >> 11) / 0b11111);
-	out[offset+1] = (((a & 0b0000011111100000) >> 5)  / 0b111111);
-	out[offset+2] = (((a & 0b0000000000011111) >> 0)  / 0b11111);
+export function decode565(out: Float32Array, a: number, offset: number=0, r=0, g=1, b=2): Float32Array {
+	out[offset+r] = (((a & 0b1111100000000000) >> 11) / 0b11111);
+	out[offset+g] = (((a & 0b0000011111100000) >> 5)  / 0b111111);
+	out[offset+b] = (((a & 0b0000000000011111) >> 0)  / 0b11111);
 	return out;
 }
 
