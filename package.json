@@ -1,9 +1,9 @@
 {
 	"name": "vtf-js",
-	"version": "1.0.0",
+	"version": "0.8.0",
 	"description": "A javascript IO library for the Valve Texture Format.",
 	"author": "koerismo",
-	"license": "ISC",
+	"license": "LGPL-3.0-only",
 	"type": "module",
 	"main": "dist/index.js",
 	"scripts": {
