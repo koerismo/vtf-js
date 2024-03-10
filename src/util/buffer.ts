@@ -1,6 +1,9 @@
+//  NOTE: The code below can be found on npm as "stupid-buffer" for use in other projects.
+
 const TE = new TextEncoder();
 const TD = new TextDecoder();
 
+/** @internal */
 export class DataBuffer extends Uint8Array {
 	pointer = 0;
 	protected view: DataView;

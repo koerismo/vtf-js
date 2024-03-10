@@ -25,7 +25,7 @@ export const VFilters = {
 } as const;
 
 
-/** Basic nearest implementation, separate from filter methods. */
+/** Basic nearest-neighbor resize implementation, separate from filter methods. */
 export function resizeNearest(image: VImageData, width: number, height: number) {
 	const src = image.convert(Float32Array).data;
 	const dest = new Float32Array(width * height * 4);
@@ -91,8 +91,8 @@ export function resizeFiltered<T extends VPixelArray>(image: VImageData<T>, widt
 		Math.max(1, ratio_y)
 	);
 
-	const start_x = -Math.round(kernel.width / 2);
-	const start_y = -Math.round(kernel.height / 2);
+	const start_x = -Math.floor(kernel.width / 2);
+	const start_y = -Math.floor(kernel.height / 2);
 
 	const get_pixel = (x: number, y: number) => {
 		x = options.wrap_h ? (x + image.width) % image.width : clamp(x, 0, image.width-1);
@@ -100,8 +100,9 @@ export function resizeFiltered<T extends VPixelArray>(image: VImageData<T>, widt
 		return (Math.floor(y) * image.width + Math.floor(x)) * 4;
 	}
 
+	// @ts-expect-error TODO: How can we make this more typescript-y?
+	const out: T = new image.data.constructor(width * height * 4);
 	const input = image.data;
-	const out: T = image.data.constructor(width * height * 4);
 	const scratch = new Float64Array(4);
 
 	// Iterate over destination pixels

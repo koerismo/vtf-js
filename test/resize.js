@@ -6,20 +6,20 @@ import sharp from 'sharp';
 async function getInputImage(path, size=256) {
 	const s = sharp(path).raw({ depth: 'uchar' }).ensureAlpha();
 	const b = await s.toBuffer();
-	return new VImageData(b, size, size);
+	return new VImageData(b, size, size).convert(Float32Array);
 }
 
 function writeOutputImage(path, image) {
-	sharp(image.convert(Uint8Array).data, { raw: { channels: 4, width: image.width, height: image.height }}).removeAlpha().png().toFile(path);
+	sharp(image.convert(Uint8ClampedArray).data, { raw: { channels: 4, width: image.width, height: image.height }}).removeAlpha().png().toFile(path);
 }
 
 describe('Resize functions', async () => {
 
 	const input_tiny = await getInputImage('./test/in/resize/tiny.png', 16);
-	const input = await getInputImage('./test/in/resize/source.png');
+	const input = await getInputImage('./test/in/resize/large.png', 1024);
 	writeOutputImage('./test/out/resize/source.png', input);
 
-	it('Nearest', async () => {
+	it('Nearest (Ground Truth)', async () => {
 		const output_s = resizeNearest(input, 32, 32);
 		const output_l = resizeNearest(input_tiny, 512, 512);
 		writeOutputImage('./test/out/resize/nearest_s.png', output_s);
@@ -34,6 +34,13 @@ describe('Resize functions', async () => {
 	// 		}
 	// 	}, 2, 1));
 	// });
+
+	it('Point', async () => {
+		const output_s = resizeFiltered(input, 32, 32, { filter: VFilters.Point });
+		const output_l = resizeFiltered(input_tiny, 512, 512, { filter: VFilters.Point });
+		writeOutputImage('./test/out/resize/point_s.png', output_s);
+		writeOutputImage('./test/out/resize/point_l.png', output_l);
+	});
 
 	it('Triangle', async () => {
 		const output_s = resizeFiltered(input, 32, 32, { filter: VFilters.Triangle });

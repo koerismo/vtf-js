@@ -1,5 +1,5 @@
 import { VFormats } from './enums.js';
-import { VResizeOptions, resizeFiltered } from './resize.js';
+import { VFilters, VResizeOptions, resizeFiltered, resizeNearest } from './resize.js';
 
 /** An array of decoded RGBA pixels. */
 export type VPixelArray = Uint8Array|Uint16Array|Uint32Array|Float32Array;
@@ -42,8 +42,8 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		if (this.data instanceof type.constructor) return <VImageData<InstanceType<T>>>(this as unknown);
 
 		const out = new type(this.data.length) as InstanceType<T>;
-		const is_input_int  = !(this.data instanceof Float32Array);
-		const is_output_int = !(out instanceof Float32Array);
+		const is_input_int  = !(this.data instanceof Float32Array || this.data instanceof Float64Array);
+		const is_output_int = !(out instanceof Float32Array || out instanceof Float64Array);
 
 		const input_max  = is_input_int  ? 2 ** (this.data.BYTES_PER_ELEMENT * 8) - 1 : 1;
 		const output_max = is_output_int ? 2 ** (out.BYTES_PER_ELEMENT * 8) - 1 : 1;
@@ -65,9 +65,14 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		return out;
 	}
 
-	resize(width: number, height: number, options: VResizeOptions) {
+	resize(width: number, height: number, options?: Partial<VResizeOptions>) {
 		if (width > this.width || height > this.height) throw new Error(`Image upsampling is not supported at this time!`);
-		return resizeFiltered(this, width, height, options);
+		options ??= {};
+		options.filter ??= VFilters.Triangle;
+		
+		// Performance isn't ideal on the current filter system. For now, override Point with alternative nearest implementation.
+		if (options.filter === VFilters.Point) return resizeNearest(this, width, height);
+		return resizeFiltered(this, width, height, options as VResizeOptions);
 	}
 }
 

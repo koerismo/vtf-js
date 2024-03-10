@@ -4,18 +4,18 @@ export type TypedArray = Uint8Array|Int8Array|Uint16Array|Int16Array|Uint32Array
 export const VecType = Float32Array;
 
 
-/** Creates a blank new Vec3. */
+/** Creates a blank new Vec3. @internal */
 export function create(x: number=0, y: number=0, z: number=0) {
 	return new VecType([x, y, z]);
 }
 
-/** Creates a new Vec3 from the specified array at an optional offset. */
+/** Creates a new Vec3 from the specified array at an optional offset. @internal */
 export function ref(source: TypedArray, index: number=0) {
 	// @ts-expect-error Types don't match up here.
 	return new source.constructor(source.buffer, index, 3);
 }
 
-/** Creates a new Vec3 from the specified array at an optional offset. */
+/** Creates a new Vec3 from the specified array at an optional offset. @internal */
 export function from(source: ArrayLike<number>, index: number=0) {
 	const vec = new VecType(3);
 	vec[0] = source[index];
@@ -24,7 +24,7 @@ export function from(source: ArrayLike<number>, index: number=0) {
 	return vec;
 }
 
-/** Copies a Vec3 from the specified array at an optional offset. */
+/** Copies a Vec3 from the specified array at an optional offset. @internal */
 export function copy(out: Vec3, source: ArrayLike<number>, index: number=0) {
 	out[0] = source[index];
 	out[1] = source[index+1];
@@ -32,7 +32,7 @@ export function copy(out: Vec3, source: ArrayLike<number>, index: number=0) {
 	return out;
 }
 
-/** Adds A and B */
+/** Adds A and B @internal */
 export function add(out: Vec3, a: Vec3, b: Vec3) {
 	out[0] = a[0] + b[0];
 	out[1] = a[1] + b[1];
@@ -40,7 +40,7 @@ export function add(out: Vec3, a: Vec3, b: Vec3) {
 	return out;
 }
 
-/** Subtracts B from A */
+/** Subtracts B from A @internal */
 export function sub(out: Vec3, a: Vec3, b: Vec3) {
 	out[0] = a[0] - b[0];
 	out[1] = a[1] - b[1];
@@ -48,7 +48,7 @@ export function sub(out: Vec3, a: Vec3, b: Vec3) {
 	return out;
 }
 
-/** Multiplies A by B */
+/** Multiplies A by B @internal */
 export function mult(out: Vec3, a: Vec3, b: Vec3) {
 	out[0] = a[0] * b[0];
 	out[1] = a[1] * b[1];
@@ -56,6 +56,7 @@ export function mult(out: Vec3, a: Vec3, b: Vec3) {
 	return out;
 }
 
+/** @internal */
 export function dot(a: Vec3, b: Vec3) {
 	return (
 		a[0] * b[0] +
@@ -64,7 +65,7 @@ export function dot(a: Vec3, b: Vec3) {
 	);
 }
 
-/** Scales A by B */
+/** Scales A by B @internal */
 export function scale(out: Vec3, a: Vec3, b: number) {
 	out[0] = a[0] * b;
 	out[1] = a[1] * b;
@@ -72,12 +73,12 @@ export function scale(out: Vec3, a: Vec3, b: number) {
 	return out;
 }
 
-/** Returns the length of A */
+/** Returns the length of A @internal */
 export function length(a: Vec3) {
 	return Math.hypot(a[0], a[1], a[2]);
 }
 
-/** Returns the distance between A and B */
+/** Returns the distance between A and B @internal */
 export function dist(a: Vec3, b: Vec3) {
 	return Math.hypot(
 		b[0] - a[0],
@@ -86,7 +87,7 @@ export function dist(a: Vec3, b: Vec3) {
 	);
 }
 
-/** Returns the squared distance between A and B */
+/** Returns the squared distance between A and B @internal */
 export function dist2(a: Vec3, b: Vec3) {
 	return (
 		(b[0] - a[0])**2 +
@@ -95,7 +96,7 @@ export function dist2(a: Vec3, b: Vec3) {
 	);
 }
 
-/** Returns Source as a float between A=0 and B=1. */
+/** Returns Source as a float between A=0 and B=1. @internal */
 export function fit(source: Vec3, a: Vec3, b: Vec3) {
 	// (B - A) • (C - A) / dist(A, B)^2
 
