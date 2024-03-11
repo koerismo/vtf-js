@@ -1,0 +1,10 @@
+src/
+test/
+node_modules/
+
+.eslintrc.json
+.gitignore
+pnpm-lock.yaml
+tsconfig.json
+
+**/.DS_Store
