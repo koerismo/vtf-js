@@ -1,6 +1,5 @@
 import { VImageData } from '../dist/core/image.js';
-import { resizeNearest, resizeFiltered, computeKernel, VFilters } from '../dist/core/resize.js';
-// import assert from 'node:assert';
+import { resizeNearest, resizeFiltered, VFilters } from '../dist/core/resize.js';
 import sharp from 'sharp';
 
 async function getInputImage(path, size=256) {
@@ -10,7 +9,7 @@ async function getInputImage(path, size=256) {
 }
 
 function writeOutputImage(path, image) {
-	sharp(image.convert(Uint8ClampedArray).data, { raw: { channels: 4, width: image.width, height: image.height }}).removeAlpha().png().toFile(path);
+	sharp(image.convert(Uint8Array).data, { raw: { channels: 4, width: image.width, height: image.height }}).removeAlpha().png().toFile(path);
 }
 
 describe('Resize functions', async () => {
@@ -25,15 +24,6 @@ describe('Resize functions', async () => {
 		writeOutputImage('./test/out/resize/nearest_s.png', output_s);
 		writeOutputImage('./test/out/resize/nearest_l.png', output_l);
 	});
-
-	// it('Kernel generator', () => {
-	// 	console.log(computeKernel({
-	// 		radius: 1,
-	// 		kernel: function(x) {
-	// 			return Math.max(0, 1.44 - x);
-	// 		}
-	// 	}, 2, 1));
-	// });
 
 	it('Point', async () => {
 		const output_s = resizeFiltered(input, 32, 32, { filter: VFilters.Point });

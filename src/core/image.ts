@@ -1,5 +1,6 @@
 import { VFormats } from './enums.js';
 import { VFilters, VResizeOptions, resizeFiltered, resizeNearest } from './resize.js';
+import { clamp } from './utils.js';
 
 /** An array of decoded RGBA pixels. */
 export type VPixelArray = Uint8Array|Uint16Array|Uint32Array|Float32Array;
@@ -38,7 +39,7 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		this.height = height;
 	}
 
-	convert<T extends VPixelArrayConstructor>(type: T): VImageData<InstanceType<T>> {
+	convert<T extends VPixelArrayConstructor>(type: T, clamp_int=true): VImageData<InstanceType<T>> {
 		if (this.data instanceof type.constructor) return <VImageData<InstanceType<T>>>(this as unknown);
 
 		const out = new type(this.data.length) as InstanceType<T>;
@@ -51,8 +52,14 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		const mult_factor = output_max / input_max;
 		const add_factor = 0; // (+is_input_int - +is_output_int) * 0.5;
 
-		for ( let i=0; i<this.data.length; i++ )
-			out[i] = this.data[i] * mult_factor + add_factor;
+		if (clamp_int && is_output_int) {
+			for ( let i=0; i<this.data.length; i++ )
+				out[i] = clamp(this.data[i] * mult_factor + add_factor, 0, output_max);
+		}
+		else{
+			for ( let i=0; i<this.data.length; i++ )
+				out[i] = this.data[i] * mult_factor + add_factor;
+		}
 
 		return new VImageData(out, this.width, this.height);
 	}

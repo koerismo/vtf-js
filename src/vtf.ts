@@ -41,8 +41,13 @@ export class Vtf {
 		}
 		else {
 			const smallest_mip_index = getThumbMip(...this.data.getSize(0,0,0,0), 1);
-			const smallest_mip = this.data.getImage(smallest_mip_index, 0, 0, 0).convert(Float32Array);
-			this.reflectivity = smallest_mip.data.slice(0,3);
+			if (smallest_mip_index < this.data.mipmapCount()) {
+				const smallest_mip = this.data.getImage(smallest_mip_index, 0, 0, 0).convert(Float32Array);
+				this.reflectivity = smallest_mip.data.slice(0,3);
+			}
+			else {
+				this.reflectivity = new Float32Array(3).fill(0);
+			}
 		}
 		
 		this.first_frame = options?.first_frame ?? 0;

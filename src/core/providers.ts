@@ -59,8 +59,8 @@ export class VMipmapProvider implements VDataProvider {
 	constructor(frames: VImageData[][][], options?: VMipmapProviderOptions) {
 		this.__frames = frames;
 
-		const first_image = this.getImage(0,0,0,0);
-		this.__mipmapCount = options?.mipmaps ?? getThumbMip(first_image.width, first_image.height, 1) + 1;
+		const [width, height] = this.getSize(0,0,0,0);
+		this.__mipmapCount = options?.mipmaps ?? getThumbMip(width, height, 1) + 1;
 		this.__resizeMethod = options?.filter ?? VFilters.Triangle;
 		this.__wrapH = options?.wrap_h ?? false;
 		this.__wrapV = options?.wrap_v ?? false;

@@ -24,5 +24,5 @@ export function getThumbMip(width: number, height: number, target=16) {
 }
 
 export function clamp(x: number, a: number, b: number) {
-	return x < a ? a : (x > b ? b : x);
+	return x <= a ? a : (x >= b ? b : x);
 }
