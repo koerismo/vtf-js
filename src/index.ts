@@ -19,6 +19,7 @@ import { VFormats, VFlags } from './core/enums.js';
 
 // Data collections
 import {
+	VDataProvider,
 	VDataCollection,
 	VMipmapProvider,
 	VFrameCollection,
@@ -38,6 +39,7 @@ export {
 	VPixelArray,
 	VPixelArrayConstructor,
 
+	VDataProvider,
 	VDataCollection,
 	VMipmapProvider,
 	VFrameCollection,

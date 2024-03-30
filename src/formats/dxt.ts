@@ -10,12 +10,12 @@ registerCodec(VFormats.DXT1, {
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		const out = compress(image.convert(Uint8Array).data, image.width, image.height, flags.DXT1);
+		const out: Uint8Array = compress(image.convert(Uint8Array).data, image.width, image.height, flags.DXT1);
 		return new VEncodedImageData(out, image.width, image.height, VFormats.DXT1);
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
-		const out = decompress(image.data, image.width, image.height, flags.DXT1);
+		const out: Uint8Array = decompress(image.data, image.width, image.height, flags.DXT1);
 		return new VImageData(out, image.width, image.height);
 	},
 });

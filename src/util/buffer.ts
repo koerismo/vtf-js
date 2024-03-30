@@ -16,7 +16,7 @@ export class DataBuffer extends Uint8Array {
 
 		// @ts-expect-error When initializing a Uint8Array from another array, byteOffset and length
 		// are disregarded for some reason. This is just a quick hack to make it work as expected.
-		if (typeof buffer === 'object' && 'buffer' in buffer && byteOffset !== 0 && length !== undefined) buffer = buffer.buffer;
+		if (typeof buffer === 'object' && 'buffer' in buffer) buffer = buffer.buffer;
 
 		// @ts-expect-error JUST MAKE IT WORK.
 		super(buffer, byteOffset, length);

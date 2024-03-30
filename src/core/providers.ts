@@ -28,15 +28,20 @@ export class VDataCollection implements VDataProvider {
 	}
 
 	getImage(mip: number, frame: number, face: number, slice: number): VImageData {
-		if (mip > this.__mipmaps.length) throw new Error(`Mipmap ${mip} does not exist in VDataCollection!`);
-		if (frame > this.__mipmaps[mip].length) throw new Error(`Frame ${frame} does not exist in VDataCollection!`);
-		if (face > this.__mipmaps[mip][frame].length) throw new Error(`Face ${face} does not exist in VDataCollection!`);
-		if (slice > this.__mipmaps[mip][frame][face].length) throw new Error(`Slice ${slice} does not exist in VDataCollection!`);
+		if (mip >= this.__mipmaps.length) throw new Error(`Mipmap ${mip} does not exist in VDataCollection!`);
+		if (frame >= this.__mipmaps[mip].length) throw new Error(`Frame ${frame} does not exist in VDataCollection!`);
+		if (face >= this.__mipmaps[mip][frame].length) throw new Error(`Face ${face} does not exist in VDataCollection!`);
+		if (slice >= this.__mipmaps[mip][frame][face].length) throw new Error(`Slice ${slice} does not exist in VDataCollection!`);
+		
 		return this.__mipmaps[mip][frame][face][slice];
 	}
 
 	getSize(mip: number=0, frame: number=0, face: number=0, slice: number=0): [number, number] {
-		if (this.__mipmaps.length <= mip) throw new Error(`Mipmap ${mip} does not exist in VDataCollection!`);
+		if (mip >= this.__mipmaps.length) throw new Error(`Mipmap ${mip} does not exist in VDataCollection!`);
+		if (frame >= this.__mipmaps[mip].length) throw new Error(`Frame ${frame} does not exist in VDataCollection!`);
+		if (face >= this.__mipmaps[mip][frame].length) throw new Error(`Face ${face} does not exist in VDataCollection!`);
+		if (slice >= this.__mipmaps[mip][frame][face].length) throw new Error(`Slice ${slice} does not exist in VDataCollection!`);
+		
 		const img = this.__mipmaps[mip][frame][face][slice];
 		return [img.width, img.height];
 	}
@@ -67,17 +72,24 @@ export class VMipmapProvider implements VDataProvider {
 	}
 
 	getImage(mip: number, frame: number, face: number, slice: number): VImageData {
-		if (frame > this.__frames.length) throw new Error(`Frame ${frame} does not exist in VMipmapProvider!`);
-		if (face > this.__frames[frame].length) throw new Error(`Face ${face} does not exist in VMipmapProvider!`);
-		if (slice > this.__frames[frame][face].length) throw new Error(`Slice ${slice} does not exist in VMipmapProvider!`);
+		if (mip >= this.__mipmapCount) throw new Error(`Mipmap ${mip} does not exist in VMipmapProvider!`);
+		if (frame >= this.__frames.length) throw new Error(`Frame ${frame} does not exist in VMipmapProvider!`);
+		if (face >= this.__frames[frame].length) throw new Error(`Face ${face} does not exist in VMipmapProvider!`);
+		if (slice >= this.__frames[frame][face].length) throw new Error(`Slice ${slice} does not exist in VMipmapProvider!`);
 
 		const original = this.__frames[frame][face][slice];
 		const [width, height] = this.getSize(mip, frame, face, slice);
 
+		if (width === original.width && height === original.height) return original;
 		return resizeFiltered(original, width, height, { wrap_h: this.__wrapH, wrap_v: this.__wrapV, filter: this.__resizeMethod });
 	}
 
 	getSize(mip: number=0, frame: number=0, face: number=0, slice: number=0): [number, number] {
+		if (mip >= this.__mipmapCount) throw new Error(`Mipmap ${mip} does not exist in VDataCollection!`);
+		if (frame >= this.__frames.length) throw new Error(`Frame ${frame} does not exist in VDataCollection!`);
+		if (face >= this.__frames[frame].length) throw new Error(`Face ${face} does not exist in VDataCollection!`);
+		if (slice >= this.__frames[frame][face].length) throw new Error(`Slice ${slice} does not exist in VDataCollection!`);
+		
 		const img = this.__frames[frame][face][slice];
 		return getMipSize(mip, img.width, img.height);
 	}
