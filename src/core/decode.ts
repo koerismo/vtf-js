@@ -10,13 +10,13 @@ function read_format(id: number) {
 	return id;
 }
 
-function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader) {
+function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boolean {
 	const face_count = getFaceCount(info);
 
 	if (header.flags & 0x2) {
 		if (header.start !== 0) throw(`AXC: Expected inline compression value of 0. Got ${header.start} instead!`);
 		info.compression = 0;
-		return;
+		return false;
 	}
 
 	const view = buffer.ref(header.start);
@@ -36,6 +36,8 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader) {
 			}
 		}
 	}
+
+	return true;
 }
 
 // @ts-expect-error Overloads break for some reason?
@@ -114,8 +116,8 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VFileH
 
 		// TODO: "special" header tags, especially for unofficial features, are BAD.
 		if (header.tag === VHeaderTags.TAG_AXC) {
-			decode_axc(header, view, info);
-			if (last_data_header !== null) headers[last_data_header].end = header.start;
+			const has_body = decode_axc(header, view, info);
+			if (last_data_header !== null && has_body) headers[last_data_header].end = header.start;
 			last_data_header = null;
 			continue;
 		}
@@ -133,7 +135,7 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VFileH
 
 	// Parse resource bodies
 
-	for ( let i=0; i<resource_count; i++ ) {
+	for ( let i=0; i<headers.length; i++ ) {
 		const header = headers[i];
 
 		let data: DataBuffer|undefined;
