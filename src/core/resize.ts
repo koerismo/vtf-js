@@ -91,8 +91,8 @@ export function resizeFiltered<T extends VPixelArray>(image: VImageData<T>, widt
 		Math.max(1, ratio_y)
 	);
 
-	const start_x = -Math.floor(kernel.width / 2);
-	const start_y = -Math.floor(kernel.height / 2);
+	const start_x = -Math.round((kernel.width - 1) / 2);
+	const start_y = -Math.round((kernel.height - 1) / 2);
 
 	const get_pixel = (x: number, y: number) => {
 		x = options.wrap_h ? (x + image.width) % image.width : clamp(x, 0, image.width-1);
