@@ -32,7 +32,7 @@
 		"typescript": "^5.4.2"
 	},
 	"dependencies": {
-		"dxt-js": "^0.0.3",
+		"dxtn": "^1.0.0",
 		"pako": "^2.1.0"
 	}
 }
