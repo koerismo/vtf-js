@@ -31,7 +31,7 @@ function padForDXT(image: VImageData<Uint8Array>): VImageData<Uint8Array> {
 
 registerCodec(VFormats.DXT1, {
 	length(width, height) {
-		return ceil4(width) * ceil4(height) * 8;
+		return ceil4(width) * ceil4(height) * 0.5;
 	},
 
 	encode(image: VImageData): VEncodedImageData {
@@ -50,7 +50,7 @@ registerCodec(VFormats.DXT1_ONEBITALPHA, getCodec(VFormats.DXT1));
 
 registerCodec(VFormats.DXT3, {
 	length(width, height) {
-		return ceil4(width) * ceil4(height) * 16;
+		return ceil4(width) * ceil4(height) * 1;
 	},
 
 	encode(image: VImageData): VEncodedImageData {
@@ -67,7 +67,7 @@ registerCodec(VFormats.DXT3, {
 
 registerCodec(VFormats.DXT5, {
 	length(width, height) {
-		return ceil4(width) * ceil4(height) * 16;
+		return ceil4(width) * ceil4(height) * 1;
 	},
 
 	encode(image: VImageData): VEncodedImageData {

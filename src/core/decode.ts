@@ -41,7 +41,7 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boo
 }
 
 // @ts-expect-error Overloads break for some reason?
-Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VFileHeader {
+Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false, lazy_decode: boolean=false): Vtf|VFileHeader {
 	const info = new VFileHeader();
 	info.compression = 0;
 
@@ -101,7 +101,7 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false): Vtf|VFileH
 	else {
 		const body_offset = header_length + getCodec(info.thumb_format).length(info.thumb_width, info.thumb_height);
 		const data = view.ref(body_offset);
-		body = VBodyResource.decode(new VHeader(VHeaderTags.TAG_BODY, 0x0, body_offset), data, info);
+		body = VBodyResource.decode(new VHeader(VHeaderTags.TAG_BODY, 0x0, body_offset), data, info, lazy_decode);
 	}
 
 	// Parse resource headers

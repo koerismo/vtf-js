@@ -4,7 +4,7 @@ import { VFileHeader } from '../vtf.js';
 import { VFormats } from './enums.js';
 import { VDataCollection, VDataProvider } from './providers.js';
 import { getFaceCount, getMipSize } from './utils.js';
-import { deflate, inflate, inflateRaw } from 'pako';
+import { deflate, inflate } from 'pako';
 
 export const VResourceTypes: {[key: string]: typeof VResource} = {};
 export function registerResourceType(resource: typeof VResource) {
@@ -70,11 +70,11 @@ export class VBodyResource extends VResource {
 		this.images = images;
 	}
 
-	static decode(header: VHeader, view: DataBuffer, info: VFileHeader): VBodyResource {
+	static decode(header: VHeader, view: DataBuffer, info: VFileHeader, lazy: boolean=false): VBodyResource {
 		const face_count = getFaceCount(info);
 		const codec = getCodec(info.format);
 
-		const mips = new Array<VImageData[][][]>(info.mipmaps);
+		const mips = new Array<(VImageData|VEncodedImageData)[][][]>(info.mipmaps);
 		for ( let x=info.mipmaps-1; x>=0; x-- ) { // VTFs store mipmaps smallest-to-largest
 			const frames = mips[x] = new Array(info.frames);
 			for ( let y=0; y<info.frames; y++ ) {
@@ -91,7 +91,9 @@ export class VBodyResource extends VResource {
 							data = inflate(data);
 						}
 
-						slices[w] = codec.decode(new VEncodedImageData( data, width, height, info.format ));
+						const encoded = new VEncodedImageData( data, width, height, info.format );
+						if (lazy) slices[w] = encoded;
+						else slices[w] = codec.decode(encoded);
 					}
 				}
 			}

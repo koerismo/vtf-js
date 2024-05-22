@@ -1,4 +1,4 @@
-import { VImageData } from './image.js';
+import { VEncodedImageData, VImageData } from './image.js';
 import { resizeNearest, Filter, VFilters, resizeFiltered } from './resize.js';
 import { getMipSize, getThumbMip } from './utils.js';
 
@@ -21,9 +21,9 @@ export interface VMipmapProviderOptions {
 
 /** A class for storing collections of mipmaps, frames, faces, and slices. */
 export class VDataCollection implements VDataProvider {
-	private __mipmaps: VImageData[][][][];
+	private __mipmaps: (VImageData|VEncodedImageData)[][][][];
 
-	constructor(mipmaps: VImageData[][][][]) {
+	constructor(mipmaps: (VImageData|VEncodedImageData)[][][][]) {
 		this.__mipmaps = mipmaps;
 	}
 
@@ -33,7 +33,9 @@ export class VDataCollection implements VDataProvider {
 		if (face >= this.__mipmaps[mip][frame].length) throw new Error(`Face ${face} does not exist in VDataCollection!`);
 		if (slice >= this.__mipmaps[mip][frame][face].length) throw new Error(`Slice ${slice} does not exist in VDataCollection!`);
 		
-		return this.__mipmaps[mip][frame][face][slice];
+		const image = this.__mipmaps[mip][frame][face][slice];
+		if (image instanceof VEncodedImageData) return image.decode();
+		return image;
 	}
 
 	getSize(mip: number=0, frame: number=0, face: number=0, slice: number=0): [number, number] {

@@ -88,7 +88,7 @@ registerCodec(VFormats.BGR888, createGenericRGBA(VFormats.BGR888, 'Uint8', 2, 1,
 
 registerCodec(VFormats.UV88, createGenericRGBA(VFormats.UV88, 'Uint8', 0, 1, null, null));
 
-registerCodec(VFormats.A8, createGenericRGBA(VFormats.A8, 'Uint8', null, null, null, 1));
+registerCodec(VFormats.A8, createGenericRGBA(VFormats.A8, 'Uint8', null, null, null, 0));
 registerCodec(VFormats.I8, createGenericRGBA(VFormats.I8, 'Uint8', 0, null, null, null, true));
 registerCodec(VFormats.P8, createGenericRGBA(VFormats.P8, 'Uint8', 0, null, null, null, true));
 
