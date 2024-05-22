@@ -159,6 +159,7 @@ export class VThumbResource extends VResource {
 	}
 
 	encode(info: VFileHeader): ArrayBuffer {
+		if (this.image.width === 0 || this.image.height === 0) return new ArrayBuffer(0);
 		return this.image.encode(VFormats.DXT1).data.buffer;
 	}
 }

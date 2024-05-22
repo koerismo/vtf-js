@@ -1,5 +1,5 @@
 import { VEncodedImageData, VImageData } from './image.js';
-import { resizeNearest, Filter, VFilters, resizeFiltered } from './resize.js';
+import { Filter, VFilters, resizeFiltered } from './resize.js';
 import { getMipSize, getThumbMip } from './utils.js';
 
 /** Defines an interface that can be used to provide image data to the Vtf encoder. */
@@ -28,21 +28,22 @@ export class VDataCollection implements VDataProvider {
 	}
 
 	getImage(mip: number, frame: number, face: number, slice: number): VImageData {
-		if (mip >= this.__mipmaps.length) throw new Error(`Mipmap ${mip} does not exist in VDataCollection!`);
-		if (frame >= this.__mipmaps[mip].length) throw new Error(`Frame ${frame} does not exist in VDataCollection!`);
-		if (face >= this.__mipmaps[mip][frame].length) throw new Error(`Face ${face} does not exist in VDataCollection!`);
-		if (slice >= this.__mipmaps[mip][frame][face].length) throw new Error(`Slice ${slice} does not exist in VDataCollection!`);
+		if (mip >= this.__mipmaps.length) throw Error(`Mipmap ${mip} does not exist in VDataCollection!`);
+		if (frame >= this.__mipmaps[mip].length) throw Error(`Frame ${frame} does not exist in VDataCollection!`);
+		if (face >= this.__mipmaps[mip][frame].length) throw Error(`Face ${face} does not exist in VDataCollection!`);
+		if (slice >= this.__mipmaps[mip][frame][face].length) throw Error(`Slice ${slice} does not exist in VDataCollection!`);
 		
 		const image = this.__mipmaps[mip][frame][face][slice];
-		if (image instanceof VEncodedImageData) return image.decode();
+		if (image instanceof VEncodedImageData) return (this.__mipmaps[mip][frame][face][slice] = image.decode());
+		else if (!(image instanceof VImageData)) throw TypeError(`Expected VImageData or VEncodedImageData in VDataProvider, but found ${(<any>image).constructor.name} instead!`);
 		return image;
 	}
 
 	getSize(mip: number=0, frame: number=0, face: number=0, slice: number=0): [number, number] {
-		if (mip >= this.__mipmaps.length) throw new Error(`Mipmap ${mip} does not exist in VDataCollection!`);
-		if (frame >= this.__mipmaps[mip].length) throw new Error(`Frame ${frame} does not exist in VDataCollection!`);
-		if (face >= this.__mipmaps[mip][frame].length) throw new Error(`Face ${face} does not exist in VDataCollection!`);
-		if (slice >= this.__mipmaps[mip][frame][face].length) throw new Error(`Slice ${slice} does not exist in VDataCollection!`);
+		if (mip >= this.__mipmaps.length) throw Error(`Mipmap ${mip} does not exist in VDataCollection!`);
+		if (frame >= this.__mipmaps[mip].length) throw Error(`Frame ${frame} does not exist in VDataCollection!`);
+		if (face >= this.__mipmaps[mip][frame].length) throw Error(`Face ${face} does not exist in VDataCollection!`);
+		if (slice >= this.__mipmaps[mip][frame][face].length) throw Error(`Slice ${slice} does not exist in VDataCollection!`);
 		
 		const img = this.__mipmaps[mip][frame][face][slice];
 		return [img.width, img.height];
@@ -79,7 +80,10 @@ export class VMipmapProvider implements VDataProvider {
 		if (face >= this.__frames[frame].length) throw new Error(`Face ${face} does not exist in VMipmapProvider!`);
 		if (slice >= this.__frames[frame][face].length) throw new Error(`Slice ${slice} does not exist in VMipmapProvider!`);
 
-		const original = this.__frames[frame][face][slice];
+		let original = this.__frames[frame][face][slice];
+		if (original instanceof VEncodedImageData) original = this.__frames[frame][face][slice] = original.decode();
+		else if (!(original instanceof VImageData)) throw TypeError(`Expected VImageData or VEncodedImageData in VDataProvider, but found ${(<any>original).constructor.name} instead!`);
+
 		const [width, height] = this.getSize(mip, frame, face, slice);
 
 		if (width === original.width && height === original.height) return original;
