@@ -22,6 +22,14 @@ function diffImages(a, b, rgb=true, alpha=false) {
 	return diff / a.data.length;
 }
 
+/**
+ * @param {VImageData} a 
+ * @param {VImageData} b 
+ */
+function checkImageSizes(a, b) {
+	return (a.width === b.width) && (a.height === b.height) && (a.data.length === b.data.length);
+}
+
 const formats = [
 	VFormats.RGBA8888,
     VFormats.ABGR8888,
@@ -42,14 +50,18 @@ describe('Format IO Difftest', () => {
 		it(`Format ${VFormats[format]}`, () => {
 			const big = makeTestImage(1024, 1024);
 			const small = makeTestImage(8, 8);
-			// const weird = makeTestImage(40, 30);
+			const weird = makeTestImage(45, 35);
 
 			const big_out = big.encode(format).decode();
 			const small_out = small.encode(format).decode();
-			// const weird_out = weird.encode(format).decode();
+			const weird_out = weird.encode(format).decode();
 
 			const uses_color = format !== VFormats.A8;
 			const uses_alpha = format === VFormats[format].includes('A') || format === VFormats.DXT3 || format === VFormats.DXT5;
+
+			if (!checkImageSizes(big, big_out)) throw Error(`[big] Format ${VFormats[format]} failed size check!`);
+			if (!checkImageSizes(small, small_out)) throw Error(`[small] Format ${VFormats[format]} failed size check!`);
+			if (!checkImageSizes(weird, weird_out)) throw Error(`[weird] Format ${VFormats[format]} failed size check!`);
 
 			const big_diff = diffImages(big, big_out, uses_color, uses_alpha);
 			const small_diff = diffImages(small, small_out, uses_color, uses_alpha);

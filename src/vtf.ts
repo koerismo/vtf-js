@@ -60,9 +60,9 @@ export class Vtf {
 	}
 
 	static decode(data: ArrayBuffer): Vtf;
-	static decode(data: ArrayBuffer, header_only: false): Vtf;
-	static decode(data: ArrayBuffer, header_only: true): VFileHeader;
-	static decode(data: ArrayBuffer, header_only?: boolean): Vtf|VFileHeader {
+	static decode(data: ArrayBuffer, header_only: false, lazy_decode?: boolean): Vtf;
+	static decode(data: ArrayBuffer, header_only: true, lazy_decode?: boolean): VFileHeader;
+	static decode(data: ArrayBuffer, header_only: boolean=false, lazy_decode: boolean=false): Vtf|VFileHeader {
 		throw('Vtf.decode: Implementation override not present!');
 	}
 }
