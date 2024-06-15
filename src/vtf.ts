@@ -4,7 +4,7 @@ import { VResource } from './core/resources.js';
 import { getThumbMip } from './core/utils.js';
 
 export interface VConstructorOptions {
-	version?: 1|2|3|4|5|6;
+	version?: 0|1|2|3|4|5|6;
 	format?: VFormats;
 	flags?: number;
 	meta?: VResource[];
@@ -17,7 +17,7 @@ export interface VConstructorOptions {
 
 export class Vtf {
 	public data: VDataProvider;
-	public version: 1|2|3|4|5|6;
+	public version: 0|1|2|3|4|5|6;
 	public format: VFormats;
 	public flags: number;
 	public meta: VResource[];
@@ -68,7 +68,7 @@ export class Vtf {
 }
 
 export class VFileHeader {
-	version: 1|2|3|4|5|6;
+	version: 0|1|2|3|4|5|6;
 	width: number;
 	height: number;
 	flags: number;

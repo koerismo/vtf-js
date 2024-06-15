@@ -69,6 +69,7 @@ function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, 
 				if (green != null)	out[t+1] = view[GET](s + green, true);
 				if (blue != null)	out[t+2] = view[GET](s + blue, true);
 				if (alpha != null)	out[t+3] = view[GET](s + alpha, true);
+				else out[t+3] = 255;
 			}
 
 			return new VImageData(out, source.width, source.height);

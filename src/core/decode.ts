@@ -53,8 +53,8 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false, lazy_decode
 
 	// File format version
 	const seven         = view.read_u32();
-	info.version        = <(1|2|3|4|5|6)>view.read_u32();
-	if (seven !== 7 || info.version < 1 || info.version > 6)
+	info.version        = <(0|1|2|3|4|5|6)>view.read_u32();
+	if (seven !== 7 || info.version < 0 || info.version > 6)
 		throw new Error(`Vtf.decode: Encountered invalid format version! (${seven}.${info.version})`)
 
 	// Other properties
