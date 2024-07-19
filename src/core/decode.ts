@@ -3,7 +3,7 @@ import { Vtf, VFileHeader } from '../vtf.js';
 import { DataBuffer } from '../util/buffer.js';
 import { VFormats } from './enums.js';
 import { getCodec } from './image.js';
-import { VResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags } from './resources.js';
+import { VBaseResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags, VResourceInstance } from './resources.js';
 
 function read_format(id: number) {
 	if (VFormats[id] == undefined) throw new Error(`Encountered invalid format (id=${id}) in header!`);
@@ -90,7 +90,7 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false, lazy_decode
 
 	let body: VBodyResource|undefined;
 	const headers: VHeader[] = [];
-	const meta: VResource[] = [];
+	const meta: VResourceInstance[] = [];
 
 	let resource_count = 0;
 	if (info.version >= 3) {
@@ -151,7 +151,7 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false, lazy_decode
 			continue;
 		}
 
-		const type = VResourceTypes[header.tag] ?? VResource;
+		const type = VResourceTypes[header.tag] ?? VBaseResource;
 		meta.push(type.decode(header, data, info));
 	}
 
