@@ -96,7 +96,7 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_
 
 	let body: VBodyResource|undefined;
 	const headers: VHeader[] = [];
-	const meta: VResource[] = [];
+	const meta: VResourceInstance[] = [];
 
 	let resource_count = 0;
 	if (info.version >= 3) {
@@ -158,7 +158,7 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_
 			continue;
 		}
 
-		const type = VResourceTypes[header.tag] ?? VResource;
+		const type = VResourceTypes[header.tag] ?? VBaseResource;
 		meta.push(await type.decode(header, data, info));
 	}
 

@@ -1,13 +1,13 @@
 import type { VDataProvider } from './core/providers.js';
 import { VCompressionMethods, VFormats } from './core/enums.js';
-import { VResource } from './core/resources.js';
+import { VBaseResource } from './core/resources.js';
 import { getThumbMip } from './core/utils.js';
 
 export interface VConstructorOptions {
 	version?: number;
 	format?: VFormats;
 	flags?: number;
-	meta?: VResource[];
+	meta?: VBaseResource[];
 
 	reflectivity?: Float32Array;
 	first_frame?: number;
@@ -21,7 +21,7 @@ export class Vtf {
 	public version: number;
 	public format: VFormats;
 	public flags: number;
-	public meta: VResource[];
+	public meta: VBaseResource[];
 
 	public reflectivity: Float32Array;
 	public first_frame: number;

@@ -10,7 +10,7 @@ function write_format(id: number) {
 	return id;
 }
 
-function write_header(buf: DataBuffer, res: VResource, pos: number) {
+function write_header(buf: DataBuffer, res: VBaseResource, pos: number) {
 	buf.write_str(res.tag, 3);
 	buf.write_u8(res.flags);
 	buf.write_u32(pos);
@@ -132,7 +132,7 @@ Vtf.prototype.encode = async function(this: Vtf): Promise <ArrayBuffer> {
 
 	if (info.compression_level !== 0) {
 		const axc_data = write_axc(info);
-		write_header(header, new VResource(VHeaderTags.TAG_AXC, 0x00), filepos);
+		write_header(header, new VBaseResource(VHeaderTags.TAG_AXC, 0x00), filepos);
 		filepos += axc_data.byteLength;
 		chunks.push(axc_data);
 	}

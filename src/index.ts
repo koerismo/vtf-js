@@ -39,6 +39,9 @@ import './formats/dxt.js';
 // Enums
 export { VFormats, VFlags } from './core/enums.js';
 
+// Utils
+import * as utils from './core/utils.js';
+
 // Data collections
 export {
 	VDataProvider,
