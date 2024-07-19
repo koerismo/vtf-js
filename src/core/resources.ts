@@ -6,8 +6,8 @@ import { VDataCollection, VDataProvider } from './providers.js';
 import { getFaceCount, getMipSize } from './utils.js';
 import { deflate, inflate } from 'pako';
 
-export const VResourceTypes: {[key: string]: typeof VResource} = {};
-export function registerResourceType(resource: typeof VResource) {
+export const VResourceTypes: {[key: string]: VResource} = {};
+export function registerResourceType(resource: VResource) {
 	if (!resource.tag) throw('registerResourceDecoder: Cannot register generic resource! (Must have static tag attribute.)');
 	VResourceTypes[resource.tag] = resource;
 }
@@ -36,9 +36,17 @@ export class VHeader {
 	}
 }
 
+export interface VResource {
+	readonly tag: string;
+	decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): VResourceInstance;
+}
+
+export interface VResourceInstance {
+	encode(info: VFileHeader): ArrayBuffer;
+}
+
 /** Represents a resource entry. */
-export class VResource {
-	static readonly tag?: string;
+export class VBaseResource {
 	readonly tag: string;
 	readonly flags: number;
 	data?: DataBuffer;
@@ -53,8 +61,8 @@ export class VResource {
 		return !(this.flags & 0x2);
 	}
 
-	static decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): VResource {
-		return new VResource(header.tag, header.flags, view);
+	static decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): VBaseResource {
+		return new VBaseResource(header.tag, header.flags, view);
 	}
 
 	encode(info: VFileHeader): ArrayBuffer {
@@ -63,7 +71,7 @@ export class VResource {
 	}
 }
 
-export class VBodyResource extends VResource {
+export class VBodyResource extends VBaseResource {
 	images: VDataProvider;
 
 	constructor(flags: number, images: VDataProvider) {
@@ -143,7 +151,7 @@ export class VBodyResource extends VResource {
 	}
 }
 
-export class VThumbResource extends VResource {
+export class VThumbResource extends VBaseResource {
 	image: VImageData;
 
 	constructor(flags: number, image: VImageData) {
@@ -178,9 +186,13 @@ export interface SheetSequence {
 	frames: SheetFrame[];
 }
 
-
-export class VSheetResource extends VResource {
+export class VSheetResource extends VBaseResource {
+	static tag = VHeaderTags.TAG_SHEET;
 	sequences: SheetSequence[];
+	
+	static {
+		registerResourceType(VSheetResource);
+	}
 
 	constructor(flags: number, sequences: SheetSequence[]) {
 		super(VHeaderTags.TAG_SHEET, flags);

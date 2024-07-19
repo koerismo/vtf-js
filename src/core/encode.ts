@@ -2,7 +2,7 @@ import { DataBuffer } from '../util/buffer.js';
 import { VFormats } from './enums.js';
 import { VFileHeader, Vtf } from '../vtf.js';
 import { getFaceCount, getHeaderLength, getMipSize, getThumbMip } from './utils.js';
-import { VBodyResource, VHeaderTags, VResource, VThumbResource } from './resources.js';
+import { VBodyResource, VHeaderTags, VBaseResource, VThumbResource } from './resources.js';
 import { VImageData } from './image.js';
 
 function write_format(id: number) {
@@ -10,7 +10,7 @@ function write_format(id: number) {
 	return id;
 }
 
-function write_header(buf: DataBuffer, res: VResource, pos: number) {
+function write_header(buf: DataBuffer, res: VBaseResource, pos: number) {
 	buf.write_str(res.tag, 3);
 	buf.write_u8(res.flags);
 	buf.write_u32(pos);
@@ -134,7 +134,7 @@ Vtf.prototype.encode = function(this: Vtf): ArrayBuffer {
 
 	if (info.compression !== 0) {
 		const axc_data = write_axc(info);
-		write_header(header, new VResource(VHeaderTags.TAG_AXC, 0x00), filepos);
+		write_header(header, new VBaseResource(VHeaderTags.TAG_AXC, 0x00), filepos);
 		filepos += axc_data.byteLength;
 		chunks.push(axc_data);
 	}
