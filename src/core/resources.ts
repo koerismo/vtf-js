@@ -105,15 +105,9 @@ export class VBodyResource extends VResource {
 
 	encode(info: VFileHeader): ArrayBuffer {
 		const face_count = getFaceCount(info);
-		const codec = getCodec(info.format);
 
+		const packed_slices: Uint8Array[] = [];
 		let length = 0;
-		for ( let x=info.mipmaps-1; x>=0; x-- ) {
-			length += codec.length(...getMipSize(x, info.width, info.height)) * info.frames * face_count * info.slices;
-		}
-
-		const view = new DataBuffer(length);
-		view.set_endian(true);
 
 		const cl_mipmaps = info.compressed_lengths = new Array(info.mipmaps);
 		for ( let x=info.mipmaps-1; x >= 0; x-- ) { // mipmaps
@@ -133,13 +127,18 @@ export class VBodyResource extends VResource {
 						}
 
 						cl_slices[w] = data.length;
-						view.write_u8(data);
+						length += data.length;
+						packed_slices.push(data);
 					}
 				}
 			}
 		}
 
-		return view.buffer.slice(0, view.pointer);
+		const view = new DataBuffer(length);
+		for (let i=0; i<packed_slices.length; i++) {
+			view.write_u8(packed_slices[i]);
+		}
+		return view.buffer;
 	}
 }
 

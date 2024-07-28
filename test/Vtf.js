@@ -1,5 +1,5 @@
-import { Vtf, VDataCollection, VImageData } from '../dist/index.js';
-import { deepStrictEqual } from 'node:assert';
+import { Vtf, VDataCollection, VImageData, VFormats } from '../dist/index.js';
+import { deepStrictEqual, strictEqual } from 'node:assert';
 
 const image_big = new VImageData(new Uint8Array(4 * 4 * 4).fill(255), 4, 4);
 const image_small = new VImageData(new Uint8Array(1 * 1 * 4).fill(255), 1, 1);
@@ -22,4 +22,26 @@ describe('Vtf', () => {
 		const vtf = new Vtf(data, { reflectivity: new Float32Array(3).fill(0.5) });
 		deepStrictEqual(vtf.reflectivity, new Float32Array(3).fill(0.5));
 	});
+
+	// Make test data
+	const versions = [[1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [6, 5]];
+	const width = 1024, height = 1024;
+	const data = new Uint8Array(width * height * 4);
+	for (let i=0; i<data.length; i++) data[i] = Math.random() * 255; 
+	const image = new VImageData(data, width, height);
+
+	for (const [version, compression] of versions) {
+		it(`Encodes and decodes reliably: v${version} (compression ${compression})`, () => {
+			const vtf = new Vtf(new VDataCollection([[[[image]]]]), {
+				version,
+				compression,
+				format: VFormats.RGBA8888
+			});
+
+			const encoded = vtf.encode();
+			const decoded = Vtf.decode(encoded, false, false);
+			const found = decoded.data.getImage(0, 0, 0, 0);
+			deepStrictEqual(image, found, `Image match failed on v${version} (compression ${compression})`);
+		});
+	}
 });

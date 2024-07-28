@@ -1,6 +1,6 @@
 {
 	"name": "vtf-js",
-	"version": "0.8.5",
+	"version": "0.8.6",
 	"description": "A javascript IO library for the Valve Texture Format.",
 	"author": "koerismo",
 	"license": "LGPL-3.0-only",
@@ -8,7 +8,8 @@
 	"main": "dist/index.js",
 	"scripts": {
 		"test": "mocha",
-		"build": "tsc"
+		"build": "tsc",
+		"watch": "tsc --watch"
 	},
 	"repository": {
 		"type": "git",
