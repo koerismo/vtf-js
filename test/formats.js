@@ -1,5 +1,5 @@
-// import { VCodecs } from '../dist/core/image.js';
-import { VImageData, VFormats, VCodecs } from '../dist/index.js';
+import { VCodecs } from '../dist/core/image.js';
+import { VImageData, VFormats } from '../dist/index.js';
 import assert from 'assert/strict';
 
 function makeTestImage(width, height) {
