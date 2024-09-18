@@ -31,6 +31,8 @@ export function getCodec(format: VFormats, strict=true): VCodec | undefined {
 
 /** Decoded RGBA image data. */
 export class VImageData<D extends VPixelArray = VPixelArray> {
+	readonly isEncoded = false as const;
+
 	width:  number;
 	height: number;
 	data:   D;
@@ -87,6 +89,8 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 
 /** VTF-encoded image data. */
 export class VEncodedImageData {
+	readonly isEncoded = true as const;
+
 	width:  number;
 	height: number;
 	format: VFormats;

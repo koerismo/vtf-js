@@ -65,14 +65,14 @@ export class VDataCollection implements VDataProvider {
 
 /** A class that extends the base provider interface, but automatically generates mipmaps. */
 export class VMipmapProvider implements VDataProvider {
-	protected __frames: VImageData[][][];
+	protected __frames: (VImageData|VEncodedImageData)[][][];
 
 	__mipmapCount: number;
 	__resizeMethod: Filter;
 	__wrapH: boolean;
 	__wrapV: boolean;
 
-	constructor(frames: VImageData[][][], options?: VMipmapProviderOptions) {
+	constructor(frames: (VImageData|VEncodedImageData)[][][], options?: VMipmapProviderOptions) {
 		this.__frames = frames;
 
 		const [width, height] = this.getSize(0,0,0,0);
