@@ -93,7 +93,7 @@ registerCodec(VFormats.A8, createGenericRGBA(VFormats.A8, 'Uint8', null, null, n
 registerCodec(VFormats.I8, createGenericRGBA(VFormats.I8, 'Uint8', 0, null, null, null, true));
 registerCodec(VFormats.P8, createGenericRGBA(VFormats.P8, 'Uint8', 0, null, null, null, true));
 
-registerCodec(VFormats.R32F, createGenericRGBA(VFormats.R32F, 'Float32', 1, null, null, null));
-registerCodec(VFormats.RGB323232F, createGenericRGBA(VFormats.RGB323232F, 'Float32', 0, 1, 2, null));
-registerCodec(VFormats.RGBA16161616, createGenericRGBA(VFormats.RGBA16161616, 'Uint16', 0, 1, 2, 3));
-registerCodec(VFormats.RGBA32323232F, createGenericRGBA(VFormats.RGBA32323232F, 'Float32', 0, 1, 2, 3));
+registerCodec(VFormats.R32F, createGenericRGBA(VFormats.R32F, 'Float32', 0, null, null, null));
+registerCodec(VFormats.RGB323232F, createGenericRGBA(VFormats.RGB323232F, 'Float32', 0, 4, 8, null));
+registerCodec(VFormats.RGBA16161616, createGenericRGBA(VFormats.RGBA16161616, 'Uint16', 0, 2, 4, 6));
+registerCodec(VFormats.RGBA32323232F, createGenericRGBA(VFormats.RGBA32323232F, 'Float32', 0, 4, 8, 12));

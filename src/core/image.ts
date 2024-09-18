@@ -21,9 +21,11 @@ export function registerCodec(format: VFormats, codec: VCodec) {
 	VCodecs[format] = codec;
 }
 
-export function getCodec(format: VFormats): VCodec {
+export function getCodec(format: VFormats): VCodec;
+export function getCodec(format: VFormats, strict: boolean): VCodec | undefined;
+export function getCodec(format: VFormats, strict=true): VCodec | undefined {
 	const codec = VCodecs[format];
-	if (!codec) throw(`Could not get codec for format ${VFormats[format]}!`);
+	if (!codec && strict) throw Error(`Could not get codec for format ${VFormats[format]}!`);
 	return codec;
 }
 
