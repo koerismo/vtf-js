@@ -14,7 +14,7 @@ export function getHeaderLength(version: number, resources: number=0): number {
 
 export function getFaceCount(info: VFileHeader): 1|6|7 {
 	const is_env = (info.flags & VFlags.Envmap);
-	if (info.version < 5) return is_env ? 7 : 1;
+	if (info.version < 5 && info.first_frame === -1) return is_env ? 7 : 1;
 	return is_env ? 6 : 1;
 }
 
