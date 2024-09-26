@@ -30,7 +30,7 @@ export class VHeader {
 		this.start = start;
 	}
 
-	hasData() {
+	hasData(): boolean {
 		return !(this.flags & 0x2);
 	}
 }

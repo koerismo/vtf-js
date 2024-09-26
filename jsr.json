@@ -8,5 +8,19 @@
 	"keywords": [ "source-engine", "vtf", "valve" ],
 	
 	"exports": "./src/index.ts",
-	"exclude": ["/", "!src/", "!README.md"]
+	"exclude": ["/", "!src/", "!README.md"],
+
+	"devDependencies": {
+		"jsr:@types/pako": "^2.0.3",
+		"jsr:@typescript-eslint/eslint-plugin": "^5.62.0",
+		"jsr:@typescript-eslint/parser": "^5.62.0",
+		"jsr:eslint": "^8.57.0",
+		"jsr:mocha": "^10.3.0",
+		"jsr:sharp": "^0.33.2",
+		"jsr:typescript": "^5.4.2"
+	},
+	"dependencies": {
+		"npm:dxtn": "^1.0.0",
+		"npm:pako": "^2.1.0"
+	}
 }

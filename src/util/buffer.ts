@@ -24,19 +24,19 @@ export class DataBuffer extends Uint8Array {
 	}
 
 	/** Sets the default endianness of the DataBuffer. */
-	set_endian(little: boolean) {
+	set_endian(little: boolean): void {
 		this.little = little;
 	}
 
 	/** Creates a new DataBuffer within the specified bounds. */
-	ref(start=0, length: number=this.length - start) {
+	ref(start=0, length: number=this.length - start): DataBuffer {
 		const buf = new DataBuffer(this.buffer, start, length);
 		buf.set_endian(this.little);
 		return buf;
 	}
 
 	/** Moves the pointer to the specified position. */
-	seek(position: number) {
+	seek(position: number): void {
 		this.pointer = position;
 	}
 
@@ -52,7 +52,7 @@ export class DataBuffer extends Uint8Array {
 
 	read_u8(): number;
 	read_u8(length: number): Uint8Array;
-	read_u8(length?: number) {
+	read_u8(length?: number): number|Uint8Array {
 		const start = this.pointer;
 
 		if (length === undefined) {
@@ -64,7 +64,7 @@ export class DataBuffer extends Uint8Array {
 		return new Uint8Array(this.slice(start, this.pointer));
 	}
 
-	write_u8(value: number|Uint8Array) {
+	write_u8(value: number|Uint8Array): void {
 		const start = this.pointer;
 
 		if (typeof value === 'number') {
@@ -79,7 +79,7 @@ export class DataBuffer extends Uint8Array {
 
 	read_u16(): number;
 	read_u16(length: number, little?: boolean): Uint16Array;
-	read_u16(length?: number, little: boolean=this.little) {
+	read_u16(length?: number, little: boolean=this.little): number|Uint16Array {
 		const start = this.pointer;
 
 		if (length === undefined) {
@@ -93,7 +93,7 @@ export class DataBuffer extends Uint8Array {
 		return arr;
 	}
 
-	write_u16(value: number|Uint16Array, little: boolean=this.little) {
+	write_u16(value: number|Uint16Array, little: boolean=this.little): void {
 		const start = this.pointer;
 
 		if (typeof value === 'number') {
@@ -108,7 +108,7 @@ export class DataBuffer extends Uint8Array {
 
 	read_u32(): number;
 	read_u32(length: number, little?: boolean): Uint32Array;
-	read_u32(length?: number, little: boolean=this.little) {
+	read_u32(length?: number, little: boolean=this.little): number|Uint32Array {
 		const start = this.pointer;
 
 		if (length === undefined) {
@@ -122,7 +122,7 @@ export class DataBuffer extends Uint8Array {
 		return arr;
 	}
 
-	write_u32(value: number|Uint32Array, little: boolean=this.little) {
+	write_u32(value: number|Uint32Array, little: boolean=this.little): void {
 		const start = this.pointer;
 
 		if (typeof value === 'number') {
@@ -137,7 +137,7 @@ export class DataBuffer extends Uint8Array {
 
 	read_i8(): number;
 	read_i8(length: number): Int8Array;
-	read_i8(length?: number) {
+	read_i8(length?: number): number|Int8Array {
 		const start = this.pointer;
 
 		if (length === undefined) {
@@ -149,7 +149,7 @@ export class DataBuffer extends Uint8Array {
 		return new Int8Array(this.slice(start, this.pointer));
 	}
 
-	write_i8(value: number|Int8Array) {
+	write_i8(value: number|Int8Array): void {
 		const start = this.pointer;
 
 		if (typeof value === 'number') {
@@ -164,7 +164,7 @@ export class DataBuffer extends Uint8Array {
 
 	read_i16(): number;
 	read_i16(length: number, little?: boolean): Int16Array;
-	read_i16(length?: number, little: boolean=this.little) {
+	read_i16(length?: number, little: boolean=this.little): number|Int16Array {
 		const start = this.pointer;
 
 		if (length === undefined) {
@@ -178,7 +178,7 @@ export class DataBuffer extends Uint8Array {
 		return arr;
 	}
 
-	write_i16(value: number|Int16Array, little: boolean=this.little) {
+	write_i16(value: number|Int16Array, little: boolean=this.little): void {
 		const start = this.pointer;
 
 		if (typeof value === 'number') {
@@ -193,7 +193,7 @@ export class DataBuffer extends Uint8Array {
 
 	read_i32(): number;
 	read_i32(length: number, little?: boolean): Int32Array;
-	read_i32(length?: number, little: boolean=this.little) {
+	read_i32(length?: number, little: boolean=this.little): number|Int32Array {
 		const start = this.pointer;
 
 		if (length === undefined) {
@@ -207,7 +207,7 @@ export class DataBuffer extends Uint8Array {
 		return arr;
 	}
 
-	write_i32(value: number|Int32Array, little: boolean=this.little) {
+	write_i32(value: number|Int32Array, little: boolean=this.little): void {
 		const start = this.pointer;
 
 		if (typeof value === 'number') {
@@ -222,7 +222,7 @@ export class DataBuffer extends Uint8Array {
 
 	read_f32(): number;
 	read_f32(length: number, little?: boolean): Float32Array;
-	read_f32(length?: number, little: boolean=this.little) {
+	read_f32(length?: number, little: boolean=this.little): number|Float32Array {
 		const start = this.pointer;
 
 		if (length === undefined) {
@@ -236,7 +236,7 @@ export class DataBuffer extends Uint8Array {
 		return arr;
 	}
 
-	write_f32(value: number|Float32Array, little: boolean=this.little) {
+	write_f32(value: number|Float32Array, little: boolean=this.little): void {
 		const start = this.pointer;
 
 		if (typeof value === 'number') {
@@ -251,7 +251,7 @@ export class DataBuffer extends Uint8Array {
 
 	read_f64(): number;
 	read_f64(length: number, little?: boolean): Float64Array;
-	read_f64(length?: number, little: boolean=this.little) {
+	read_f64(length?: number, little: boolean=this.little): number|Float64Array {
 		const start = this.pointer;
 
 		if (length === undefined) {
@@ -265,7 +265,7 @@ export class DataBuffer extends Uint8Array {
 		return arr;
 	}
 
-	write_f64(value: number|Float64Array, little: boolean=this.little) {
+	write_f64(value: number|Float64Array, little: boolean=this.little): void {
 		const start = this.pointer;
 
 		if (typeof value === 'number') {
@@ -280,7 +280,7 @@ export class DataBuffer extends Uint8Array {
 
 	read_str(): string;
 	read_str(length: number): string;
-	read_str(length?: number) {
+	read_str(length?: number): string {
 		const start = this.pointer;
 		let end = start + <number>length;
 
@@ -295,7 +295,7 @@ export class DataBuffer extends Uint8Array {
 		return TD.decode(this.slice(start, end));
 	}
 
-	write_str(str: string, length?: number) {
+	write_str(str: string, length?: number): void {
 		const start = this.pointer;
 		this.pointer += str.length;
 

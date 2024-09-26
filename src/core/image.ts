@@ -76,7 +76,7 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		return out;
 	}
 
-	resize(width: number, height: number, options?: Partial<VResizeOptions>) {
+	resize(width: number, height: number, options?: Partial<VResizeOptions>): VImageData {
 		if (width > this.width || height > this.height) throw new Error(`Image upsampling is not supported at this time!`);
 		options ??= {};
 		options.filter ??= VFilters.Triangle;
