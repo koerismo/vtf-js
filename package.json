@@ -3,7 +3,7 @@
 	"version": "0.8.7",
 	"description": "A javascript IO library for the Valve Texture Format.",
 	"author": "koerismo",
-	"license": "LGPL-3.0-only",
+	"license": "LGPL-3.0-or-later",
 	"type": "module",
 	"main": "dist/index.js",
 	"scripts": {
@@ -17,7 +17,8 @@
 	},
 	"keywords": [
 		"source-engine",
-		"vtf"
+		"vtf",
+		"valve"
 	],
 	"homepage": "https://github.com/koerismo/vtf-js#readme",
 	"bugs": {
