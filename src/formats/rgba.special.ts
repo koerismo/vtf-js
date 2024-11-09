@@ -1,22 +1,8 @@
 import { VFormats } from '../core/enums.js';
-import { VEncodedImageData, VImageData, registerCodec } from '../core/image.js';
+import { VCodec, VEncodedImageData, VImageData, VPixelArrayConstructor, registerCodec } from '../core/image.js';
+import * as V from '../util/vec.js';
+import * as D from '../util/vec.dxt.js';
 
-/** Encodes a RGB888 Vec3 as a 565 16-bit int. @internal */
-export function encode565(a: Uint8Array, index=0, r=0, g=1, b=2) {
-	return (
-		((Math.round(a[index+r] / 0xff * 0b11111)  << 11) & 0b1111100000000000) |
-		((Math.round(a[index+g] / 0xff * 0b111111) << 5)  & 0b0000011111100000) |
-		((Math.round(a[index+b] / 0xff * 0b11111)  << 0)  & 0b0000000000011111)
-	);
-}
-
-/** Decodes a 16-bit int as an RGB323232F Vec3. @internal */
-export function decode565(out: Float32Array, a: number, offset: number=0, r=0, g=1, b=2): Float32Array {
-	out[offset+r] = (((a & 0b1111100000000000) >> 11) / 0b11111);
-	out[offset+g] = (((a & 0b0000011111100000) >> 5)  / 0b111111);
-	out[offset+b] = (((a & 0b0000000000011111) >> 0)  / 0b11111);
-	return out;
-}
 
 registerCodec(VFormats.RGB565, {
 	length(width, height) {
@@ -31,7 +17,7 @@ registerCodec(VFormats.RGB565, {
 		const view = new DataView(target.buffer);
 
 		for ( let i=0; i<pixels; i++ ) {
-			view.setUint16(i*2, encode565(src, i*4), true);
+			view.setUint16(i*2, D.encode565(src, i*4), true);
 		}
 
 		return new VEncodedImageData(target, image.width, image.height, VFormats.RGB565);
@@ -45,7 +31,7 @@ registerCodec(VFormats.RGB565, {
 
 		for ( let i=0; i<pixels; i++ ) {
 			const d = i*4;
-			decode565(target, view.getUint16(i*2, true), d);
+			D.decode565(target, view.getUint16(i*2, true), d);
 			target[d+3] = 1.0;
 		}
 
@@ -66,7 +52,7 @@ registerCodec(VFormats.BGR565, {
 		const view = new DataView(target.buffer);
 
 		for ( let i=0; i<pixels; i++ ) {
-			view.setUint16(i*2, encode565(src, i*4, 2, 1, 0), true);
+			view.setUint16(i*2, D.encode565(src, i*4, 2, 1, 0), true);
 		}
 
 		return new VEncodedImageData(target, image.width, image.height, VFormats.RGB565);
@@ -80,7 +66,7 @@ registerCodec(VFormats.BGR565, {
 
 		for ( let i=0; i<pixels; i++ ) {
 			const d = i*4;
-			decode565(target, view.getUint16(i*2, true), d, 2, 1, 0);
+			D.decode565(target, view.getUint16(i*2, true), d, 2, 1, 0);
 			target[d+3] = 1.0;
 		}
 
