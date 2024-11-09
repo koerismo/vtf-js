@@ -22,7 +22,7 @@ export function encode565(a: Uint8Array, index=0, r=0, g=1, b=2) {
 }
 
 /** Decodes a 16-bit int as an RGB323232F Vec3. @internal */
-export function decode565(out: Float32Array, a: number, offset: number=0, r=0, g=1, b=2): Float32Array {
+export function decode565<T extends Float32Array|Vec3>(out: T, a: number, offset: number=0, r=0, g=1, b=2): T {
 	out[offset+r] = (((a & 0b1111100000000000) >> 11) / 0b11111);
 	out[offset+g] = (((a & 0b0000011111100000) >> 5)  / 0b111111);
 	out[offset+b] = (((a & 0b0000000000011111) >> 0)  / 0b11111);
@@ -37,11 +37,10 @@ export function fit(source: Vec3, a: Vec3, b: Vec3) {
 }
 
 /** Blends two Vec3s by a factor of Fit. (0 = a, 1 = b) @internal */
-export function blend(fit: number, a: Vec3, b: Vec3) {
+export function blend(out: Vec3, fit: number, a: Vec3, b: Vec3) {
 	const afit = (1 - fit);
-	return new VecType([
-		a[0] * afit + b[0] * fit,
-		a[1] * afit + b[1] * fit,
-		a[2] * afit + b[2] * fit,
-	]);
+	out[0] = a[0] * afit + b[0] * fit,
+	out[1] = a[1] * afit + b[1] * fit,
+	out[2] = a[2] * afit + b[2] * fit;
+	return out;
 }

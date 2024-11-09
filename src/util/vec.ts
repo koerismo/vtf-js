@@ -5,14 +5,14 @@ export const VecType = Float32Array;
 
 
 /** Creates a blank new Vec3. @internal */
-export function create(x: number=0, y: number=0, z: number=0) {
+export function create(x: number=0, y: number=0, z: number=0): Vec3 {
 	return new VecType([x, y, z]);
 }
 
 /** Creates a new Vec3 from the specified array at an optional offset. @internal */
 export function ref(source: TypedArray, index: number=0) {
 	// @ts-expect-error Types don't match up here.
-	return new source.constructor(source.buffer, index, 3);
+	return new source.constructor(source.buffer, index*source.BYTES_PER_ELEMENT*3, 3);
 }
 
 /** Creates a new Vec3 from the specified array at an optional offset. @internal */
@@ -29,6 +29,12 @@ export function copy(out: Vec3, source: ArrayLike<number>, index: number=0) {
 	out[0] = source[index];
 	out[1] = source[index+1];
 	out[2] = source[index+2];
+	return out;
+}
+
+/** Fills a Vec3 with the provided value. @internal */
+export function fill(out: Vec3, v: number=0) {
+	out[0] = out[1] = out[2] = v;
 	return out;
 }
 

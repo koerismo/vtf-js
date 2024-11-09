@@ -1,6 +1,10 @@
 import { VFormats } from '../core/enums.js';
 import { VEncodedImageData, VImageData, getCodec, registerCodec } from '../core/image.js';
-import * as DXTN from 'dxtn';
+import { decompressColorBlock, decompressAlphaBlock_DXT5, CompressionFlags } from './dxt.core.js';
+
+const BLOCK_SIZE_DXT1 = 8;
+const BLOCK_SIZE_DXT5 = 16;
+
 
 function ceil4(x: number) {
 	return Math.ceil(x / 4) * 4;
@@ -56,35 +60,34 @@ registerCodec(VFormats.DXT1, {
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		const padded = padImage(image.convert(Uint8Array));
-		const out = DXTN.compressDXT1(padded.width, padded.height, padded.data);
-		return new VEncodedImageData(out, image.width, image.height, VFormats.DXT1);
+		throw Error('Not implemented!');
+		// const padded = padImage(image.convert(Uint8Array));
+		// const out = DXTN.compressDXT1(padded.width, padded.height, padded.data);
+		// return new VEncodedImageData(out, image.width, image.height, VFormats.DXT1);
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
-		const out = DXTN.decompressDXT1(ceil4(image.width), ceil4(image.height), image.data);
-		return cropImage(new VImageData(out, image.width, image.height));
+		const out = new Uint8Array(ceil4(image.width) * ceil4(image.height) * 4);
+		const outView = new DataView(out.buffer);
+		const srcView = new DataView(image.data.buffer);
+
+		const blocksHeight = Math.ceil(image.height / 4);
+		const blocksWidth = Math.ceil(image.width / 4);
+		const width = image.width;
+
+		for (let y=0; y<blocksHeight; y++) {
+			for (let x=0; x<blocksWidth; x++) {
+				const srcOffset = (y*blocksWidth+x) * BLOCK_SIZE_DXT1;
+				const outOffset = (y*width + x) * 16;
+				decompressColorBlock(srcView, srcOffset, outView, outOffset, width, CompressionFlags.DXT1_Alpha);
+			}
+		}
+
+		return new VImageData(out, image.width, image.height);
 	},
 });
 
 registerCodec(VFormats.DXT1_ONEBITALPHA, getCodec(VFormats.DXT1));
-
-registerCodec(VFormats.DXT3, {
-	length(width, height) {
-		return ceil4(width) * ceil4(height) * 1;
-	},
-
-	encode(image: VImageData): VEncodedImageData {
-		const padded = padImage(image.convert(Uint8Array));
-		const out = DXTN.compressDXT3(padded.width, padded.height, padded.data);
-		return new VEncodedImageData(out, image.width, image.height, VFormats.DXT3);
-	},
-
-	decode(image: VEncodedImageData): VImageData<Uint8Array> {
-		const out = DXTN.decompressDXT3(ceil4(image.width), ceil4(image.height), image.data);
-		return cropImage(new VImageData(out, image.width, image.height));
-	},
-});
 
 registerCodec(VFormats.DXT5, {
 	length(width, height) {
@@ -92,13 +95,30 @@ registerCodec(VFormats.DXT5, {
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		const padded = padImage(image.convert(Uint8Array));
-		const out = DXTN.compressDXT5(padded.width, padded.height, padded.data);
-		return new VEncodedImageData(out, image.width, image.height, VFormats.DXT5);
+		throw Error('Not implemented!');
+		// const padded = padImage(image.convert(Uint8Array));
+		// const out = DXTN.compressDXT5(padded.width, padded.height, padded.data);
+		// return new VEncodedImageData(out, image.width, image.height, VFormats.DXT5);
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
-		const out = DXTN.decompressDXT5(ceil4(image.width), ceil4(image.height), image.data);
-		return cropImage(new VImageData(out, image.width, image.height));
+		const out = new Uint8Array(ceil4(image.width) * ceil4(image.height) * 8);
+		const outView = new DataView(out.buffer);
+		const srcView = new DataView(image.data.buffer);
+
+		const blocksHeight = Math.ceil(image.height / 4);
+		const blocksWidth = Math.ceil(image.width / 4);
+		const width = image.width;
+
+		for (let y=0; y<blocksHeight; y++) {
+			for (let x=0; x<blocksWidth; x++) {
+				const srcOffset = (y*blocksWidth+x) * BLOCK_SIZE_DXT5;
+				const outOffset = (y*width + x) * 16;
+				decompressColorBlock(srcView, srcOffset + 8, outView, outOffset, width, CompressionFlags.DXT5);
+				decompressAlphaBlock_DXT5(srcView, srcOffset, outView, outOffset, width, CompressionFlags.DXT5);
+			}
+		}
+
+		return new VImageData(out, image.width, image.height);
 	},
 });
