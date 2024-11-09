@@ -1,6 +1,6 @@
 import { VFormats } from '../core/enums.js';
 import { VEncodedImageData, VImageData, getCodec, registerCodec } from '../core/image.js';
-import { decompressColorBlock, decompressAlphaBlock_DXT5, CompressionFlags } from './dxt.core.js';
+import { decompressColorBlock, decompressAlphaBlock_DXT5, CompressionFlags, compressColorBlock } from './dxt.core.js';
 
 const BLOCK_SIZE_DXT1 = 8;
 const BLOCK_SIZE_DXT5 = 16;
@@ -60,10 +60,23 @@ registerCodec(VFormats.DXT1, {
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		throw Error('Not implemented!');
-		// const padded = padImage(image.convert(Uint8Array));
-		// const out = DXTN.compressDXT1(padded.width, padded.height, padded.data);
-		// return new VEncodedImageData(out, image.width, image.height, VFormats.DXT1);
+		const out = new Uint8Array(ceil4(image.width) * ceil4(image.height) * 0.5);
+		const outView = new DataView(out.buffer);
+		const srcArray = image.convert(Float32Array).data;
+
+		const blocksHeight = Math.ceil(image.height / 4);
+		const blocksWidth = Math.ceil(image.width / 4);
+		const width = image.width;
+
+		for (let y=0; y<blocksHeight; y++) {
+			for (let x=0; x<blocksWidth; x++) {
+				const srcOffset = (y*width + x) * 16;
+				const outOffset = (y*blocksWidth+x) * BLOCK_SIZE_DXT1;
+				compressColorBlock(srcArray, srcOffset, outView, outOffset, width, CompressionFlags.DXT1 | CompressionFlags.DXT1_Alpha);
+			}
+		}
+
+		return new VEncodedImageData(out, image.width, image.height, VFormats.DXT1);
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {

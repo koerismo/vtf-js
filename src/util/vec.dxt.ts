@@ -12,12 +12,12 @@ export function fromU8(source: ArrayLike<number>, index=0) {
 	return vec;
 }
 
-/** Encodes a RGB888 Vec3 as a 565 16-bit int. @internal */
-export function encode565(a: Uint8Array, index=0, r=0, g=1, b=2) {
+/** Encodes a RGB323232F Vec3 as a 565 16-bit int. @internal */
+export function encode565(a: Vec3, index=0, r=0, g=1, b=2) {
 	return (
-		((Math.round(a[index+r] / 0xff * 0b11111)  << 11) & 0b1111100000000000) |
-		((Math.round(a[index+g] / 0xff * 0b111111) << 5)  & 0b0000011111100000) |
-		((Math.round(a[index+b] / 0xff * 0b11111)  << 0)  & 0b0000000000011111)
+		((Math.round(a[index+r] * 0b11111)  << 11) & 0b1111100000000000) |
+		((Math.round(a[index+g] * 0b111111) << 5)  & 0b0000011111100000) |
+		((Math.round(a[index+b] * 0b11111)  << 0)  & 0b0000000000011111)
 	);
 }
 

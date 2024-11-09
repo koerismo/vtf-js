@@ -25,10 +25,18 @@ export function from(source: ArrayLike<number>, index: number=0) {
 }
 
 /** Copies a Vec3 from the specified array at an optional offset. @internal */
-export function copy(out: Vec3, source: ArrayLike<number>, index: number=0) {
+export function copy(out: Vec3, source: ArrayLike<number>|Vec3, index: number=0) {
 	out[0] = source[index];
 	out[1] = source[index+1];
 	out[2] = source[index+2];
+	return out;
+}
+
+/** Copies a Vec3 from the specified array at an optional offset. @internal */
+export function copyInto(out: TypedArray, source: Vec3, index: number=0) {
+	out[index] = source[0];
+	out[index+1] = source[1];
+	out[index+2] = source[2];
 	return out;
 }
 
@@ -76,6 +84,14 @@ export function scale(out: Vec3, a: Vec3, b: number) {
 	out[0] = a[0] * b;
 	out[1] = a[1] * b;
 	out[2] = a[2] * b;
+	return out;
+}
+
+/** Clamps A to min-max @internal */
+export function clamp(out: Vec3, a: Vec3, min: number, max: number) {
+	out[0] = Math.min(Math.max(a[0], min), max);
+	out[1] = Math.min(Math.max(a[1], min), max);
+	out[2] = Math.min(Math.max(a[2], min), max);
 	return out;
 }
 
