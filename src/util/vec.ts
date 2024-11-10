@@ -18,25 +18,41 @@ export function ref(source: TypedArray, index: number=0) {
 /** Creates a new Vec3 from the specified array at an optional offset. @internal */
 export function from(source: ArrayLike<number>, index: number=0) {
 	const vec = new VecType(3);
-	vec[0] = source[index];
-	vec[1] = source[index+1];
+	vec[0] = source[index],
+	vec[1] = source[index+1],
 	vec[2] = source[index+2];
 	return vec;
 }
 
+/** Creates a new Vec3 from the specified array at an optional offset. @internal */
+export function setValues(out: Vec3, x: number, y: number, z: number) {
+	out[0] = x,
+	out[1] = y,
+	out[2] = z;
+	return out;
+}
+
 /** Copies a Vec3 from the specified array at an optional offset. @internal */
 export function copy(out: Vec3, source: ArrayLike<number>|Vec3, index: number=0) {
-	out[0] = source[index];
-	out[1] = source[index+1];
+	out[0] = source[index],
+	out[1] = source[index+1],
 	out[2] = source[index+2];
 	return out;
 }
 
 /** Copies a Vec3 from the specified array at an optional offset. @internal */
 export function copyInto(out: TypedArray, source: Vec3, index: number=0) {
-	out[index] = source[0];
-	out[index+1] = source[1];
+	out[index] = source[0],
+	out[index+1] = source[1],
 	out[index+2] = source[2];
+	return out;
+}
+
+/** Copies a Vec3 from the specified array at an optional offset. @internal */
+export function copyValuesInto(out: TypedArray, x: number, y: number, z: number, index: number=0) {
+	out[index] = x,
+	out[index+1] = y,
+	out[index+2] = z;
 	return out;
 }
 
@@ -48,25 +64,33 @@ export function fill(out: Vec3, v: number=0) {
 
 /** Adds A and B @internal */
 export function add(out: Vec3, a: Vec3, b: Vec3) {
-	out[0] = a[0] + b[0];
-	out[1] = a[1] + b[1];
+	out[0] = a[0] + b[0],
+	out[1] = a[1] + b[1],
 	out[2] = a[2] + b[2];
 	return out;
 }
 
 /** Subtracts B from A @internal */
 export function sub(out: Vec3, a: Vec3, b: Vec3) {
-	out[0] = a[0] - b[0];
-	out[1] = a[1] - b[1];
+	out[0] = a[0] - b[0],
+	out[1] = a[1] - b[1],
 	out[2] = a[2] - b[2];
 	return out;
 }
 
 /** Multiplies A by B @internal */
 export function mult(out: Vec3, a: Vec3, b: Vec3) {
-	out[0] = a[0] * b[0];
-	out[1] = a[1] * b[1];
+	out[0] = a[0] * b[0],
+	out[1] = a[1] * b[1],
 	out[2] = a[2] * b[2];
+	return out;
+}
+
+/** Multiplies A by B @internal */
+export function multAdd(out: Vec3, a: Vec3, b: Vec3, c: Vec3) {
+	out[0] = a[0] * b[0] + c[0],
+	out[1] = a[1] * b[1] + c[1],
+	out[2] = a[2] * b[2] + c[2];
 	return out;
 }
 
@@ -81,16 +105,24 @@ export function dot(a: Vec3, b: Vec3) {
 
 /** Scales A by B @internal */
 export function scale(out: Vec3, a: Vec3, b: number) {
-	out[0] = a[0] * b;
-	out[1] = a[1] * b;
+	out[0] = a[0] * b,
+	out[1] = a[1] * b,
 	out[2] = a[2] * b;
+	return out;
+}
+
+/** Scales A by B @internal */
+export function scaleAdd(out: Vec3, a: Vec3, b: number, c: Vec3) {
+	out[0] = a[0] * b + c[0],
+	out[1] = a[1] * b + c[1],
+	out[2] = a[2] * b + c[2];
 	return out;
 }
 
 /** Clamps A to min-max @internal */
 export function clamp(out: Vec3, a: Vec3, min: number, max: number) {
-	out[0] = Math.min(Math.max(a[0], min), max);
-	out[1] = Math.min(Math.max(a[1], min), max);
+	out[0] = Math.min(Math.max(a[0], min), max),
+	out[1] = Math.min(Math.max(a[1], min), max),
 	out[2] = Math.min(Math.max(a[2], min), max);
 	return out;
 }
