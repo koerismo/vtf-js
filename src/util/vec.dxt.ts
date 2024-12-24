@@ -44,3 +44,20 @@ export function blend(out: Vec3, fit: number, a: Vec3, b: Vec3) {
 	out[2] = a[2] * afit + b[2] * fit;
 	return out;
 }
+
+export function distPerceptual(a: Vec3, b: Vec3) {
+	return (
+		((b[0] - a[0]) * 0.2126)**2 + // R
+		((b[1] - a[1]) * 0.7152)**2 + // G
+		((b[2] - a[2]) * 0.0722)**2   // B
+	);
+}
+
+/** Returns the squared distance between A and B @internal */
+export function distMetric2(a: Vec3, b: Vec3, metric: Vec3) {
+	return (
+		(metric[0] * (b[0] - a[0]))**2 +
+		(metric[1] * (b[1] - a[1]))**2 +
+		(metric[2] * (b[2] - a[2]))**2
+	);
+}

@@ -52,7 +52,6 @@ export function ComputeWeightedCovariance(n: number, points: Float32Array, weigh
 	return covariance;
 }
 
-
 const POWER_ITERATION_COUNT = 8;
 
 // Pre-allocate all vectors to improve perf

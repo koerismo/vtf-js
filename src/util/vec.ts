@@ -5,14 +5,14 @@ export const VecType = Float32Array;
 
 
 /** Creates a blank new Vec3. @internal */
-export function create(x: number=0, y: number=0, z: number=0): Vec3 {
+export function create(x: number=0, y: number=x, z: number=x): Vec3 {
 	return new VecType([x, y, z]);
 }
 
 /** Creates a new Vec3 from the specified array at an optional offset. @internal */
 export function ref(source: TypedArray, index: number=0) {
 	// @ts-expect-error Types don't match up here.
-	return new source.constructor(source.buffer, index*source.BYTES_PER_ELEMENT*3, 3);
+	return new source.constructor(source.buffer, index*source.BYTES_PER_ELEMENT, 3);
 }
 
 /** Creates a new Vec3 from the specified array at an optional offset. @internal */
@@ -111,6 +111,14 @@ export function scale(out: Vec3, a: Vec3, b: number) {
 	return out;
 }
 
+/** Gets the reciprocal of A and multiplies by B @internal */
+export function reciprocal(out: Vec3, a: Vec3, b: number=1) {
+	out[0] = b / a[0],
+	out[1] = b / a[1],
+	out[2] = b / a[2];
+	return out;
+}
+
 /** Scales A by B @internal */
 export function scaleAdd(out: Vec3, a: Vec3, b: number, c: Vec3) {
 	out[0] = a[0] * b + c[0],
@@ -130,6 +138,11 @@ export function clamp(out: Vec3, a: Vec3, min: number, max: number) {
 /** Returns the length of A @internal */
 export function length(a: Vec3) {
 	return Math.hypot(a[0], a[1], a[2]);
+}
+
+/** Returns the length of A @internal */
+export function length2(a: Vec3) {
+	return (a[0]**2 + a[1]**2 + a[2]**2);
 }
 
 /** Returns the distance between A and B @internal */
