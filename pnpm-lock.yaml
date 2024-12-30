@@ -8,9 +8,9 @@ importers:
 
   .:
     dependencies:
-      dxtn:
-        specifier: ^1.0.0
-        version: 1.0.0
+      dxt-js:
+        specifier: ^0.0.3
+        version: 0.0.3
       pako:
         specifier: ^2.1.0
         version: 2.1.0
@@ -398,8 +398,9 @@ packages:
     resolution: {integrity: sha512-yS+Q5i3hBf7GBkd4KG8a7eBNNWNGLTaEwwYWUijIYM7zrlYDM0BFXHjjPWlWZ1Rg7UaddZeIDmi9jF3HmqiQ2w==}
     engines: {node: '>=6.0.0'}
 
-  dxtn@1.0.0:
-    resolution: {integrity: sha512-5xFvTYbuNBbnYK4kc3/J9wdahxHc44xf1fr4gUNx+fTM6rYItuMJeLKc7N03fbj2hZgzdDC1NkV0AW95GxZ1IQ==}
+  dxt-js@0.0.3:
+    resolution: {integrity: sha512-qNBx0i5/ICyNFO7rs5ZothChgfFD408dg/ZBBfWFXDy0xeDQ86t91QUZxj5WqeUzZQ/+PPtjTUC0w3mS+198jg==}
+    engines: {node: '>=0.10.0'}
 
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
@@ -1212,7 +1213,7 @@ snapshots:
     dependencies:
       esutils: 2.0.3
 
-  dxtn@1.0.0: {}
+  dxt-js@0.0.3: {}
 
   emoji-regex@8.0.0: {}
 

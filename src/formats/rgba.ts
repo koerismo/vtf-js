@@ -5,14 +5,21 @@ const PixelDataTypes = {
 	'Uint8': 1,
 	'Uint16': 2,
 	'Uint32': 4,
+	'Float16': 2,
 	'Float32': 4,
 } as const;
 
+// Does the current environment support sec-float16array?
+const HAS_FLOAT16 = typeof Float16Array !== 'undefined';
+
+// TODO: Remove this when typescript catches up to the spec.
+declare const Float16Array: Float32ArrayConstructor;
 
 const PixelArrayTypes = {
 	'Uint8': Uint8Array,
 	'Uint16': Uint16Array,
 	'Uint32': Uint32Array,
+	'Float16': HAS_FLOAT16 ? Float16Array : undefined!,
 	'Float32': Float32Array,
 } as const;
 
@@ -97,3 +104,8 @@ registerCodec(VFormats.R32F, createGenericRGBA(VFormats.R32F, 'Float32', 0, null
 registerCodec(VFormats.RGB323232F, createGenericRGBA(VFormats.RGB323232F, 'Float32', 0, 4, 8, null));
 registerCodec(VFormats.RGBA16161616, createGenericRGBA(VFormats.RGBA16161616, 'Uint16', 0, 2, 4, 6));
 registerCodec(VFormats.RGBA32323232F, createGenericRGBA(VFormats.RGBA32323232F, 'Float32', 0, 4, 8, 12));
+
+if (HAS_FLOAT16)
+	registerCodec(VFormats.RGBA16161616F, createGenericRGBA(VFormats.RGBA16161616F, 'Float16', 0, 2, 4, 6));
+else
+	console.warn(`vtf-js: Your environment does not support Float16Array. Some HDR textures may fail to convert!`);

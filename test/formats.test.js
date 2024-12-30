@@ -1,6 +1,6 @@
 import { VCodecs } from '../dist/core/image.js';
 import { VImageData, VFormats } from '../dist/index.js';
-import assert from 'assert/strict';
+import assert from 'node:assert/strict';
 
 function makeTestImage(width, height) {
 	const data = new Float64Array(width * height * 4);
@@ -36,6 +36,7 @@ const formats = [
 	VFormats.RGB323232F,
 	VFormats.RGBA32323232F,
 	VFormats.RGBA16161616,
+	VFormats.RGBA16161616F,
 	VFormats.R32F,
 	VFormats.RGBA8888,
     VFormats.ABGR8888,
@@ -50,12 +51,15 @@ const formats = [
     VFormats.A8,
 	VFormats.DXT1,
 	VFormats.DXT3,
-	VFormats.DXT5,
+	VFormats.DXT5
 ];
 
 describe('Format IO Difftest', () => {
 	for (const format of formats) {
-		if (VCodecs[format] == null) continue;
+		if (VCodecs[format] == null) {
+			console.warn('Skipping unsupported format', VFormats[format]);
+			continue;
+		}
 
 		it(`Format ${VFormats[format]}`, () => {
 

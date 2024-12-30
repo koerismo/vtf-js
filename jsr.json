@@ -1,7 +1,7 @@
 {
 	"name": "@koerismo/vtf",
 	"description": "A javascript IO library for the Valve Texture Format.",
-	"version": "0.8.7",
+	"version": "0.8.8",
 	"license": "LGPL-3.0-or-later",
 	"author": "Koerismo",
 	"repository": { "type": "git", "url": "git+https://github.com/koerismo/vtf-js.git" },
@@ -11,6 +11,7 @@
 	"exclude": ["/", "!src/", "!README.md"],
 
 	"devDependencies": {
+		"npm:@types/node": "^22.10.2",
 		"jsr:@types/pako": "^2.0.3",
 		"jsr:@typescript-eslint/eslint-plugin": "^5.62.0",
 		"jsr:@typescript-eslint/parser": "^5.62.0",
@@ -20,7 +21,7 @@
 		"jsr:typescript": "^5.4.2"
 	},
 	"dependencies": {
-		"npm:dxtn": "^1.0.0",
+		"npm:dxt-js": "^0.0.3",
 		"npm:pako": "^2.1.0"
 	}
 }
