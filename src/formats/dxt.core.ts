@@ -1,9 +1,21 @@
 import { DataBuffer } from '../util/buffer.js';
-import * as V from '../util/vec.js';
-import * as D from '../util/vec.dxt.js';
-import { RangeFit, ComputePrincipleComponent, ComputeWeightedCovariance } from '../util/squish.js';
+import { VImageData } from '../core/image.js';
 
-const ALPHA_THRESHOLD = 0.5;
+import * as Vec2 from '../util/vec2.js';
+type Vec2 = Vec2.Vec2;
+
+import * as Vec3 from '../util/vec3.js';
+type Vec3 = Vec3.Vec3;
+
+import * as Vec4 from '../util/vec4.js';
+type Vec4 = Vec4.Vec4;
+
+import * as VecD from '../util/vec.dxt.js';
+import { RangeFit, ComputePrincipleComponent, ComputeWeightedCovariance } from '../util/squish.js';
+import { linearToSrgb, saturate } from './dxt.common.js';
+
+const BLOCK_SIZE_4X4 = 16;
+const CMP_QUALITY0 = 0.5;
 
 export enum CompressionFlags {
 	DXT1_Alpha = 0x2,
@@ -13,312 +25,175 @@ export enum CompressionFlags {
 
 	PerceptualWeight = 0x20,
 	AlphaWeight = 0x40,
-	HighQuality = 0x80,
 }
 
-const scratch1 = V.create();
-const scratch2 = V.create();
-const scratch3 = V.create();
-const scratch4 = V.create();
-
-const decomp_blockColors = new Uint32Array(4);
-const decomp_blockAlphas = new Float32Array(8);
-const decomp_alphaIndexSets = new Uint32Array(4);
-
-// TODO: This is stupid, but it's faster to do this than create new ones every call.
-let comp_fitIsTransparent = false;
-const comp_fitCenter = V.create();
-const comp_fitTmpVector = V.create();
-const comp_fitLargestVector = V.create();
-const comp_fitAvgDirection = V.create();
-const comp_fitColorPoints = new Float32Array(16 * 3); // RGB
-const comp_fitColorWeights = new Float32Array(16); // W
-const comp_blockColors = new Float32Array(4 * 3); // RGBA[4]
-
-/** Determine the line on which we should fit the points. This uses a dumb algorithm that should hopefully be *slightly* faster than the real deal. */
-export function fitAxis(src: Float32Array, srcOffset: number, srcWidth: number, outMins: V.Vec3, outMaxs: V.Vec3, flags: number) {
-	// 1. Get the center of the points, accounting for weight.
-	// 2. Get points relative to center - remember the length of each relative vector.
-	// 3. For each vector - if its dot product to the largest vector is negative, scale it by negative one.
-	// 4. Determine the average normalized direction vector with weights.
-	// 5. Determine the mins by subtracting (maximum length • -direction) from the center and clipping to fit within bounds.
-	// 6. Determine the maxs by subtracting (maximum length • +direction) from the center and clipping to fit within bounds.
-
-	comp_fitIsTransparent = false;
-	const cookieCutter = !!(flags & CompressionFlags.DXT1_Alpha);
-	const alphaWeight = !!(flags & CompressionFlags.AlphaWeight);
-	const center = V.fill(comp_fitCenter, 0.0);
-	const mins = V.fill(outMins, 1.0);
-	const maxs = V.fill(outMaxs, 0.0);
-
-	// Accumulate the point center.
-	let weightSum = 0.0;
-	let pointCount = 0;
-	for (let y=0; y<4; y++) {
-		for (let x=0; x<4; x++) {
-			const index = srcOffset + (y*srcWidth + x)*4;
-			const r = src[index], g = src[index+1], b = src[index+2], a = src[index+3];
-			const weight = alphaWeight ? a : 1;
-			
-			if (cookieCutter ? a<ALPHA_THRESHOLD : a<1) comp_fitIsTransparent = true;
-			if (!weight || (cookieCutter && a < ALPHA_THRESHOLD)) continue;
-
-			// Establish mins/maxs to clip the fitted result to.
-			if (r < mins[0]) mins[0] = r;
-			if (r > maxs[0]) maxs[0] = r;
-			if (g < mins[1]) mins[1] = g;
-			if (g > maxs[1]) maxs[1] = g;
-			if (b < mins[2]) mins[2] = b;
-			if (b > maxs[2]) maxs[2] = b;
-			
-			comp_fitColorWeights[pointCount] = weight;
-			weightSum += weight;
-			
-			const p = pointCount*3;
-			center[0] += comp_fitColorPoints[p] = r * weight,
-			center[1] += comp_fitColorPoints[p+1] = g * weight,
-			center[2] += comp_fitColorPoints[p+2] = b * weight;
-			pointCount++;
-		}
-	}
-
-	// Normalize result.
-	V.scale(center, center, 1.0 / weightSum);
-	
-	// Make all points relative to center and determine the largest vector relative to the center.
-	const largest_vector = V.fill(comp_fitLargestVector, 0.0);
-	const tmp_vector = V.fill(comp_fitTmpVector, 0.0);
-	let largest_length = 0.0;
-	for (let i=0, p=0; i<pointCount; i++, p+=3) {
-		const	r = (comp_fitColorPoints[p]   -= center[0]),
-				g = (comp_fitColorPoints[p+1] -= center[1]),
-				b = (comp_fitColorPoints[p+2] -= center[2]);
-		const w = comp_fitColorWeights[i];
-
-		tmp_vector[0] = r,
-		tmp_vector[1] = g,
-		tmp_vector[2] = b;
-		const tmp_length = V.length(tmp_vector);
-		if (tmp_length > largest_length) {
-			largest_length = tmp_length;
-			V.copy(largest_vector, tmp_vector);
-		}
-	}
-
-	// No data to fit? Return early.
-	if (!pointCount || !weightSum) return false;
-
-	// Normalize all directions
-	const avg_direction = V.fill(comp_fitAvgDirection, 0.0);
-	for (let i=0, p=0; i<pointCount; i++, p+=3) {
-		const	r = (comp_fitColorPoints[p]),
-				g = (comp_fitColorPoints[p+1]),
-				b = (comp_fitColorPoints[p+2]);
-		const w = comp_fitColorWeights[i];
-		tmp_vector[0] = r * w,
-		tmp_vector[1] = g * w,
-		tmp_vector[2] = b * w;
-
-		// If the vector is facing away from the primary, reverse it
-		// to let us average it more effectively.
-		const dot = V.dot(largest_vector, tmp_vector);
-		if (dot < 0) {
-			tmp_vector[0] *= -1,
-			tmp_vector[1] *= -1,
-			tmp_vector[2] *= -1;
-		}
-
-		V.add(avg_direction, avg_direction, tmp_vector);
-	}
-
-	// Normalize results
-	const avg_length = V.length(avg_direction);
-	if (avg_length < 0.00001) return false;
-	V.scale(avg_direction, avg_direction, largest_length / avg_length);
-
-	// Clip range to min/max bounds
-	// For now, mins/maxs are relative to the center so we can quickly compare them.
-	let len_minToCenter = 1.0;
-	if (avg_direction[0] * -len_minToCenter + center[0] < mins[0])	len_minToCenter *= (center[0] - mins[0]) / (avg_direction[0] * len_minToCenter);
-	if (avg_direction[1] * -len_minToCenter + center[1] < mins[1])	len_minToCenter *= (center[1] - mins[1]) / (avg_direction[1] * len_minToCenter);
-	if (avg_direction[2] * -len_minToCenter + center[2] < mins[2])	len_minToCenter *= (center[2] - mins[2]) / (avg_direction[2] * len_minToCenter);
-	let len_centerToMax = 1.0;
-	if (avg_direction[0] * len_centerToMax + center[0] > maxs[0])	len_centerToMax *= (maxs[0] - center[0]) / (avg_direction[0] * len_centerToMax);
-	if (avg_direction[1] * len_centerToMax + center[1] > maxs[1])	len_centerToMax *= (maxs[1] - center[1]) / (avg_direction[1] * len_centerToMax);
-	if (avg_direction[2] * len_centerToMax + center[2] > maxs[2])	len_centerToMax *= (maxs[2] - center[2]) / (avg_direction[2] * len_centerToMax);
-
-	// mins = center - (dir • length)
-	// maxs = center + (dir • length)
-	// NOTE THAT WE CONVERT THE MINS/MAXS TO ABSOLUTE VALUES HERE!
-	V.scale(mins, avg_direction, len_minToCenter);
-	V.sub(mins, center, mins);
-	V.scale(maxs, avg_direction, len_centerToMax);
-	V.add(maxs, center, maxs);
-
-	return true;
+interface BC15Options {
+	quality: number;
+	channelWeights: Float32Array;
+	alphaTreshold: number;
+	useAlpha: boolean;
 }
 
-export function compressColorBlock(src: Float32Array, srcOffset: number, out: DataView, outOffset: number, imageWidth: number, flags: number) {
-	const cookieCutter = !!(flags & CompressionFlags.DXT1_Alpha);
-	let color1 = scratch1, color2 = scratch2;
+const R = 0, G = 1, B = 2, A = 3;
 
-	const succeeded = fitAxis(src, srcOffset, imageWidth, color1, color2, flags);
-	let flipColors = false;
 
-	// Fill block with single color if the fit failed
-	if (!succeeded) {
-		const e1 = D.encode565(color1);
-		out.setUint16(outOffset, e1, true);
-		out.setUint16(outOffset+2, e1, true);
-		out.setUint32(outOffset+4, comp_fitIsTransparent ? 0xffffffff : 0x00); // Fill with index 0 (default color) or index 3 (transparent)
-		return;
+
+function cgu_ProcessColors(
+	colorMin: Vec3,
+	colorMax: Vec3,
+	setopt: number,
+	isSRGB: boolean): { c0: number, c1: number }
+{
+	const scale = Vec3.create(31.0, 31.0, 31.0);
+	const MinColorScaled = Vec3.create();
+	const MaxColorScaled = Vec3.create();
+
+	if (isSRGB) {
+		linearToSrgb(MinColorScaled, colorMin);
+		linearToSrgb(MaxColorScaled, colorMax);
 	}
 	else {
-		const e1 = D.encode565(color1);
-		const e2 = D.encode565(color2);
-		if ((e1 <= e2) !== comp_fitIsTransparent) {
-			flipColors = true;
-			const tmp = color2;
-			color1 = color2, color2 = tmp;
+		Vec3.clamp(MinColorScaled, colorMin, 0, 1);
+		Vec3.clamp(MaxColorScaled, colorMax, 0, 1);
+	}
+
+	switch (setopt) {
+		case 0: // Min-Max processing
+			Vec3.mult(MinColorScaled, MinColorScaled, scale);
+			Vec3.mult(MaxColorScaled, MaxColorScaled, scale);
+			Vec3.floor(MinColorScaled, MinColorScaled);
+			Vec3.ceil(MaxColorScaled, MaxColorScaled);
+			Vec3.div(colorMin, MinColorScaled, scale);
+			Vec3.div(colorMax, MaxColorScaled, scale);
+			break;
+		default: // Round processing
+			Vec3.mult(MinColorScaled, MinColorScaled, scale);
+			Vec3.mult(MaxColorScaled, MaxColorScaled, scale);
+			Vec3.round(MinColorScaled, MinColorScaled);
+			Vec3.round(MaxColorScaled, MaxColorScaled);
+			break;
+	}
+
+	let x = MinColorScaled[0],
+		y = MinColorScaled[1],
+		z = MinColorScaled[2];
+	const c0 = (x << 11) | (y << 5) | z;
+
+	x = MaxColorScaled[0],
+	y = MaxColorScaled[1],
+	z = MaxColorScaled[2];
+	const c1 = (x << 11)  | (y << 5) | z;
+
+	return { c0, c1 };
+}
+
+// https://github.com/GPUOpen-Tools/compressonator/blob/f4b53d79ec5abbb50924f58aebb7bf2793200b94/cmp_core/shaders/bc1_cmp.h#L1084
+function cgu_getIndicesRGB(block: Float32Array, minColor: Vec3, maxColor: Vec3, getErr: boolean) {
+	const cn = Vec3.createArray(4);
+	let packedIndices = 0;
+	let minDistance: number;
+	let err = 0.0;
+
+	if (getErr) {
+		Vec3.copy(cn[0], maxColor);
+		Vec3.copy(cn[1], minColor);
+		VecD.blend13(cn[2], cn[0], cn[1]);
+		VecD.blend13(cn[2], cn[1], cn[0]);
+	}
+
+	const Scale =	(minColor[0] - maxColor[0])**2 +
+					(minColor[1] - maxColor[1])**2 +
+					(minColor[2] - maxColor[2])**2;
+
+	const ScaledRange = Vec3.sub(Vec3.create(), minColor, maxColor);
+	Vec3.scale(ScaledRange, ScaledRange, Scale);
+	const Bias = Vec3.dot(maxColor, maxColor) - Vec3.dot(maxColor, minColor);
+	const indexMap = new Int32Array([0, 2, 3, 1]);
+	let index: number;
+	let diff: number;
+
+	for (let i=0; i<16; i++) {
+		const blockI = Vec3.ref(block,i*3);
+
+		// Get offset from base scale
+		diff = Vec3.dot(blockI, ScaledRange) + Bias;
+		index = Math.round(diff) & 0x3;
+
+		// remap linear offset to spec offset
+		index = indexMap[index];
+
+		// use err calc for use in higher quality code
+		if (getErr) {
+			minDistance = Vec3.subDot(blockI, cn[index]);
+			err += minDistance;
 		}
-		out.setUint16(outOffset, flipColors ? e2 : e1, true);
-		out.setUint16(outOffset+2, flipColors ? e1 : e2, true);
+
+		// Map the 2 bit index into compress 32 bit block
+		if (index)
+			packedIndices |= (index << (2 * i));
 	}
 
-	const pColor3 = V.from(comp_blockColors, 6);
-	const pColor4 = V.from(comp_blockColors, 9);
-	
-	if (comp_fitIsTransparent) {
-		V.copyInto(comp_blockColors, color1, 0);
-		V.copyInto(comp_blockColors, color2, 3);
-		D.blend(pColor3, 0.5, color1, color2);
-		V.fill(pColor4, 0.0);
-	}
-	else {
-		V.copyInto(comp_blockColors, color1, 0);
-		V.copyInto(comp_blockColors, color2, 3);
-		D.blend(pColor3, 0.3333, color1, color2);
-		D.blend(pColor4, 0.6666, color1, color2);
-	}
+	if (getErr)
+		err = err * 0.0208333;
 
-	// const b = color1[majorAxis];
-	// const m = color2[majorAxis] - color1[majorAxis];
+	return { cmpindex: packedIndices, err };
+}
 
-	for (let y=0; y<4; y++) {
-		let row = 0x00;
-		for (let x=0; x<4; x++) {
-			const index = srcOffset + (y*imageWidth + x) * 4;
-			const color = V.from(src, index);
-			const alpha = src[index + 3];
-
-			let blendIndex = 0;
-			if (comp_fitIsTransparent) {
-				if (cookieCutter && alpha < ALPHA_THRESHOLD) {
-					// Alpha pixel - skip processing!
-					blendIndex = 3;
-				}
-				else {
-					// Find closest point (0-2)
-					let bestDistanceSqr = Infinity;
-					for (let i=0; i<3; i++) {
-						const d = V.dist2(V.from(comp_blockColors, i*3), color);
-						if (d >= bestDistanceSqr) continue;
-						bestDistanceSqr = d;
-						blendIndex = i;
-					}
-				}
-			}
-			else {
-				// Find closest point (0-3)
-				let bestDistanceSqr = Infinity;
-				for (let i=0; i<4; i++) {
-					const d = V.dist2(V.from(comp_blockColors, i*3), color);
-					if (d >= bestDistanceSqr) continue;
-					bestDistanceSqr = d;
-					blendIndex = i;
-				}
-			}
-
-			row |= blendIndex << (x*2);
-		}
-		out.setUint8(4 + outOffset + y, row);
-	}
+export function cgu_RGBBlockError(block: Float32Array, compressedBlock: Vec2, isSRGB: boolean) {
+	const rgbBlock = Vec3.createArray(BLOCK_SIZE_4X4);
 
 }
 
-export function decompressColorBlock(src: DataView, srcOffset: number, out: DataView, outOffset: number, imageWidth: number, flags: number) {
-	let alpha = !!(flags & CompressionFlags.DXT1_Alpha);
-
-	const c1 = src.getUint16(srcOffset, true);
-	const c2 = src.getUint16(srcOffset+2, true);
-	
-	const v1 = D.decode565(scratch1, c1), v2 = D.decode565(scratch2, c2);
-	const v3 = scratch3, v4 = scratch4;
-	
-	if (c1 > c2) {
-		D.blend(v3, 0.3333, v1, v2);
-		D.blend(v4, 0.6666, v1, v2);
-		alpha = false;
-	}
-	else {
-		D.blend(v3, 0.5, v1, v2);
-		V.fill(v4, 0.0);
-	}
-
-	decomp_blockColors[0] = Math.round(v1[0]*255) + (Math.round(v1[1]*255)<<8) + (Math.round(v1[2]*255)<<16) + (255<<24);
-	decomp_blockColors[1] = Math.round(v2[0]*255) + (Math.round(v2[1]*255)<<8) + (Math.round(v2[2]*255)<<16) + (255<<24);
-	decomp_blockColors[2] = Math.round(v3[0]*255) + (Math.round(v3[1]*255)<<8) + (Math.round(v3[2]*255)<<16) + (255<<24);
-	decomp_blockColors[3] = Math.round(v4[0]*255) + (Math.round(v4[1]*255)<<8) + (Math.round(v4[2]*255)<<16) + (alpha ? 0 : (255<<24));
-	
-	for (let y=0; y<4; y++) {
-		const indices = src.getUint8(4 + srcOffset+y);
-		for (let x=0; x<4; x++) {
-			const index = (indices >> (x*2)) & 0b11;
-			const targetOffet = outOffset + (y*imageWidth + x)*4;
-			out.setUint32(targetOffet, decomp_blockColors[index], true);
-		}
-	}
-}
-
-export function compressAlphaBlock(src: DataView, byteOffset: number, out: DataView, imageWidth: number, flags: number) {
+export function cgu_decompressRGBBlock() {
 	return;
 }
 
-export function decompressAlphaBlock_DXT5(src: DataView, srcOffset: number, out: DataView, outOffset: number, imageWidth: number, flags: number) {
-	const a1 = src.getUint8(srcOffset);
-	const a2 = src.getUint8(srcOffset+1);
-	decomp_blockAlphas[0] = a1,
-	decomp_blockAlphas[1] = a2;
-	
-	if (a1 > a2) {
-		decomp_blockAlphas[2] = (6*a1 + a2)/7,
-		decomp_blockAlphas[3] = (5*a1 + 2*a2)/7,
-		decomp_blockAlphas[4] = (4*a1 + 3*a2)/7,
-		decomp_blockAlphas[5] = (3*a1 + 4*a2)/7,
-		decomp_blockAlphas[6] = (2*a1 + 5*a2)/7,
-		decomp_blockAlphas[7] = (a1   + 6*a2)/7;
-	}
-	else {
-		decomp_blockAlphas[2] = (4*a1 + a2)/5,
-		decomp_blockAlphas[3] = (3*a1 + 2*a2)/5,
-		decomp_blockAlphas[4] = (2*a1 + 3*a2)/5,
-		decomp_blockAlphas[5] = (a1 + 4*a2)/5,
-		decomp_blockAlphas[6] = 0.0,
-		decomp_blockAlphas[7] = 1.0;
-	}
+// https://github.com/GPUOpen-Tools/compressonator/blob/f4b53d79ec5abbb50924f58aebb7bf2793200b94/cmp_core/shaders/bc1_cmp.h#L1338C28-L1338C45
+export function cgu_CompressRGBBlock_MinMax(
+		src_imageRGB: Float32Array,
+		quality: number,
+		isSRGB: boolean,
+		srcRGB: Float32Array,
+		average_rgb: Float32Array,
+		errout: { value: number })
+{
+	const Q1CompData = Vec2.createUi(0, 0);
+	const rgb = Vec3.create(0, 0, 0);
 
+	// -------------------------------------------------------------------------------------
+	// (1) Find the array of unique pixel values and sum them to find their average position
+	// -------------------------------------------------------------------------------------
+	// let   errLQ: number 			= 0.0;
+	const fastProcess: boolean		= (quality <= CMP_QUALITY0);	// Min Max only
+	const srcMin					= Vec3.create(1.0);				// Min source color
+	const srcMax					= Vec3.create(0.0);				// Max source color
+	const Q1compressedBlock			= Vec2.createUi(0, 0);
 
-	const indices0 = decomp_alphaIndexSets[0] = src.getUint16(2 + srcOffset, true) | (src.getUint8(2 + srcOffset+2) << 16);
-	const indices2 = decomp_alphaIndexSets[2] = src.getUint16(2 + srcOffset+3, true) | (src.getUint8(2 + srcOffset+5) << 16);
-	decomp_alphaIndexSets[1] = indices0 >> 12;
-	decomp_alphaIndexSets[3] = indices2 >> 12;
+	average_rgb.fill(0.0);
 
-	for (let y=0; y<4; y++) {
-		const indices = decomp_alphaIndexSets[y];
-		for (let x=0; x<4; x++) {
-			const index = (indices >> (x*3)) & 0b111;
-			const targetOffet = outOffset + (y*imageWidth + x)*4;
-			out.setUint8(targetOffet + 3, decomp_blockAlphas[index]);
+	// Get average and modifed src
+    // find average position and save list of pixels as 0F..255F range for processing
+    // Note: z (blue) is average of blue+green channels
+	for (let i=0, p=0; i<BLOCK_SIZE_4X4; i++, p+=3) {
+		const currentPixel = Vec3.ref(src_imageRGB, p);
+		Vec3.min(srcMin, srcMin, currentPixel);
+		Vec3.max(srcMax, srcMax, currentPixel);
+		
+		if (!fastProcess) {
+			if (isSRGB)  linearToSrgb(rgb, currentPixel);
+			else         saturate(rgb, currentPixel);
+			rgb[2]       = (rgb[1] + rgb[2]) * 0.5;  // Z-axiz => (R+G)/2
+			Vec3.copy(srcRGB, rgb);
+			Vec3.add(average_rgb, average_rgb, rgb);
 		}
+	}
+
+	const { c0, c1 } = cgu_ProcessColors(srcMin, srcMax, +isSRGB, isSRGB);
+
+	if (c0 < c1) {
+		Q1CompData[0] = (c0 << 16) | c1;
+		const { cmpindex: index, err: errLQ } = cgu_getIndicesRGB(src_imageRGB, srcMin, srcMax, false);
+		Q1CompData[1] = index;
+		errout = cgu_RGBBlockError(src_imageRGB, Q1CompData, isSRGB);
 	}
 }

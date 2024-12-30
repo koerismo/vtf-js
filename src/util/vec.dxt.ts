@@ -44,3 +44,11 @@ export function blend(out: Vec3, fit: number, a: Vec3, b: Vec3) {
 	out[2] = a[2] * afit + b[2] * fit;
 	return out;
 }
+
+/** Blends two Vec3s by a factor of A(2/3) and B(1/3) @internal */
+export function blend13(out: Vec3, a: Vec3, b: Vec3) {
+	out[0] = a[0] * 2/3 + b[0] * 1/3,
+	out[1] = a[1] * 2/3 + b[1] * 1/3,
+	out[2] = a[2] * 2/3 + b[2] * 1/3;
+	return out;
+}

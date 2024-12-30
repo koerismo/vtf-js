@@ -3,10 +3,32 @@ export interface Vec3 {[key: number]: number}
 export type TypedArray = Uint8Array|Int8Array|Uint16Array|Int16Array|Uint32Array|Int32Array|Float32Array|Float64Array;
 export const VecType = Float32Array;
 
+const VEC3_SIZE = VecType.BYTES_PER_ELEMENT * 3;
 
 /** Creates a blank new Vec3. @internal */
-export function create(x: number=0, y: number=0, z: number=0): Vec3 {
+export function create(x: number=0, y: number=x, z: number=x): Vec3 {
 	return new VecType([x, y, z]);
+}
+
+export function createArray(length: number|ArrayBufferLike): Vec3[] {
+	let buf: ArrayBufferLike;
+	if (typeof length !== 'number') {
+		buf = length;
+		length = buf.byteLength / VecType.BYTES_PER_ELEMENT;
+	}
+	else {
+		buf = new ArrayBuffer(VEC3_SIZE * length);
+	}
+	const out = Array(length);
+	for (let i=0; i<length; i++) {
+		out[i] = new VecType(buf, i * VEC3_SIZE, 3);
+	}
+	return out;
+}
+
+/** Creates a blank new Vec3. @internal */
+export function createUi(x: number=0, y: number=x, z: number=x): Uint32Array {
+	return new Uint32Array([x, y, z]);
 }
 
 /** Creates a new Vec3 from the specified array at an optional offset. @internal */
@@ -86,6 +108,15 @@ export function mult(out: Vec3, a: Vec3, b: Vec3) {
 	return out;
 }
 
+/** Divides A by B @internal */
+export function div(out: Vec3, a: Vec3, b: Vec3) {
+	out[0] = a[0] / b[0],
+	out[1] = a[1] / b[1],
+	out[2] = a[2] / b[2];
+	return out;
+}
+
+
 /** Multiplies A by B @internal */
 export function multAdd(out: Vec3, a: Vec3, b: Vec3, c: Vec3) {
 	out[0] = a[0] * b[0] + c[0],
@@ -150,24 +181,50 @@ export function dist2(a: Vec3, b: Vec3) {
 	);
 }
 
-/** Returns Source as a float between A=0 and B=1. @internal */
-export function fit(source: Vec3, a: Vec3, b: Vec3) {
-	// (B - A) • (C - A) / dist(A, B)^2
+/** Returns the mins of vectors A and B @internal */
+export function min(out: Vec3, a: Vec3, b: Vec3) {
+	out[0] = Math.min(a[0], b[0]),
+	out[1] = Math.min(a[1], b[1]),
+	out[2] = Math.min(a[2], b[2]);
+	return out;
+}
 
-	const d = dist2(a, b);
-	if (d === 0) return 0.5;
+/** Returns the maxes of vectors A and B @internal */
+export function max(out: Vec3, a: Vec3, b: Vec3) {
+	out[0] = Math.max(a[0], b[0]),
+	out[1] = Math.max(a[1], b[1]),
+	out[2] = Math.max(a[2], b[2]);
+	return out;
+}
 
-	// const ba = sub(create(), b, a);
-	// const ca = sub(create(), source, a);
-	// const result = dot(ba, ca) / d;
+/** Returns the ceiled value of vector A @internal */
+export function ceil(out: Vec3, a: Vec3) {
+	out[0] = Math.ceil(a[0]),
+	out[1] = Math.ceil(a[1]),
+	out[2] = Math.ceil(a[2]);
+	return out;
+}
 
-	const result = (
-		(b[0] - a[0]) * (source[0] - a[0]) +
-		(b[1] - a[1]) * (source[1] - a[1]) +
-		(b[2] - a[2]) * (source[2] - a[2])
-	) / d;
+/** Returns the floored value of vector A @internal */
+export function floor(out: Vec3, a: Vec3) {
+	out[0] = Math.floor(a[0]),
+	out[1] = Math.floor(a[1]),
+	out[2] = Math.floor(a[2]);
+	return out;
+}
 
-	if (result < 0) return 0;
-	if (result > 1) return 1;
-	return result;
+/** Returns the rounded value of vector A @internal */
+export function round(out: Vec3, a: Vec3) {
+	out[0] = Math.round(a[0]),
+	out[1] = Math.round(a[1]),
+	out[2] = Math.round(a[2]);
+	return out;
+}
+/** @internal */
+export function subDot(a: Vec3, b: Vec3) {
+	return (
+		(a[0] - b[0]) ** 2 +
+		(a[1] - b[1]) ** 2 +
+		(a[2] - b[2]) ** 2
+	);
 }
