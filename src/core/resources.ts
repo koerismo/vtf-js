@@ -1,5 +1,5 @@
 import { VEncodedImageData, VImageData, getCodec } from './image.js';
-import { DataBuffer } from '../util/buffer.js';
+import { DataBuffer } from './buffer.js';
 import { VFileHeader } from '../vtf.js';
 import { VFormats } from './enums.js';
 import { VDataCollection, VDataProvider } from './providers.js';

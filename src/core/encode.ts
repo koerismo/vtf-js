@@ -1,4 +1,4 @@
-import { DataBuffer } from '../util/buffer.js';
+import { DataBuffer } from './buffer.js';
 import { VFormats } from './enums.js';
 import { VFileHeader, Vtf } from '../vtf.js';
 import { getFaceCount, getHeaderLength, getMipSize, getThumbMip } from './utils.js';

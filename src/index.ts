@@ -18,6 +18,7 @@ import './core/decode.js';
 
 // Image data
 import { VImageData, VEncodedImageData, type VPixelArray, type VPixelArrayConstructor, registerCodec, getCodec } from './core/image.js';
+import { DataBuffer } from './core/buffer.js';
 
 // Resizing filters
 export { VFilters, type Filter } from './core/resize.js';
@@ -61,6 +62,8 @@ export {
 
 	VPixelArray,
 	VPixelArrayConstructor,
+
+	DataBuffer,
 
 	registerCodec,
 	getCodec,
