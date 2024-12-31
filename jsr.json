@@ -1,7 +1,7 @@
 {
 	"name": "@koerismo/vtf",
 	"description": "A javascript IO library for the Valve Texture Format.",
-	"version": "0.9.0",
+	"version": "0.9.1",
 	"license": "LGPL-3.0-or-later",
 	"author": "Koerismo",
 	"repository": { "type": "git", "url": "git+https://github.com/koerismo/vtf-js.git" },
