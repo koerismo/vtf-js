@@ -1,6 +1,6 @@
 import { VCodecs } from '../dist/core/image.js';
 import { VImageData, VFormats } from '../dist/index.js';
-import assert from 'assert/strict';
+import assert from 'node:assert/strict';
 
 function makeTestImage(width, height) {
 	const data = new Float64Array(width * height * 4);
@@ -36,6 +36,7 @@ const formats = [
 	VFormats.RGB323232F,
 	VFormats.RGBA32323232F,
 	VFormats.RGBA16161616,
+	VFormats.RGBA16161616F,
 	VFormats.R32F,
 	VFormats.RGBA8888,
     VFormats.ABGR8888,
@@ -50,16 +51,23 @@ const formats = [
     VFormats.A8,
 	VFormats.DXT1,
 	VFormats.DXT3,
-	VFormats.DXT5,
+	VFormats.DXT5
 ];
+
+const DXT_THRESHOLD = 8;
+const F16_THRESHOLD = 1e-3;
+const F32_THRESHOLD = 1e-8;
 
 describe('Format IO Difftest', () => {
 	for (const format of formats) {
-		if (VCodecs[format] == null) continue;
+		if (VCodecs[format] == null) {
+			console.warn('Skipping unsupported format', VFormats[format]);
+			continue;
+		}
 
 		it(`Format ${VFormats[format]}`, () => {
 
-			const big = makeTestImage(1024, 1024);
+			const big = makeTestImage(256, 256);
 			const small = makeTestImage(8, 8);
 			const weird = makeTestImage(45, 35);
 
@@ -67,8 +75,7 @@ describe('Format IO Difftest', () => {
 			const small_out = small.encode(format).decode().convert(Float64Array);
 			const weird_out = weird.encode(format).decode().convert(Float64Array);
 
-			const assertDiff = (cA, cB, is_lossy) => {
-				const max_diff = is_lossy ? 8.0 : 0.000001;
+			const assertDiff = (cA, cB, max_diff=F32_THRESHOLD) => {
 				assert(diffImages(big, big_out, cA, cB, max_diff), `Channel diff ${cA}-${cB} failed on image! [big]`);
 				assert(diffImages(small, small_out, cA, cB, max_diff), `Channel diff ${cA}-${cB} failed on image! [small]`);
 				assert(diffImages(weird, weird_out, cA, cB, max_diff), `Channel diff ${cA}-${cB} failed on image! [weird]`);
@@ -108,9 +115,9 @@ describe('Format IO Difftest', () => {
 				case VFormats.DXT3:
 				case VFormats.DXT5:
 					// Lossy-ish formats
-					assertDiff(0, 0, true);
-					assertDiff(1, 1, true);
-					assertDiff(2, 2, true);
+					assertDiff(0, 0, DXT_THRESHOLD);
+					assertDiff(1, 1, DXT_THRESHOLD);
+					assertDiff(2, 2, DXT_THRESHOLD);
 					break;
 				case VFormats.RGB888:
 				case VFormats.BGR888:
@@ -119,6 +126,13 @@ describe('Format IO Difftest', () => {
 					assertDiff(0, 0);
 					assertDiff(1, 1);
 					assertDiff(2, 2);
+					break;
+				case VFormats.RGBA16161616F:
+					// RGBA limited float accuracy
+					assertDiff(0, 0, F16_THRESHOLD);
+					assertDiff(1, 1, F16_THRESHOLD);
+					assertDiff(2, 2, F16_THRESHOLD);
+					assertDiff(3, 3, F16_THRESHOLD);
 					break;
 				case VFormats.R32F:
 					// Odd case: Red-channel format?

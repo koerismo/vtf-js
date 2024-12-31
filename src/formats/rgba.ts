@@ -1,26 +1,33 @@
 import { VFormats } from '../core/enums.js';
-import { VCodec, VEncodedImageData, VImageData, registerCodec } from '../core/image.js';
+import { VCodec, VEncodedImageData, VImageData, registerCodec, HAS_FLOAT16 } from '../core/image.js';
 
 const PixelDataTypes = {
 	'Uint8': 1,
 	'Uint16': 2,
 	'Uint32': 4,
+	'Float16': 2,
 	'Float32': 4,
 } as const;
-
 
 const PixelArrayTypes = {
 	'Uint8': Uint8Array,
 	'Uint16': Uint16Array,
 	'Uint32': Uint32Array,
+	'Float16': HAS_FLOAT16 ? Float16Array : null!,
 	'Float32': Float32Array,
 } as const;
 
-function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, red: number|null, green: number|null, blue: number|null, alpha: number|null, avg: boolean=false) {
+const PixelFloatTypes = {
+	'Float16': true,
+	'Float32': true,
+} as const;
+
+function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, red: number|null, green: number|null, blue: number|null, alpha: number|null, avg: boolean=false, isFloat: boolean=false) {
 
 	const SET = 'set' + type as `set${keyof typeof PixelDataTypes}`;
 	const GET = 'get' + type as `get${keyof typeof PixelDataTypes}`;
 	const ARR = PixelArrayTypes[type];
+	const maxValue = PixelFloatTypes[type] ? 1 : 2 ** (ARR.BYTES_PER_ELEMENT * 8) - 1;
 
 	const increment = +(red != null) + +(green != null) + +(blue != null) + +(alpha != null);
 	const bpp = PixelDataTypes[type] * increment;
@@ -61,7 +68,7 @@ function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, 
 
 				if (avg) {
 					out[t] = out[t+1] = out[t+2] = view[GET](s, true);
-					out[t+3] = 255;
+					out[t+3] = maxValue;
 					continue;
 				}
 
@@ -69,7 +76,7 @@ function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, 
 				if (green != null)	out[t+1] = view[GET](s + green, true);
 				if (blue != null)	out[t+2] = view[GET](s + blue, true);
 				if (alpha != null)	out[t+3] = view[GET](s + alpha, true);
-				else out[t+3] = 255;
+				else out[t+3] = maxValue;
 			}
 
 			return new VImageData(out, source.width, source.height);
@@ -97,3 +104,8 @@ registerCodec(VFormats.R32F, createGenericRGBA(VFormats.R32F, 'Float32', 0, null
 registerCodec(VFormats.RGB323232F, createGenericRGBA(VFormats.RGB323232F, 'Float32', 0, 4, 8, null));
 registerCodec(VFormats.RGBA16161616, createGenericRGBA(VFormats.RGBA16161616, 'Uint16', 0, 2, 4, 6));
 registerCodec(VFormats.RGBA32323232F, createGenericRGBA(VFormats.RGBA32323232F, 'Float32', 0, 4, 8, 12));
+
+if (HAS_FLOAT16)
+	registerCodec(VFormats.RGBA16161616F, createGenericRGBA(VFormats.RGBA16161616F, 'Float16', 0, 2, 4, 6));
+else
+	console.warn(`vtf-js: Your environment does not support Float16Array. RGBA16161616F codec has not been registered!`);

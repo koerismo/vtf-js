@@ -6,7 +6,7 @@ import { getCodec } from './image.js';
 import { VResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags } from './resources.js';
 
 function read_format(id: number) {
-	if (VFormats[id] == undefined) throw new Error(`Encountered invalid format (id=${id}) in header!`);
+	if (VFormats[id] == undefined) throw Error(`read_format: Encountered invalid format (id=${id}) in header!`);
 	return id;
 }
 
@@ -14,7 +14,7 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boo
 	const face_count = getFaceCount(info);
 
 	if (header.flags & 0x2) {
-		if (header.start !== 0) throw(`AXC: Expected inline compression value of 0. Got ${header.start} instead!`);
+		if (header.start !== 0) throw Error(`decode_axc: Expected inline compression value of 0. Got ${header.start} instead!`);
 		info.compression = 0;
 		return false;
 	}
@@ -49,19 +49,19 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false, lazy_decode
 	view.set_endian(true);
 
 	const sign = view.read_str(4);
-	if (sign !== 'VTF\0') throw new Error(`Vtf.decode: Encountered invalid file signature! ("${sign}")`);
+	if (sign !== 'VTF\0') throw Error(`Vtf.decode: Encountered invalid file signature! ("${sign}")`);
 
 	// File format version
 	const seven         = view.read_u32();
 	info.version        = <(0|1|2|3|4|5|6)>view.read_u32();
 	if (seven !== 7 || info.version < 0 || info.version > 6)
-		throw new Error(`Vtf.decode: Encountered invalid format version! (${seven}.${info.version})`)
+		throw Error(`Vtf.decode: Encountered invalid format version! (${seven}.${info.version})`)
 
 	// Other properties
 	const expected_length = getHeaderLength(info.version);
 	const header_length = view.read_u32();
 	if (header_length < expected_length)
-		throw new Error(`Vtf.decode: Encountered invalid header length! (${header_length})`);
+		throw Error(`Vtf.decode: Encountered invalid header length! (${header_length})`);
 
 	info.width          = view.read_u16();
 	info.height         = view.read_u16();
@@ -156,7 +156,7 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false, lazy_decode
 	}
 
 	if (!body)
-		throw new Error('Vtf.decode: Vtf does not contain a body resource!');
+		throw Error('Vtf.decode: Vtf does not contain a body resource!');
 
 	return new Vtf(body.images, info);
 }

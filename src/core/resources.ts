@@ -4,11 +4,24 @@ import { VFileHeader } from '../vtf.js';
 import { VFormats } from './enums.js';
 import { VDataCollection, VDataProvider } from './providers.js';
 import { getFaceCount, getMipSize } from './utils.js';
-import { deflate, inflate } from 'pako';
+import type { InflateFunctionOptions, DeflateFunctionOptions, Data } from 'pako';
+
+let deflate: (data: Data, options?: DeflateFunctionOptions) => Uint8Array = () => { throw Error('vtf-js: The pako dependency is required to compress Strata-compressed VTFs!') };
+let inflate: (data: Data, options?: InflateFunctionOptions) => Uint8Array = () => { throw Error('vtf-js: The pako dependency is required to decompress Strata-compressed VTFs!') };
+if (!globalThis.VTF_DISABLE_PAKO) {
+	try {
+		const pako = await import('pako');
+		deflate = pako.deflate;
+		inflate = pako.inflate;
+	}
+	catch(e) {
+		console.warn('vtf-js: Failed to import dependency "pako". Set globalThis.VTF_DISABLE_PAKO before importing vtf-js to hide this warning!', e);
+	}
+}
 
 export const VResourceTypes: {[key: string]: typeof VResource} = {};
 export function registerResourceType(resource: typeof VResource) {
-	if (!resource.tag) throw('registerResourceDecoder: Cannot register generic resource! (Must have static tag attribute.)');
+	if (!resource.tag) throw Error('registerResourceDecoder: Cannot register generic resource! (Must have static tag attribute.)');
 	VResourceTypes[resource.tag] = resource;
 }
 

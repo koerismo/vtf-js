@@ -1,6 +1,6 @@
 import { VFormats } from '../core/enums.js';
 import { VEncodedImageData, VImageData, getCodec, registerCodec } from '../core/image.js';
-import * as DXTN from 'dxtn';
+import * as DXT from 'dxt-js';
 
 function ceil4(x: number) {
 	return Math.ceil(x / 4) * 4;
@@ -57,12 +57,12 @@ registerCodec(VFormats.DXT1, {
 
 	encode(image: VImageData): VEncodedImageData {
 		const padded = padImage(image.convert(Uint8Array));
-		const out = DXTN.compressDXT1(padded.width, padded.height, padded.data);
+		const out = DXT.compress(padded.data, padded.width, padded.height, DXT.flags.DXT1 | DXT.flags.ColourClusterFit);
 		return new VEncodedImageData(out, image.width, image.height, VFormats.DXT1);
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
-		const out = DXTN.decompressDXT1(ceil4(image.width), ceil4(image.height), image.data);
+		const out = DXT.decompress(image.data, ceil4(image.width), ceil4(image.height), DXT.flags.DXT1);
 		return cropImage(new VImageData(out, image.width, image.height));
 	},
 });
@@ -76,12 +76,12 @@ registerCodec(VFormats.DXT3, {
 
 	encode(image: VImageData): VEncodedImageData {
 		const padded = padImage(image.convert(Uint8Array));
-		const out = DXTN.compressDXT3(padded.width, padded.height, padded.data);
+		const out = DXT.compress(padded.data, padded.width, padded.height, DXT.flags.DXT3 | DXT.flags.ColourClusterFit);
 		return new VEncodedImageData(out, image.width, image.height, VFormats.DXT3);
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
-		const out = DXTN.decompressDXT3(ceil4(image.width), ceil4(image.height), image.data);
+		const out = DXT.decompress(image.data, ceil4(image.width), ceil4(image.height), DXT.flags.DXT3);
 		return cropImage(new VImageData(out, image.width, image.height));
 	},
 });
@@ -93,12 +93,12 @@ registerCodec(VFormats.DXT5, {
 
 	encode(image: VImageData): VEncodedImageData {
 		const padded = padImage(image.convert(Uint8Array));
-		const out = DXTN.compressDXT5(padded.width, padded.height, padded.data);
+		const out = DXT.compress(padded.data, padded.width, padded.height, DXT.flags.DXT5 | DXT.flags.ColourClusterFit);
 		return new VEncodedImageData(out, image.width, image.height, VFormats.DXT5);
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
-		const out = DXTN.decompressDXT5(ceil4(image.width), ceil4(image.height), image.data);
+		const out = DXT.decompress(image.data, ceil4(image.width), ceil4(image.height), DXT.flags.DXT5);
 		return cropImage(new VImageData(out, image.width, image.height));
 	},
 });

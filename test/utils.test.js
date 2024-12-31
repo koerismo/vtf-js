@@ -1,6 +1,6 @@
 import { VFlags } from '../dist/core/enums.js';
 import { getFaceCount, getHeaderLength, getMipSize } from '../dist/core/utils.js';
-import assert from 'node:assert';
+import assert from 'node:assert/strict';
 
 describe('Utility functions', () => {
 

@@ -306,7 +306,7 @@ export class DataBuffer extends Uint8Array {
 			this.pointer ++;
 		}
 		else if (str.length !== length) {
-			throw new RangeError('String of length '+str.length+' does not match write length of '+length+'!');
+			throw RangeError('String of length '+str.length+' does not match write length of '+length+'!');
 		}
 	}
 }

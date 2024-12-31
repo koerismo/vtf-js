@@ -1,5 +1,5 @@
 import { Vtf, VDataCollection, VImageData, VFormats } from '../dist/index.js';
-import { deepStrictEqual, strictEqual } from 'node:assert';
+import { deepStrictEqual, strictEqual } from 'node:assert/strict';
 
 const image_big = new VImageData(new Uint8Array(4 * 4 * 4).fill(255), 4, 4);
 const image_small = new VImageData(new Uint8Array(1 * 1 * 4).fill(255), 1, 1);

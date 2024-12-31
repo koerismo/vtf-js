@@ -26,6 +26,7 @@ The following formats are supported by default.
 - `R32F`
 - `RGB323232F`
 - `RGBA16161616`
+- `RGBA16161616F` [^2]
 - `RGBA32323232F`
 
 ## Examples
@@ -75,3 +76,4 @@ const out = vtf.encode();
 ```
 
 [^1]: As the Vtf format does not specify a singular method of defining palettes in the file, vtf-js interprets P8 images as a single-channel greyscale image.
+[^2]: This codec is registered only in environments where sec-float16array is supported.

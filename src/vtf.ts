@@ -56,14 +56,14 @@ export class Vtf {
 	}
 
 	encode(): ArrayBuffer {
-		throw('Vtf.encode: Implementation override not present!');
+		throw Error('Vtf.encode: Implementation override not present!');
 	}
 
 	static decode(data: ArrayBuffer): Vtf;
 	static decode(data: ArrayBuffer, header_only: false, lazy_decode?: boolean): Vtf;
 	static decode(data: ArrayBuffer, header_only: true, lazy_decode?: boolean): VFileHeader;
 	static decode(data: ArrayBuffer, header_only: boolean=false, lazy_decode: boolean=false): Vtf|VFileHeader {
-		throw('Vtf.decode: Implementation override not present!');
+		throw Error('Vtf.decode: Implementation override not present!');
 	}
 }
 

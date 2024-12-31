@@ -1,5 +1,5 @@
 import { VImageData } from '../dist/core/image.js';
-import assert from 'node:assert';
+import assert from 'node:assert/strict';
 
 describe('VImageData', () => {
 	it('Ensure conversion is lossless', () => {
