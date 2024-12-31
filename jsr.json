@@ -8,7 +8,8 @@
 	"keywords": [ "source-engine", "vtf", "valve" ],
 	"exports": {
 		".": "./src/index.ts",
-		"./utils": "./src/core/utils.ts"
+		"./utils": "./src/core/utils.ts",
+		"./resources": "./src/core/resources.ts"
 	},
 	"exclude": ["/", "!src/", "!README.md"],
 

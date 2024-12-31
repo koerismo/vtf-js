@@ -12,7 +12,7 @@ declare global {
 }
 
 // Vtf class
-import { Vtf } from './vtf.js';
+import { Vtf, VFileHeader } from './vtf.js';
 import './core/encode.js';
 import './core/decode.js';
 
@@ -49,11 +49,12 @@ export {
 	VSliceCollection } from './core/providers.js';
 
 // Resources
-export { VResource, registerResourceType } from './core/resources.js';
+export { VResource } from './core/resources.js';
 
 export default Vtf;
 export {
 	Vtf,
+	VFileHeader,
 
 	VImageData,
 	VEncodedImageData,
