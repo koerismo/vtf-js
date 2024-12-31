@@ -6,7 +6,7 @@ import { VBodyResource, VHeaderTags, VResource, VThumbResource } from './resourc
 import { VImageData } from './image.js';
 
 function write_format(id: number) {
-	if (VFormats[id] == undefined) throw(`Encountered invalid format (id=${id}) in header!`);
+	if (VFormats[id] == undefined) throw Error(`write_format: Encountered invalid format (id=${id}) in header!`);
 	return id;
 }
 
@@ -34,8 +34,8 @@ function write_chunks(chunks: ArrayBuffer[]): ArrayBuffer {
 }
 
 function write_axc(info: VFileHeader) {
-	if (info.compressed_lengths == null) throw new Error('Compression header is not present. If this error is thrown, something has gone very very wrong!');
-	if (info.version < 6) throw new Error('Compression requires VTF version 6+');
+	if (info.compressed_lengths == null) throw Error('write_axc: Compression header is not present. If this error is thrown, something has gone very very wrong!');
+	if (info.version < 6) throw Error('write_axc: Compression requires VTF version 6+');
 
 	const face_count = getFaceCount(info);
 	const axc_length = 8 + info.frames * info.mipmaps * info.slices * face_count * 4;

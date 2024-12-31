@@ -1,5 +1,5 @@
 import { VFormats } from '../core/enums.js';
-import { VCodec, VEncodedImageData, VImageData, registerCodec } from '../core/image.js';
+import { VCodec, VEncodedImageData, VImageData, registerCodec, HAS_FLOAT16 } from '../core/image.js';
 
 const PixelDataTypes = {
 	'Uint8': 1,
@@ -9,25 +9,25 @@ const PixelDataTypes = {
 	'Float32': 4,
 } as const;
 
-// Does the current environment support sec-float16array?
-const HAS_FLOAT16 = typeof Float16Array !== 'undefined';
-
-// TODO: Remove this when typescript catches up to the spec.
-declare const Float16Array: Float32ArrayConstructor;
-
 const PixelArrayTypes = {
 	'Uint8': Uint8Array,
 	'Uint16': Uint16Array,
 	'Uint32': Uint32Array,
-	'Float16': HAS_FLOAT16 ? Float16Array : undefined!,
+	'Float16': HAS_FLOAT16 ? Float16Array : null!,
 	'Float32': Float32Array,
 } as const;
 
-function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, red: number|null, green: number|null, blue: number|null, alpha: number|null, avg: boolean=false) {
+const PixelFloatTypes = {
+	'Float16': true,
+	'Float32': true,
+} as const;
+
+function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, red: number|null, green: number|null, blue: number|null, alpha: number|null, avg: boolean=false, isFloat: boolean=false) {
 
 	const SET = 'set' + type as `set${keyof typeof PixelDataTypes}`;
 	const GET = 'get' + type as `get${keyof typeof PixelDataTypes}`;
 	const ARR = PixelArrayTypes[type];
+	const maxValue = PixelFloatTypes[type] ? 1 : 2 ** (ARR.BYTES_PER_ELEMENT * 8) - 1;
 
 	const increment = +(red != null) + +(green != null) + +(blue != null) + +(alpha != null);
 	const bpp = PixelDataTypes[type] * increment;
@@ -68,7 +68,7 @@ function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, 
 
 				if (avg) {
 					out[t] = out[t+1] = out[t+2] = view[GET](s, true);
-					out[t+3] = 255;
+					out[t+3] = maxValue;
 					continue;
 				}
 
@@ -76,7 +76,7 @@ function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, 
 				if (green != null)	out[t+1] = view[GET](s + green, true);
 				if (blue != null)	out[t+2] = view[GET](s + blue, true);
 				if (alpha != null)	out[t+3] = view[GET](s + alpha, true);
-				else out[t+3] = 255;
+				else out[t+3] = maxValue;
 			}
 
 			return new VImageData(out, source.width, source.height);
@@ -108,4 +108,4 @@ registerCodec(VFormats.RGBA32323232F, createGenericRGBA(VFormats.RGBA32323232F, 
 if (HAS_FLOAT16)
 	registerCodec(VFormats.RGBA16161616F, createGenericRGBA(VFormats.RGBA16161616F, 'Float16', 0, 2, 4, 6));
 else
-	console.warn(`vtf-js: Your environment does not support Float16Array. Some HDR textures may fail to convert!`);
+	console.warn(`vtf-js: Your environment does not support Float16Array. RGBA16161616F codec has not been registered!`);
