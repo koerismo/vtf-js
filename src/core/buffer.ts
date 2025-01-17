@@ -3,7 +3,7 @@
 const TE = new TextEncoder();
 const TD = new TextDecoder();
 
-/** @internal */
+
 export class DataBuffer extends Uint8Array {
 	pointer = 0;
 	protected view: DataView;
