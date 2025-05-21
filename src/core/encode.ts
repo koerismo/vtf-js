@@ -42,7 +42,8 @@ function write_axc(info: VFileHeader) {
 	const axc = new DataBuffer(axc_length);
 	axc.set_endian(true);
 	axc.write_u32(axc_length);
-	axc.write_i32(info.compression);
+	axc.write_i16(info.compression_level);
+	axc.write_i16(info.compression_method);
 
 	const mips = info.compressed_lengths;
 	for (let x = info.mipmaps-1; x >= 0; x--) {
@@ -50,10 +51,7 @@ function write_axc(info: VFileHeader) {
 		for (let y = 0; y < info.frames; y++) {
 			const faces = frames[y];
 			for (let z = 0; z < face_count; z++) {
-				const slices = faces[z];
-				for (let w = 0; w < info.slices; w++) {
-					axc.write_u32(slices[w]);
-				}
+				axc.write_u32(faces[z]);
 			}
 		}
 	}
@@ -61,18 +59,18 @@ function write_axc(info: VFileHeader) {
 	return axc.buffer;
 }
 
-Vtf.prototype.encode = function(this: Vtf): ArrayBuffer {
+Vtf.prototype.encode = async function(this: Vtf): Promise <ArrayBuffer> {
 	// Each chunk is a section of the file. e.g. [header, axc, body1, body2, body3]
 	const chunks: ArrayBuffer[] = [];
 	const info = VFileHeader.fromVtf(this);
 
 	let resource_count = this.meta.length + 2;
-	if (info.compression !== 0) resource_count += 1;
+	if (info.compression_level !== 0) resource_count += 1;
 
 
 	const header_length = getHeaderLength(this.version, resource_count);
 	const header = new DataBuffer(header_length);
-	chunks.push(header);
+	chunks.push(header.buffer);
 
 	header.set_endian(true);
 	header.write_str('VTF\0', 4);
@@ -108,7 +106,7 @@ Vtf.prototype.encode = function(this: Vtf): ArrayBuffer {
 	const thumb_resource = new VThumbResource(0x00, thumb_image);
 	const body_resource = new VBodyResource(0x00, this.data);
 	const thumb_data = thumb_resource.encode(info);
-	const body_data = body_resource.encode(info);
+	const body_data = await body_resource.encode(info);
 	chunks.push(thumb_data);
 	chunks.push(body_data);
 
@@ -132,7 +130,7 @@ Vtf.prototype.encode = function(this: Vtf): ArrayBuffer {
 	write_header(header, thumb_resource, filepos);filepos += thumb_data.byteLength;
 	write_header(header, body_resource, filepos); filepos += body_data.byteLength;
 
-	if (info.compression !== 0) {
+	if (info.compression_level !== 0) {
 		const axc_data = write_axc(info);
 		write_header(header, new VResource(VHeaderTags.TAG_AXC, 0x00), filepos);
 		filepos += axc_data.byteLength;
@@ -142,7 +140,7 @@ Vtf.prototype.encode = function(this: Vtf): ArrayBuffer {
 	for (const res of this.meta) {
 		write_header(header, res, filepos);
 
-		const res_data = res.encode(info);
+		const res_data = await res.encode(info);
 		filepos += res_data.byteLength;
 		chunks.push(res_data);
 	}

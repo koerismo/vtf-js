@@ -2,6 +2,12 @@ import { VCodecs } from '../dist/core/image.js';
 import { VImageData, VFormats } from '../dist/index.js';
 import assert from 'node:assert/strict';
 
+/**
+ * 
+ * @param {number} width 
+ * @param {number} height 
+ * @returns 
+ */
 function makeTestImage(width, height) {
 	const data = new Float64Array(width * height * 4);
 	for (let i=0; i<data.length; i++) {
@@ -11,10 +17,13 @@ function makeTestImage(width, height) {
 }
 
 /**
+ * 
  * @param {VImageData} a 
  * @param {VImageData} b 
- * @param {number} channel_a
- * @param {number} channel_b
+ * @param {number} channel_a 
+ * @param {number} channel_b 
+ * @param {number} threshold 
+ * @returns {boolean}
  */
 function diffImages(a, b, channel_a, channel_b, threshold=0) {
 	let diff = 0;

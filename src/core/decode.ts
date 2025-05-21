@@ -1,7 +1,7 @@
 import { getHeaderLength, getFaceCount } from './utils.js';
 import { Vtf, VFileHeader } from '../vtf.js';
 import { DataBuffer } from './buffer.js';
-import { VFormats } from './enums.js';
+import { VCompressionMethods, VFormats } from './enums.js';
 import { getCodec } from './image.js';
 import { VResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags } from './resources.js';
 
@@ -15,24 +15,27 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boo
 
 	if (header.flags & 0x2) {
 		if (header.start !== 0) throw Error(`decode_axc: Expected inline compression value of 0. Got ${header.start} instead!`);
-		info.compression = 0;
+		info.compression_level = 0;
 		return false;
 	}
 
 	const view = buffer.ref(header.start);
 	const length = view.read_u32();
-	info.compression = view.read_i32();
+	info.compression_level = view.read_i16();
+	info.compression_method = view.read_i16();
 
-	const mips = info.compressed_lengths = new Array(info.mipmaps);
+	// Legacy AXC v1 support - always use Deflate
+	if (!info.compression_method) {
+		info.compression_method = VCompressionMethods.Deflate;
+	}
+
+	const mips: number[][][] = info.compressed_lengths = new Array(info.mipmaps);
 	for ( let x=0; x<info.mipmaps; x++ ) {
-		const frames = mips[x] = new Array(info.frames);
+		const frames: number[][] = mips[x] = new Array(info.frames);
 		for ( let y=0; y<info.frames; y++ ) {
-			const faces = frames[y] = new Array(face_count);
+			const faces: number[] = frames[y] = new Array(face_count);
 			for ( let z=0; z<face_count; z++ ) {
-				const slices = faces[z] = new Array(info.slices);
-				for ( let w=0; w<info.slices; w++ ) {
-					slices[w] = view.read_u32();
-				}
+				faces[z] = view.read_u32();
 			}
 		}
 	}
@@ -41,14 +44,15 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boo
 }
 
 // @ts-expect-error Overloads break for some reason?
-Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false, lazy_decode: boolean=false): Vtf|VFileHeader {
+Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_decode: boolean=false): Promise<Vtf | VFileHeader> {
 	const info = new VFileHeader();
-	info.compression = 0;
+	info.compression_level = 0;
 
 	const view = new DataBuffer(data);
 	view.set_endian(true);
 
 	const sign = view.read_str(4);
+	if (sign === 'VTFX') throw Error('Vtf.decode: Console vtfs are not supported!');
 	if (sign !== 'VTF\0') throw Error(`Vtf.decode: Encountered invalid file signature! ("${sign}")`);
 
 	// File format version
@@ -101,7 +105,7 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false, lazy_decode
 	else {
 		const body_offset = header_length + getCodec(info.thumb_format).length(info.thumb_width, info.thumb_height);
 		const data = view.ref(body_offset);
-		body = VBodyResource.decode(new VHeader(VHeaderTags.TAG_BODY, 0x0, body_offset), data, info, lazy_decode);
+		body = await VBodyResource.decode(new VHeader(VHeaderTags.TAG_BODY, 0x0, body_offset), data, info, lazy_decode);
 	}
 
 	// Parse resource headers
@@ -143,7 +147,7 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false, lazy_decode
 			data = view.ref(header.start, header.end - header.start);
 
 		if (header.tag === VHeaderTags.TAG_BODY) {
-			body = VBodyResource.decode(header, data!, info);
+			body = await VBodyResource.decode(header, data!, info);
 			continue;
 		}
 
@@ -152,7 +156,7 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false, lazy_decode
 		}
 
 		const type = VResourceTypes[header.tag] ?? VResource;
-		meta.push(type.decode(header, data, info));
+		meta.push(await type.decode(header, data, info));
 	}
 
 	if (!body)

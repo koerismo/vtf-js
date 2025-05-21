@@ -3,21 +3,7 @@ import { DataBuffer } from './buffer.js';
 import { VFileHeader } from '../vtf.js';
 import { VFormats } from './enums.js';
 import { VDataCollection, VDataProvider } from './providers.js';
-import { getFaceCount, getMipSize } from './utils.js';
-import type { InflateFunctionOptions, DeflateFunctionOptions, Data } from 'pako';
-
-let deflate: (data: Data, options?: DeflateFunctionOptions) => Uint8Array = () => { throw Error('vtf-js: The pako dependency is required to compress Strata-compressed VTFs!') };
-let inflate: (data: Data, options?: InflateFunctionOptions) => Uint8Array = () => { throw Error('vtf-js: The pako dependency is required to decompress Strata-compressed VTFs!') };
-if (!globalThis.VTF_DISABLE_PAKO) {
-	try {
-		const pako = await import('pako');
-		deflate = pako.deflate;
-		inflate = pako.inflate;
-	}
-	catch(e) {
-		console.warn('vtf-js: Failed to import dependency "pako". Set globalThis.VTF_DISABLE_PAKO before importing vtf-js to hide this warning!', e);
-	}
-}
+import { getFaceCount, getMipSize, compress, decompress } from './utils.js';
 
 export const VResourceTypes: {[key: string]: typeof VResource} = {};
 export function registerResourceType(resource: typeof VResource) {
@@ -48,6 +34,8 @@ export class VHeader {
 	}
 }
 
+type VImageEither = (VImageData|VEncodedImageData);
+
 /** Represents a resource entry. */
 export class VResource {
 	static readonly tag?: string;
@@ -65,11 +53,11 @@ export class VResource {
 		return !(this.flags & 0x2);
 	}
 
-	static decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): VResource {
+	static decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): Promise<VResource> | VResource {
 		return new VResource(header.tag, header.flags, view);
 	}
 
-	encode(info: VFileHeader): ArrayBuffer {
+	encode(info: VFileHeader): Promise<ArrayBuffer> | ArrayBuffer {
 		if (!this.data) return new ArrayBuffer(0);
 		return this.data.buffer;
 	}
@@ -83,27 +71,37 @@ export class VBodyResource extends VResource {
 		this.images = images;
 	}
 
-	static decode(header: VHeader, view: DataBuffer, info: VFileHeader, lazy: boolean=false): VBodyResource {
+	static async decode(header: VHeader, view: DataBuffer, info: VFileHeader, lazy: boolean=false): Promise<VBodyResource> {
 		const face_count = getFaceCount(info);
 		const codec = getCodec(info.format);
 
-		const mips = new Array<(VImageData|VEncodedImageData)[][][]>(info.mipmaps);
+		const mips: VImageEither[][][][] = new Array(info.mipmaps);
 		for ( let x=info.mipmaps-1; x>=0; x-- ) { // VTFs store mipmaps smallest-to-largest
-			const frames = mips[x] = new Array(info.frames);
+			
+			const frames: VImageEither[][][] = mips[x] = new Array(info.frames);
 			for ( let y=0; y<info.frames; y++ ) {
-				const faces = frames[y] = new Array(face_count);
+				
+				const faces: VImageEither[][] = frames[y] = new Array(face_count);
 				for ( let z=0; z<face_count; z++ ) {
-					const slices = faces[z] = new Array(info.slices);
+
+					const [width, height] = getMipSize(x, info.width, info.height);
+					const uncompressed_length = codec.length(width, height);
+
+					// AXC compression works on every mip/frame/face, but joins all slices together
+					let subview: DataBuffer;
+					if (info.compression_level !== 0) {
+						const compressed_length = info.compressed_lengths![x][y][z];
+						const slice_data = view.read_u8(compressed_length);
+						subview = new DataBuffer(await decompress(slice_data, info.compression_level, info.compression_method));
+					}
+					else {
+						subview = view.ref(view.pointer, uncompressed_length * info.slices);
+						view.pointer += subview.length;
+					}
+
+					const slices: VImageEither[] = faces[z] = new Array(info.slices);
 					for ( let w=0; w<info.slices; w++ ) {
-
-						const [width, height] = getMipSize(x, info.width, info.height);
-						const length = info.compression !== 0 ? info.compressed_lengths![x][y][z][w] : codec.length(width, height);
-						let data = view.read_u8(length);
-
-						if (info.compression !== 0) {
-							data = inflate(data);
-						}
-
+						const data = subview.read_u8(uncompressed_length);
 						const encoded = new VEncodedImageData( data, width, height, info.format );
 						if (lazy) slices[w] = encoded;
 						else slices[w] = codec.decode(encoded);
@@ -116,38 +114,45 @@ export class VBodyResource extends VResource {
 		return new VBodyResource(header.flags, images);
 	}
 
-	encode(info: VFileHeader): ArrayBuffer {
+	async encode(info: VFileHeader): Promise<ArrayBuffer> {
 		const face_count = getFaceCount(info);
+		const codec = getCodec(info.format);
 
 		const packed_slices: Uint8Array[] = [];
-		let length = 0;
+		let packed_length = 0;
 
-		const cl_mipmaps = info.compressed_lengths = new Array(info.mipmaps);
+		const cl_mipmaps: number[][][] = info.compressed_lengths = new Array(info.mipmaps);
 		for ( let x=info.mipmaps-1; x >= 0; x-- ) { // mipmaps
-			const cl_frames = cl_mipmaps[x] = new Array(info.frames);
-
+			
+			const cl_frames: number[][] = cl_mipmaps[x] = new Array(info.frames);
 			for ( let y=0; y < info.frames; y++ ) { // frames
-				const cl_faces = cl_frames[y] = new Array(face_count);
-
+				
+				const cl_faces: number[] = cl_frames[y] = new Array(face_count);
 				for ( let z=0; z < face_count; z++ ) { // faces
-					const cl_slices = cl_faces[z] = new Array(info.slices);
+
+					const [width, height] = getMipSize(x, info.width, info.height);
+					const uncompressed_length = codec.length(width, height);
+					const subview = new DataBuffer(uncompressed_length * info.slices);
 
 					for ( let w=0; w < info.slices; w++ ) { // slices
-						let data = this.images.getImage(x, y, z, w).encode(info.format).data;
-
-						if (info.compression !== 0) {
-							data = deflate(data, { level: <-1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>info.compression });
-						}
-
-						cl_slices[w] = data.length;
-						length += data.length;
-						packed_slices.push(data);
+						const slice = this.images.getImage(x, y, z, w).encode(info.format).data;
+						subview.write_u8(slice);
 					}
+					
+					// Compress
+					let data: Uint8Array = subview;
+					if (info.compression_level !== 0) {
+						data = await compress(data, info.compression_level, info.compression_method);
+					}
+
+					cl_faces[z] = data.length;
+					packed_slices.push(data);
+					packed_length += data.length;
 				}
 			}
 		}
 
-		const view = new DataBuffer(length);
+		const view = new DataBuffer(packed_length);
 		for (let i=0; i<packed_slices.length; i++) {
 			view.write_u8(packed_slices[i]);
 		}
@@ -172,6 +177,6 @@ export class VThumbResource extends VResource {
 
 	encode(info: VFileHeader): ArrayBuffer {
 		if (this.image.width === 0 || this.image.height === 0) return new ArrayBuffer(0);
-		return this.image.encode(VFormats.DXT1).data.buffer;
+		return this.image.encode(VFormats.DXT1).data.buffer as ArrayBuffer;
 	}
 }

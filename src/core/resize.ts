@@ -1,11 +1,4 @@
-import { VImageData, VPixelArray } from './image.js';
-import { clamp } from './utils.js';
-
-export interface VResizeOptions {
-	filter: Filter;
-	wrap_h: boolean;
-	wrap_v: boolean;
-}
+import { VImageData, VPixelArray, VPixelArrayConstructor } from './image.js';
 
 function sinc(x: number) {
 	if (x === 0) return 1.0;
@@ -13,121 +6,196 @@ function sinc(x: number) {
 	return Math.sin(a) / a;
 }
 
+// Ported from zimg
+// https://github.com/sekrit-twc/zimg/blob/6d52c3a1d63109f209af9e6ffa879f23d0ec7f02/src/zimg/resize/filter.cpp#L147
+function make_bicubic(b: number, c: number) {
+	const p0 = (   6 - b*2			) / 6;
+	const p2 = ( -18 + b*12 + c*6	) / 6;
+	const p3 = (  12 - b*9  - c*6	) / 6;
+
+	const q0 = (  b*8  + c*24	) / 6;
+	const q1 = ( -b*12 - c*48	) / 6;
+	const q2 = (  b*6  + c*30	) / 6;
+	const q3 = ( -b    - c*6	) / 6;
+
+	// console.log(`if (x < 1) return ${p0} + ${p2} * (x*x) + ${p3} * (x*x*x);
+	// if (x < 2) return ${q0} + ${q1} * x + ${q2} * (x*x) + ${q3} * (x*x*x);
+	// return 0;`);
+
+	return (x: number) => {
+		if (x < 1) return p0 + p2 * (x*x) + p3 * (x*x*x);
+		if (x < 2) return q0 + q1 * x + q2 * (x*x) + q3 * (x*x*x);
+		return 0;
+	}
+}
+
+// function stbi_cubic(x: number) {
+// 	if (x < 1) return (4 * x*x*(3*x - 6)) / 6;
+// 	if (x < 2) return (8 * x*(-12 + x*(6 - x))) / 6;
+// 	return 0;
+// }
+
 /** @see {@link Filter} */
 export const VFilters = {
-	Point:		<Filter>{ radius: 0, kernel: () => 1.0 },
-	Triangle:	<Filter>{ radius: 1, kernel: (x) => Math.max(0, 1.44 - Math.abs(x)) },
-	Box:		<Filter>{ radius: 1, kernel: () => 1.0 },
-	Lanczos:	<Filter>{ radius: 3, kernel: (x) => x < 3.0 ? sinc(x) * sinc(x / 3.0) : 0.0 },
-	NICE:		<Filter>{ radius: 3, kernel: (x) => x === 0 ? 1.0 : sinc(x) * sinc(x/3.0) },
-	// Bicubic: null,
-	// Mitchell: null,
+	/** Point filtering - Always picks the nearest pixel when resampling. */
+	Point:		<VFilter>{ radius: 0, kernel: () => 1.0 },
+	/** Triangle/bilinear filtering - Blends the four pixels surrounding a given point. */
+	Triangle:	<VFilter>{ radius: 1, kernel: x => Math.max(0, 1 - x) },
+	/** Box filtering - Evenly blends in the four closest pixels. */
+	Box:		<VFilter>{ radius: 1, kernel: x => x < 0.5 ? 1.0 : 0.0 },
+	Mitchell:	<VFilter>{ radius: 2, kernel: make_bicubic(1/3, 1/3) },
+	CatRom:		<VFilter>{ radius: 2, kernel: make_bicubic(0.0, 0.5) },
+	/** Lanczos-3 filtering - A sinc filter that acts identically to Valve's NICE filter. */
+	Lanczos3:	<VFilter>{ radius: 3, kernel: x => x < 3.0 ? sinc(x) * sinc(x / 3.0) : 0.0 },
 } as const;
 
 
-/** Basic nearest-neighbor resize implementation, separate from filter methods. */
-export function resizeNearest(image: VImageData, width: number, height: number) {
-	const src = image.convert(Float32Array).data;
-	const dest = new Float32Array(width * height * 4);
-
-	for ( let d=0; d<dest.length; d+=4 ) {
-		const pixel_dest = d / 4;
-		const dx = pixel_dest % width;
-		const dy = (pixel_dest - dx) / width;
-
-		const sx = Math.floor(dx * (image.width / width));
-		const sy = Math.floor(dy * (image.height / height));
-
-		const pixel_src = sx + sy * image.width;
-		const s = pixel_src * 4;
-
-		dest[d] = src[s];
-		dest[d+1] = src[s+1];
-		dest[d+2] = src[s+2];
-		dest[d+3] = src[s+3];
-	}
-
-	return new VImageData(dest, width, height);
-}
-
-// Some of the below was inspired by the resize-rs project.
+// Some of the below was adapted from the resize-rs project.
 // https://github.com/PistonDevelopers/resize/blob/master/src/lib.rs
 
+
 /** Defines a filter that can be used to resize images. */
-export interface Filter {
+export interface VFilter {
 	kernel: (distance: number) => number;
 	radius: number;
 }
 
-/** Computes the static kernel matrix for a given filter. */
-export function computeKernel(filter: Filter, scale_x: number, scale_y: number): VImageData {
-	const width = Math.ceil(filter.radius*2 * scale_x) + 1;
-	const height = Math.ceil(filter.radius*2 * scale_y) + 1;
-	const center_x = (width-1)/2;
-	const center_y = (height-1)/2;
-	
-	let sum = 0;
-	const kernel = new Float32Array(width * height);
-	for (let y=0; y<height; y++) {
-		for (let x=0; x<width; x++) {
-			sum += (
-				kernel[y * width + x] = filter.kernel(Math.hypot((x - center_x) / scale_x, (y - center_y) / scale_y))
-			);
-		}
-	}
-
-	if (sum) for (let i=0; i<kernel.length; i++) kernel[i] /= sum;
-	return new VImageData(kernel, width, height);
+interface CoeffsLine {
+	start: number;
+	coeffs: Float32Array;
 }
 
-/** Resizes the specified image to a new shape. Currently, upscaling will produce pixelated results. */
-export function resizeFiltered<T extends VPixelArray>(image: VImageData<T>, width: number, height: number, options: VResizeOptions): VImageData<T> {
-	const ratio_x = image.width / width;
-	const ratio_y = image.height / height;
+export class VImageScaler {
+	coeffs_w: CoeffsLine[];
+	coeffs_h: CoeffsLine[];
 
-	const kernel = computeKernel(
-		options.filter,
-		Math.max(1, ratio_x),
-		Math.max(1, ratio_y)
-	);
-
-	const start_x = -Math.round((kernel.width - 1) / 2);
-	const start_y = -Math.round((kernel.height - 1) / 2);
-
-	const get_pixel = (x: number, y: number) => {
-		x = options.wrap_h ? (x + image.width) % image.width : clamp(x, 0, image.width-1);
-		y = options.wrap_v ? (y + image.height) % image.height : clamp(y, 0, image.height-1);
-		return (Math.floor(y) * image.width + Math.floor(x)) * 4;
+	constructor(
+		public readonly src_width: number,
+		public readonly src_height: number,
+		public readonly dest_width: number,
+		public readonly dest_height: number,
+		public readonly filter: VFilter) {
+			const coeff_cache: Record<string, Float32Array> = {};
+			this.coeffs_w = this.calc_coeffs(src_width, dest_width, this.filter, coeff_cache);
+			if (src_width === src_height && dest_width === dest_height) {
+				this.coeffs_h = this.coeffs_w;
+			}
+			else {
+				this.coeffs_h = this.calc_coeffs(src_height, dest_height, this.filter, coeff_cache);
+			}
 	}
 
-	// @ts-expect-error TODO: How can we make this more typescript-y?
-	const out: T = new image.data.constructor(width * height * 4);
-	const input = image.data;
-	const scratch = new Float64Array(4);
+	calc_coeffs(size1: number, size2: number, filter: VFilter, cache: Record<string, Float32Array>) {
+		const inv_ratio = size1 / size2;
+		const filter_scale = Math.max(1, inv_ratio);
+		const filter_radius = filter_scale * filter.radius;
+		const filter_kernel = filter.kernel;
+		const coeffs: CoeffsLine[] = new Array(size2);
 
-	// Iterate over destination pixels
-	for (let dy=0; dy<height; dy++) {
-		const sy = Math.floor(dy * ratio_y);
-		for (let dx=0; dx<width; dx++) {
-			const sx = Math.floor(dx * ratio_x);
+		for (let x2=0; x2<size2; x2++) {
+			// The (float) center of the filter in the src image
+			// The rest of this code assumes the pixels' "center" is the left side
+			const center_f = (x2 + 0.5) * inv_ratio;
+			
+			// The pixel indices where the window starts/stops in the src image
+			const start = Math.max(0, Math.floor(center_f - filter_radius));
+			const end = Math.max(start+1, Math.min(size1, Math.ceil(center_f + filter_radius)));
+			const length = end - start;
+			if (length <= 0) throw `Got length of ${length} with filter of radius ${filter.radius} at position ${center_f}`;
 
-			const dest = (dy * width + dx) * 4;
-			scratch.fill(0);
+			const offset_from_center = center_f - start;
+			const cache_key = filter_scale + ',' + length.toString(36) + ',' + offset_from_center;
 
-			for (let ky=0; ky<kernel.height; ky++) {
-				for (let kx=0; kx<kernel.width; kx++) {
-					const effect = kernel.data[ky * kernel.width + kx];
-					const src = get_pixel(sx + start_x + kx, sy + start_y + ky);
-					scratch[0] += input[src] * effect,
-					scratch[1] += input[src+1] * effect,
-					scratch[2] += input[src+2] * effect,
-					scratch[3] += input[src+3] * effect;
-				}
+			// Reuse the same coeffs whenever possible for perf!!
+			if (cache_key in cache) {
+				coeffs[x2] = { start, coeffs: cache[cache_key] };
+				continue;
 			}
 
-			out.set(scratch, dest);
+			const pixel_coeffs = new Float32Array(length);
+			cache[cache_key] = pixel_coeffs;
+			coeffs[x2] = { start, coeffs: pixel_coeffs };
+
+			let pixel_coeffs_sum = 0;
+			for (let i=0; i<length; i++) {
+				const distance = Math.abs(i - offset_from_center);
+				const influence = filter_kernel(distance / filter_scale);
+				pixel_coeffs[i] = influence;
+				pixel_coeffs_sum += influence;
+			}
+
+			for (let i=0; i<length; i++)
+				pixel_coeffs[i] /= pixel_coeffs_sum;
 		}
+
+		return coeffs;
 	}
 
-	return new VImageData(out, width, height);
+	resize<T extends VPixelArray>(src: VImageData<T>, dst: VImageData<T>): VImageData<T> {
+		if (src.width !== this.src_width || src.height !== this.src_height)
+			throw Error(`VImageScaler.resize input does not match expected dimensions! (expected ${this.src_width}x${this.src_height} but got ${src.width}x${src.height})`);
+		if (dst.width !== this.dest_width || dst.height !== this.dest_height)
+			throw Error(`VImageScaler.resize output does not match expected dimensions! (expected ${this.dest_width}x${this.dest_height} but got ${dst.width}x${dst.height})`);
+		if (dst.data.length !== this.dest_width * this.dest_height * 4)
+			throw Error(`VImageScaler.resize output data length should be ${this.dest_width * this.dest_height * 4}, got ${dst.data.length} instead!`);
+
+		// Used for accumulating since Uint8Arrays always round down (which means a totally black image)
+		let tmp_r = 0.0, tmp_g = 0.0, tmp_b = 0.0, tmp_a = 0.0;
+
+		const tmp0 = src.data;
+		const tmp1 = src.ofSameType(this.dest_width, this.dest_height);
+
+		// Resize from (w1, h1) to (w2, h1)
+		for (let y=0; y<this.src_height; y++) {
+			for (let x=0; x<this.dest_width; x++) {
+				const i = (y * this.dest_width + x) * 4;
+
+				tmp_r = 0, tmp_g = 0, tmp_b = 0, tmp_a = 0;
+
+				const { coeffs, start: coeffs_start } = this.coeffs_w[x];
+				for (let c=0; c<coeffs.length; c++) {
+					const coeff_i = (y * this.src_width + (coeffs_start + c)) * 4;
+					const coeff = coeffs[c];
+					tmp_r += tmp0[coeff_i] * coeff;
+					tmp_g += tmp0[coeff_i+1] * coeff;
+					tmp_b += tmp0[coeff_i+2] * coeff;
+					tmp_a += tmp0[coeff_i+3] * coeff;
+				}
+
+				tmp1[i] = tmp_r,
+				tmp1[i+1] = tmp_g,
+				tmp1[i+2] = tmp_b,
+				tmp1[i+3] = tmp_a;
+			}
+		}
+
+		// const tmp2 = new pixel_array(this.dest_width * this.src_height);
+		const tmp2 = dst.data;
+
+		// Resize from (w2, h1) to (w2, h2)
+		for (let y=0; y<this.dest_height; y++) {
+			for (let x=0; x<this.dest_width; x++) {
+				const i = (y * this.dest_width + x) * 4;
+
+				tmp_r = 0, tmp_g = 0, tmp_b = 0, tmp_a = 0;
+
+				const { coeffs, start: coeffs_start } = this.coeffs_h[y];
+				for (let c=0; c<coeffs.length; c++) {
+					const coeff_i = ((coeffs_start + c) * this.dest_width + x) * 4;
+					const coeff = coeffs[c];
+					tmp_r += tmp1[coeff_i] * coeff;
+					tmp_g += tmp1[coeff_i+1] * coeff;
+					tmp_b += tmp1[coeff_i+2] * coeff;
+					tmp_a += tmp1[coeff_i+3] * coeff;
+				}
+
+				tmp2[i] = tmp_r,
+				tmp2[i+1] = tmp_g,
+				tmp2[i+2] = tmp_b,
+				tmp2[i+3] = tmp_a;
+			}
+		}
+
+		return dst;
+	}
 }

@@ -30,7 +30,7 @@ export class DataBuffer extends Uint8Array {
 
 	/** Creates a new DataBuffer within the specified bounds. */
 	ref(start=0, length: number=this.length - start): DataBuffer {
-		const buf = new DataBuffer(this.buffer, start, length);
+		const buf = new DataBuffer(this.buffer, start + this.byteOffset, length);
 		buf.set_endian(this.little);
 		return buf;
 	}

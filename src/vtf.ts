@@ -1,10 +1,10 @@
 import type { VDataProvider } from './core/providers.js';
-import { VFormats } from './core/enums.js';
+import { VCompressionMethods, VFormats } from './core/enums.js';
 import { VResource } from './core/resources.js';
 import { getThumbMip } from './core/utils.js';
 
 export interface VConstructorOptions {
-	version?: 0|1|2|3|4|5|6;
+	version?: number;
 	format?: VFormats;
 	flags?: number;
 	meta?: VResource[];
@@ -12,12 +12,13 @@ export interface VConstructorOptions {
 	reflectivity?: Float32Array;
 	first_frame?: number;
 	bump_scale?: number;
-	compression?: number;
+	compression_level?: number;
+	compression_method?: VCompressionMethods;
 }
 
 export class Vtf {
 	public data: VDataProvider;
-	public version: 0|1|2|3|4|5|6;
+	public version: number;
 	public format: VFormats;
 	public flags: number;
 	public meta: VResource[];
@@ -25,7 +26,8 @@ export class Vtf {
 	public reflectivity: Float32Array;
 	public first_frame: number;
 	public bump_scale: number;
-	public compression: number;
+	public compression_level: number;
+	public compression_method: VCompressionMethods;
 
 	constructor(data: VDataProvider, options?: VConstructorOptions) {
 		this.data = data;
@@ -52,23 +54,24 @@ export class Vtf {
 		
 		this.first_frame = options?.first_frame ?? 0;
 		this.bump_scale = options?.bump_scale ?? 1.0;
-		this.compression = options?.compression ?? 0;
+		this.compression_level = options?.compression_level ?? 0;
+		this.compression_method = options?.compression_method ?? VCompressionMethods.Deflate;
 	}
 
-	encode(): ArrayBuffer {
+	encode(): Promise<ArrayBuffer> {
 		throw Error('Vtf.encode: Implementation override not present!');
 	}
 
-	static decode(data: ArrayBuffer): Vtf;
-	static decode(data: ArrayBuffer, header_only: false, lazy_decode?: boolean): Vtf;
-	static decode(data: ArrayBuffer, header_only: true, lazy_decode?: boolean): VFileHeader;
-	static decode(data: ArrayBuffer, header_only: boolean=false, lazy_decode: boolean=false): Vtf|VFileHeader {
+	static decode(data: ArrayBuffer): Promise<Vtf>;
+	static decode(data: ArrayBuffer, header_only: false, lazy_decode?: boolean): Promise<Vtf>;
+	static decode(data: ArrayBuffer, header_only: true, lazy_decode?: boolean): Promise<VFileHeader>;
+	static decode(data: ArrayBuffer, header_only: boolean=false, lazy_decode: boolean=false): Promise<Vtf|VFileHeader> {
 		throw Error('Vtf.decode: Implementation override not present!');
 	}
 }
 
 export class VFileHeader {
-	version: 0|1|2|3|4|5|6;
+	version: number;
 	width: number;
 	height: number;
 	flags: number;
@@ -83,8 +86,9 @@ export class VFileHeader {
 	thumb_height: number;
 	slices: number;
 
-	compression: number;
-	compressed_lengths?: number[][][][];
+	compression_method: VCompressionMethods;
+	compression_level: number;
+	compressed_lengths?: number[][][];
 
 	static fromVtf(vtf: Vtf): VFileHeader {
 		const header = new VFileHeader();
@@ -98,7 +102,8 @@ export class VFileHeader {
 		header.format = vtf.format;
 		header.mipmaps = vtf.data.mipmapCount();
 		header.slices = vtf.data.sliceCount();
-		header.compression = vtf.compression;
+		header.compression_method = vtf.compression_method;
+		header.compression_level = vtf.compression_level;
 		return header;
 	}
 }

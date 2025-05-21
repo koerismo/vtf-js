@@ -2,7 +2,7 @@
 *A javascript IO library for the Valve Texture Format.*
 
 ## Overview
-`vtf-js` is a canvas-independent library for reading and authoring Vtfs. The library supports encoding and decoding VTF versions 7.1 - 7.6, including Strata-format compressed Vtfs. Mipmap generation is automated by default, however interfaces for manually specifying image data for each mipmap are also available (see `VDataCollection`).
+`vtf-js` is a canvas-independent library for reading and authoring Vtfs. The library supports encoding and decoding VTF versions 7.1 - 7.6, including Strata-format compressed Vtfs when `fflate` is installed. Mipmap generation is automated by default, however interfaces for manually specifying image data for each mipmap are also available (see `VDataCollection`).
 
 The following formats are supported by default.
 
@@ -29,6 +29,24 @@ The following formats are supported by default.
 - `RGBA16161616F` [^2]
 - `RGBA32323232F`
 
+## Additional Setup
+
+While `vtf-js` should work mostly out of the box, there are several things that this package needs help with - DXT encoding/decoding, and Strata Deflate/ZSTD compression.
+
+Support for Deflate decompression is provided by default using the standard [Compression Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Compression_Streams_API), however this compression interface is limited in functionality, and a compression level of `-1` is enforced when encoding due to technical limitations.
+
+To add external compression support, import one of `vtf-js/addons/compress/node` or `vtf-js/addons/compress/fflate` to choose a compression interface, or manually register compression/decompression methods by calling `setCompressionMethod` from `vtf-js/utils`.
+
+```ts
+// import { ... } from 'vtf-js';
+
+// For node (using built-in zlib bindings)
+// import 'vtf-js/addons/compress/node';
+
+// For web (using fflate)
+import 'vtf-js/addons/compress/fflate';
+```
+
 ## Examples
 
 ### Create from image data
@@ -48,7 +66,7 @@ import { Vtf } from 'vtf-js';
 
 // ...
 
-const vtf = Vtf.decode(inbuffer);
+const vtf = await Vtf.decode(inbuffer);
 const slice = vtf.data.getImage(
 	0,  // Mipmap
 	0,  // Frame
@@ -68,11 +86,11 @@ import { Vtf, VFormats } from 'vtf-js';
 
 // ...
 
-const vtf = Vtf.decode(inbuffer);
+const vtf = await Vtf.decode(inbuffer);
 vtf.format = VFormats.RGB565;
 vtf.version = 6;
-vtf.compression = 4;
-const out = vtf.encode();
+vtf.compression_level = 4;
+const out = await vtf.encode();
 ```
 
 [^1]: As the Vtf format does not specify a singular method of defining palettes in the file, vtf-js interprets P8 images as a single-channel greyscale image.

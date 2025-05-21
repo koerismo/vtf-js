@@ -1,4 +1,6 @@
 import { Vtf, VDataCollection, VImageData, VFormats } from '../dist/index.js';
+import '../dist/addons/compress/node.js';
+
 import { deepStrictEqual, strictEqual } from 'node:assert/strict';
 
 const image_big = new VImageData(new Uint8Array(4 * 4 * 4).fill(255), 4, 4);
@@ -30,18 +32,18 @@ describe('Vtf', () => {
 	for (let i=0; i<data.length; i++) data[i] = Math.random() * 255; 
 	const image = new VImageData(data, width, height);
 
-	for (const [version, compression] of versions) {
-		it(`Encodes and decodes reliably: v${version} (compression ${compression})`, () => {
+	for (const [version, compression_level] of versions) {
+		it(`Encodes and decodes reliably: v${version} (compression ${compression_level})`, async () => {
 			const vtf = new Vtf(new VDataCollection([[[[image]]]]), {
 				version,
-				compression,
+				compression_level,
 				format: VFormats.RGBA8888
 			});
 
-			const encoded = vtf.encode();
-			const decoded = Vtf.decode(encoded, false, false);
+			const encoded = await vtf.encode();
+			const decoded = await Vtf.decode(encoded, false, false);
 			const found = decoded.data.getImage(0, 0, 0, 0);
-			deepStrictEqual(image, found, `Image match failed on v${version} (compression ${compression})`);
+			deepStrictEqual(image, found, `Image match failed on v${version} (compression ${compression_level})`);
 		});
 	}
 });

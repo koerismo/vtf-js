@@ -9,7 +9,8 @@
 	"exports": {
 		".": "./dist/index.js",
 		"./utils": "./dist/core/utils.js",
-		"./resources": "./dist/core/resources.js"
+		"./resources": "./dist/core/resources.js",
+		"./addons/*": "./dist/addons/**/*.js"
 	},
 	"scripts": {
 		"test": "mocha",
@@ -30,17 +31,17 @@
 		"url": "https://github.com/koerismo/vtf-js/issues"
 	},
 	"devDependencies": {
-		"@types/node": "^22.10.2",
-		"@types/pako": "^2.0.3",
-		"@typescript-eslint/eslint-plugin": "^5.62.0",
-		"@typescript-eslint/parser": "^5.62.0",
-		"eslint": "^8.57.1",
-		"mocha": "^10.8.2",
-		"sharp": "^0.33.5",
-		"typescript": "^5.7.2"
+		"@types/mocha": "^10.0.10",
+		"@types/node": "^22.15.19",
+		"@typescript-eslint/eslint-plugin": "^8.32.1",
+		"@typescript-eslint/parser": "^8.32.1",
+		"eslint": "^9.27.0",
+		"mocha": "^11.4.0",
+		"sharp": "^0.34.1",
+		"typescript": "^5.8.3"
 	},
 	"optionalDependencies": {
 		"dxt-js": "^0.0.3",
-		"pako": "^2.1.0"
+		"fflate": "^0.8.2"
 	}
 }

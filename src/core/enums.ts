@@ -78,3 +78,8 @@ export enum VFlags {
 	DEPRECATED_SpecVar_Red						= 0x40000000,
 	DEPRECATED_SpecVar_Alpha					= 0x80000000,
 }
+
+export enum VCompressionMethods {
+	Deflate = 8,
+	ZSTD = 93,
+}

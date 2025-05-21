@@ -1,10 +1,10 @@
 import { VFormats } from './enums.js';
-import { VFilters, VResizeOptions, resizeFiltered, resizeNearest } from './resize.js';
+import { VFilter, VFilters, VImageScaler } from './resize.js';
 import { clamp } from './utils.js';
 
 /** An array of decoded RGBA pixels. */
-export type VPixelArray = Uint8Array|Uint16Array|Uint32Array|Float32Array|Float16Array;
-export type VPixelArrayConstructor = Uint8ArrayConstructor|Uint16ArrayConstructor|Uint32ArrayConstructor|Float32ArrayConstructor|Float16ArrayConstructor;
+export type VPixelArray = Uint8Array|Uint16Array|Uint32Array|Float32Array|Float64Array|Float16Array;
+export type VPixelArrayConstructor = Uint8ArrayConstructor|Uint16ArrayConstructor|Uint32ArrayConstructor|Float32ArrayConstructor|Float64ArrayConstructor|Float16ArrayConstructor;
 
 /** An object that defines an image encoder/decoder for a given format. */
 export interface VCodec {
@@ -84,15 +84,24 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		return out;
 	}
 
-	/** Returns a resampled copy of this image with the given dimensions. */
-	resize(width: number, height: number, options?: Partial<VResizeOptions>): VImageData {
-		if (width > this.width || height > this.height) throw Error(`VImageData.resize: Image upsampling is not supported at this time!`);
+	/**
+	 * Returns a resampled copy of this image with the given dimensions.
+	 * ### If you are batch-resizing images, create and reuse a VImageScaler for better performance!
+	 */
+	resize(width: number, height: number, options?: Partial<{ filter: VFilter }>): VImageData<D> {
 		options ??= {};
 		options.filter ??= VFilters.Triangle;
 		
-		// Performance isn't ideal on the current filter system. For now, override Point with alternative nearest implementation.
-		if (options.filter === VFilters.Point) return resizeNearest(this, width, height);
-		return resizeFiltered(this, width, height, options as VResizeOptions);
+		const scaler = new VImageScaler(this.width, this.height, width, height, options.filter);
+		const out_data = new (<VPixelArrayConstructor>this.data.constructor)(width * height * 4) as D;
+		const out = new VImageData(out_data, width, height);
+
+		return scaler.resize(this, out);
+	}
+
+	ofSameType(width: number, height: number): VImageData<D> {
+		const data = new (<VPixelArrayConstructor>this.data.constructor)(width * height * 4) as D;
+		return new VImageData(data, width, height);
 	}
 }
 
