@@ -102,8 +102,9 @@ export class VMipmapProvider implements VDataProvider {
 		if (size_matches) return original;
 
 		const scaler = (this.__scalers[mip] ??= new VImageScaler(original.width, original.height, width, height, this.__filter));
-		const outImage = original.ofSameType(width, height);
-		return scaler.resize(original, outImage);
+		const out_data = new (original.getDataConstructor())(width * height * 4);
+		const out_image = new VImageData(out_data, width, height);
+		return scaler.resize(original, out_image);
 	}
 
 	getSize(mip: number=0, frame: number=0, face: number=0, slice: number=0): [number, number] {

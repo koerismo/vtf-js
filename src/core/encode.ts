@@ -1,7 +1,7 @@
+import { VFileHeader, Vtf } from '../vtf.js';
 import { DataBuffer } from './buffer.js';
 import { VFormats } from './enums.js';
-import { VFileHeader, Vtf } from '../vtf.js';
-import { getFaceCount, getHeaderLength, getMipSize, getThumbMip } from './utils.js';
+import { getFaceCount, getHeaderLength, getThumbMip } from './utils.js';
 import { VBodyResource, VHeaderTags, VResource, VThumbResource } from './resources.js';
 import { VImageData } from './image.js';
 

@@ -1,4 +1,4 @@
-import { VImageData, VPixelArray, VPixelArrayConstructor } from './image.js';
+import { VImageData, VPixelArray } from './image.js';
 
 function sinc(x: number) {
 	if (x === 0) return 1.0;
@@ -35,6 +35,11 @@ function make_bicubic(b: number, c: number) {
 // 	return 0;
 // }
 
+
+// Some of the below was adapted from the resize-rs project.
+// https://github.com/PistonDevelopers/resize/blob/master/src/lib.rs
+
+
 /** @see {@link Filter} */
 export const VFilters = {
 	/** Point filtering - Always picks the nearest pixel when resampling. */
@@ -48,10 +53,6 @@ export const VFilters = {
 	/** Lanczos-3 filtering - A sinc filter that acts identically to Valve's NICE filter. */
 	Lanczos3:	<VFilter>{ radius: 3, kernel: x => x < 3.0 ? sinc(x) * sinc(x / 3.0) : 0.0 },
 } as const;
-
-
-// Some of the below was adapted from the resize-rs project.
-// https://github.com/PistonDevelopers/resize/blob/master/src/lib.rs
 
 
 /** Defines a filter that can be used to resize images. */
@@ -85,7 +86,7 @@ export class VImageScaler {
 			}
 	}
 
-	calc_coeffs(size1: number, size2: number, filter: VFilter, cache: Record<string, Float32Array>) {
+	protected calc_coeffs(size1: number, size2: number, filter: VFilter, cache: Record<string, Float32Array>) {
 		const inv_ratio = size1 / size2;
 		const filter_scale = Math.max(1, inv_ratio);
 		const filter_radius = filter_scale * filter.radius;
@@ -143,14 +144,17 @@ export class VImageScaler {
 		let tmp_r = 0.0, tmp_g = 0.0, tmp_b = 0.0, tmp_a = 0.0;
 
 		const tmp0 = src.data;
-		const tmp1 = src.ofSameType(this.dest_width, this.dest_height);
+		const tmp1 = new (src.getDataConstructor())(this.dest_width * this.dest_height * 4);
 
 		// Resize from (w1, h1) to (w2, h1)
 		for (let y=0; y<this.src_height; y++) {
 			for (let x=0; x<this.dest_width; x++) {
 				const i = (y * this.dest_width + x) * 4;
 
-				tmp_r = 0, tmp_g = 0, tmp_b = 0, tmp_a = 0;
+				tmp_r = 0;
+				tmp_g = 0;
+				tmp_b = 0;
+				tmp_a = 0;
 
 				const { coeffs, start: coeffs_start } = this.coeffs_w[x];
 				for (let c=0; c<coeffs.length; c++) {
@@ -162,9 +166,9 @@ export class VImageScaler {
 					tmp_a += tmp0[coeff_i+3] * coeff;
 				}
 
-				tmp1[i] = tmp_r,
-				tmp1[i+1] = tmp_g,
-				tmp1[i+2] = tmp_b,
+				tmp1[i] = tmp_r;
+				tmp1[i+1] = tmp_g;
+				tmp1[i+2] = tmp_b;
 				tmp1[i+3] = tmp_a;
 			}
 		}
@@ -177,7 +181,10 @@ export class VImageScaler {
 			for (let x=0; x<this.dest_width; x++) {
 				const i = (y * this.dest_width + x) * 4;
 
-				tmp_r = 0, tmp_g = 0, tmp_b = 0, tmp_a = 0;
+				tmp_r = 0;
+				tmp_g = 0;
+				tmp_b = 0;
+				tmp_a = 0;
 
 				const { coeffs, start: coeffs_start } = this.coeffs_h[y];
 				for (let c=0; c<coeffs.length; c++) {
@@ -189,9 +196,9 @@ export class VImageScaler {
 					tmp_a += tmp1[coeff_i+3] * coeff;
 				}
 
-				tmp2[i] = tmp_r,
-				tmp2[i+1] = tmp_g,
-				tmp2[i+2] = tmp_b,
+				tmp2[i] = tmp_r;
+				tmp2[i+1] = tmp_g;
+				tmp2[i+2] = tmp_b;
 				tmp2[i+3] = tmp_a;
 			}
 		}

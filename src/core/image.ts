@@ -4,7 +4,14 @@ import { clamp } from './utils.js';
 
 /** An array of decoded RGBA pixels. */
 export type VPixelArray = Uint8Array|Uint16Array|Uint32Array|Float32Array|Float64Array|Float16Array;
-export type VPixelArrayConstructor = Uint8ArrayConstructor|Uint16ArrayConstructor|Uint32ArrayConstructor|Float32ArrayConstructor|Float64ArrayConstructor|Float16ArrayConstructor;
+
+/** A generic constructor for VPixelArray types. */
+export interface VPixelArrayConstructor<T extends VPixelArray = VPixelArray> {
+	new (length?: number): T;
+    new (array: ArrayLike<number> | Iterable<number>): T;
+    new (buffer: ArrayBufferLike, byteOffset?: number, length?: number): T;
+	readonly BYTES_PER_ELEMENT: number;
+}
 
 /** An object that defines an image encoder/decoder for a given format. */
 export interface VCodec {
@@ -50,10 +57,10 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 	 * If `do_clamp` is set to true, the data will be clamped between 0 and the array's maximum value.
 	 * @example const converted: VImageData<Float32Array> = image.convert(Float32Array);
 	 */
-	convert<T extends VPixelArrayConstructor>(type: T, do_clamp=true): VImageData<InstanceType<T>> {
-		if (this.data instanceof type.constructor) return <VImageData<InstanceType<T>>>(this as unknown);
+	convert<T extends VPixelArray = VPixelArray>(type: VPixelArrayConstructor<T>, do_clamp=true): VImageData<T> {
+		if (this.data instanceof type) return <VImageData<T>><unknown>this;
 
-		const out = new type(this.data.length) as InstanceType<T>;
+		const out = new type(this.data.length) as T;
 		const is_input_int  = !(this.data instanceof Float32Array || this.data instanceof Float64Array || (HAS_FLOAT16 && this.data instanceof Float16Array));
 		const is_output_int = !(      out instanceof Float32Array ||       out instanceof Float64Array || (HAS_FLOAT16 &&       out instanceof Float16Array));
 
@@ -99,13 +106,13 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		return scaler.resize(this, out);
 	}
 
-	ofSameType(width: number, height: number): VImageData<D> {
-		const data = new (<VPixelArrayConstructor>this.data.constructor)(width * height * 4) as D;
-		return new VImageData(data, width, height);
+	/** Retrieves the constructor of this image's data with a type-safe wrapper. */
+	getDataConstructor(): VPixelArrayConstructor<D> {
+		return <VPixelArrayConstructor<D>> this.data.constructor;
 	}
 }
 
-/** VTF-encoded image data. */
+/** Vtf-encoded image data. */
 export class VEncodedImageData {
 	readonly isEncoded = true as const;
 

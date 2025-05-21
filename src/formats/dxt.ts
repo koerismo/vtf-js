@@ -17,9 +17,9 @@ function padImage(image: VImageData<Uint8Array>): VImageData<Uint8Array> {
 		for (let x=0; x<width; x++) {
 			const ifrom = 4 * ((y >= image.height ? image.height-1 : y) * image.width + (x >= image.width ? image.width-1 : x));
 			const ito = 4 * (y * width + x);
-			out.data[ito] = image.data[ifrom],
-			out.data[ito+1] = image.data[ifrom+1],
-			out.data[ito+2] = image.data[ifrom+2],
+			out.data[ito] = image.data[ifrom];
+			out.data[ito+1] = image.data[ifrom+1];
+			out.data[ito+2] = image.data[ifrom+2];
 			out.data[ito+3] = image.data[ifrom+3];
 		}
 	}
@@ -38,9 +38,9 @@ function cropImage(image: VImageData<Uint8Array>): VImageData<Uint8Array> {
 		for (let x=0; x<image.width; x++) {
 			const ito = 4 * (y * image.width + x);
 			const ifrom = 4 * (y * width + x);
-			out.data[ito] = image.data[ifrom],
-			out.data[ito+1] = image.data[ifrom+1],
-			out.data[ito+2] = image.data[ifrom+2],
+			out.data[ito] = image.data[ifrom];
+			out.data[ito+1] = image.data[ifrom+1];
+			out.data[ito+2] = image.data[ifrom+2];
 			out.data[ito+3] = image.data[ifrom+3];
 		}
 	}

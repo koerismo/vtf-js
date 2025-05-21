@@ -37,20 +37,25 @@ export function mod(n: number, d: number): number {
 	return ((n % d) + d) % d;
 }
 
-export type CompressFunction = (data: Uint8Array, level: number, method: VCompressionMethods) => Promise<Uint8Array> | Uint8Array;
+/** Defines a data compression function. */
+export type CompressFunction = (data: Uint8Array, method: VCompressionMethods, level: number) => Promise<Uint8Array> | Uint8Array;
+/** Defines a data decompression function. */
+export type DecompressFunction = (data: Uint8Array, method: VCompressionMethods, level?: number) => Promise<Uint8Array> | Uint8Array;
 
+/** Sets the compression/decompression methods used when encoding/decoding Strata-compressed Vtfs. */
 export function setCompressionMethod(
 	fn_compress: CompressFunction,
-	fn_decompress: CompressFunction) {
+	fn_decompress: DecompressFunction) {
 	compress = fn_compress;
 	decompress = fn_decompress;
 }
 
 // Use native APIs by default
 
-export let compress: CompressFunction = async (data, level, method) => {
+/** Compresses the specified Uint8Array with the given options and returns the result. */
+export let compress: CompressFunction = async (data, method, level) => {
 	if (level !== -1)
-		throw Error('vtf-js: Default compression backend only supports compression level `-1`. Import a `vtf-js/addons/compress/*` module or call `setCompressionMethod` to better support encoding Strata-compressed VTFs!');
+		throw Error('vtf-js: Default compression backend only supports compression level `-1`. Import a `vtf-js/addons/compress/*` module or call `setCompressionMethod` to better support encoding Strata-compressed Vtfs!');
 	if (method !== VCompressionMethods.Deflate)
 		throw Error(`vtf-js: Default compression backend only supports Deflate compression!`);
 	
@@ -61,7 +66,8 @@ export let compress: CompressFunction = async (data, level, method) => {
 	return new Uint8Array(await n.arrayBuffer());
 }
 
-export let decompress: CompressFunction = async (data, _level, method) => {
+/** Decompresses the specified Uint8Array with the given options and returns the result. `level` is not currently used, but is included in the signature for future compatibility. */
+export let decompress: DecompressFunction = async (data, method, _level) => {
 	if (method !== VCompressionMethods.Deflate)
 		throw Error(`vtf-js: Default decompression backend only supports Deflate decompression!`);
 	const inStream = new Blob([data]).stream();

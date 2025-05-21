@@ -278,8 +278,6 @@ export class DataBuffer extends Uint8Array {
 		return;
 	}
 
-	read_str(): string;
-	read_str(length: number): string;
 	read_str(length?: number): string {
 		const start = this.pointer;
 		let end = start + <number>length;

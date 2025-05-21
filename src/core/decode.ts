@@ -1,9 +1,11 @@
-import { getHeaderLength, getFaceCount } from './utils.js';
 import { Vtf, VFileHeader } from '../vtf.js';
 import { DataBuffer } from './buffer.js';
 import { VCompressionMethods, VFormats } from './enums.js';
-import { getCodec } from './image.js';
+import { getHeaderLength, getFaceCount } from './utils.js';
 import { VResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags } from './resources.js';
+import { getCodec } from './image.js';
+
+const NO_DATA = 0x2;
 
 function read_format(id: number) {
 	if (VFormats[id] == undefined) throw Error(`read_format: Encountered invalid format (id=${id}) in header!`);
@@ -13,18 +15,18 @@ function read_format(id: number) {
 function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boolean {
 	const face_count = getFaceCount(info);
 
-	if (header.flags & 0x2) {
+	if (header.flags & NO_DATA) {
 		if (header.start !== 0) throw Error(`decode_axc: Expected inline compression value of 0. Got ${header.start} instead!`);
 		info.compression_level = 0;
 		return false;
 	}
 
 	const view = buffer.ref(header.start);
-	const length = view.read_u32();
+	view.pad(0x4); // const length = view.read_u32();
 	info.compression_level = view.read_i16();
 	info.compression_method = view.read_i16();
 
-	// Legacy AXC v1 support - always use Deflate
+	// Legacy AXC v1 support - default to Deflate
 	if (!info.compression_method) {
 		info.compression_method = VCompressionMethods.Deflate;
 	}
@@ -143,11 +145,12 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_
 		const header = headers[i];
 
 		let data: DataBuffer|undefined;
-		if (!(header.flags & 0x2))
+		if (!(header.flags & NO_DATA))
 			data = view.ref(header.start, header.end - header.start);
 
 		if (header.tag === VHeaderTags.TAG_BODY) {
-			body = await VBodyResource.decode(header, data!, info);
+			if (!data) throw Error('Vtf.decode: Body resource has no data! (0x2 flag set)');
+			body = await VBodyResource.decode(header, data, info);
 			continue;
 		}
 

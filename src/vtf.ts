@@ -71,23 +71,23 @@ export class Vtf {
 }
 
 export class VFileHeader {
-	version: number;
-	width: number;
-	height: number;
-	flags: number;
-	frames: number;
-	first_frame: number;
-	reflectivity: Float32Array;
-	bump_scale: number;
-	format: VFormats;
-	mipmaps: number;
-	thumb_format: VFormats;
-	thumb_width: number;
-	thumb_height: number;
-	slices: number;
+	version!: number;
+	width!: number;
+	height!: number;
+	flags!: number;
+	frames!: number;
+	first_frame!: number;
+	reflectivity!: Float32Array;
+	bump_scale!: number;
+	format!: VFormats;
+	mipmaps!: number;
+	thumb_format!: VFormats;
+	thumb_width!: number;
+	thumb_height!: number;
+	slices!: number;
 
-	compression_method: VCompressionMethods;
-	compression_level: number;
+	compression_method!: VCompressionMethods;
+	compression_level!: number;
 	compressed_lengths?: number[][][];
 
 	static fromVtf(vtf: Vtf): VFileHeader {

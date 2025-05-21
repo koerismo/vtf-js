@@ -21,7 +21,7 @@ export class VHeader {
 	readonly tag: string;
 	readonly flags: number;
 	readonly start: number;
-	end: number;
+	end!: number;
 
 	constructor(tag: string, flags: number, start: number) {
 		this.tag = tag;
@@ -76,7 +76,7 @@ export class VBodyResource extends VResource {
 		const codec = getCodec(info.format);
 
 		const mips: VImageEither[][][][] = new Array(info.mipmaps);
-		for ( let x=info.mipmaps-1; x>=0; x-- ) { // VTFs store mipmaps smallest-to-largest
+		for ( let x=info.mipmaps-1; x>=0; x-- ) { // Vtfs store mipmaps smallest-to-largest
 			
 			const frames: VImageEither[][][] = mips[x] = new Array(info.frames);
 			for ( let y=0; y<info.frames; y++ ) {
@@ -92,7 +92,7 @@ export class VBodyResource extends VResource {
 					if (info.compression_level !== 0) {
 						const compressed_length = info.compressed_lengths![x][y][z];
 						const slice_data = view.read_u8(compressed_length);
-						subview = new DataBuffer(await decompress(slice_data, info.compression_level, info.compression_method));
+						subview = new DataBuffer(await decompress(slice_data, info.compression_method, info.compression_level));
 					}
 					else {
 						subview = view.ref(view.pointer, uncompressed_length * info.slices);
@@ -142,7 +142,7 @@ export class VBodyResource extends VResource {
 					// Compress
 					let data: Uint8Array = subview;
 					if (info.compression_level !== 0) {
-						data = await compress(data, info.compression_level, info.compression_method);
+						data = await compress(data, info.compression_method, info.compression_level);
 					}
 
 					cl_faces[z] = data.length;
