@@ -10,7 +10,7 @@
 		".": "./dist/index.js",
 		"./utils": "./dist/core/utils.js",
 		"./resources": "./dist/core/resources.js",
-		"./addons/*": "./dist/addons/**/*.js"
+		"./addons/*": "./dist/addons/*.js"
 	},
 	"scripts": {
 		"test": "mocha",
