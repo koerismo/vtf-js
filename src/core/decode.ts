@@ -2,7 +2,7 @@ import { Vtf, VFileHeader } from '../vtf.js';
 import { DataBuffer } from './buffer.js';
 import { VCompressionMethods, VFormats } from './enums.js';
 import { getHeaderLength, getFaceCount } from './utils.js';
-import { VResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags } from './resources.js';
+import { VBaseResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags, type VResource } from './resources.js';
 import { getCodec } from './image.js';
 
 const NO_DATA = 0x2;
@@ -96,7 +96,7 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_
 
 	let body: VBodyResource|undefined;
 	const headers: VHeader[] = [];
-	const meta: VResourceInstance[] = [];
+	const meta: VResource[] = [];
 
 	let resource_count = 0;
 	if (info.version >= 3) {
@@ -146,11 +146,11 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_
 
 		let data: DataBuffer|undefined;
 		if (!(header.flags & NO_DATA))
-			data = view.ref(header.start, header.end - header.start);
+			data = view.ref(header.start, header.end! - header.start);
 
 		if (header.tag === VHeaderTags.TAG_BODY) {
 			if (!data) throw Error('Vtf.decode: Body resource has no data! (0x2 flag set)');
-			body = await VBodyResource.decode(header, data, info);
+			body = await VBodyResource.decode(header, data, info, lazy_decode);
 			continue;
 		}
 

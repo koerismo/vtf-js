@@ -2,7 +2,7 @@ import { VFileHeader, Vtf } from '../vtf.js';
 import { DataBuffer } from './buffer.js';
 import { VFormats } from './enums.js';
 import { getFaceCount, getHeaderLength, getThumbMip } from './utils.js';
-import { VBodyResource, VHeaderTags, VResource, VThumbResource } from './resources.js';
+import { VBodyResource, VHeaderTags, VBaseResource, VThumbResource, VResource } from './resources.js';
 import { VImageData } from './image.js';
 
 function write_format(id: number) {
@@ -10,7 +10,7 @@ function write_format(id: number) {
 	return id;
 }
 
-function write_header(buf: DataBuffer, res: VBaseResource, pos: number) {
+function write_header(buf: DataBuffer, res: VResource, pos: number) {
 	buf.write_str(res.tag, 3);
 	buf.write_u8(res.flags);
 	buf.write_u32(pos);

@@ -5,8 +5,8 @@ import { VFormats } from './enums.js';
 import { VDataCollection, VDataProvider } from './providers.js';
 import { getFaceCount, getMipSize, compress, decompress } from './utils.js';
 
-export const VResourceTypes: {[key: string]: VResource} = {};
-export function registerResourceType(resource: VResource) {
+export const VResourceTypes: {[key: string]: VResourceStatic} = {};
+export function registerResourceType(resource: VResourceStatic) {
 	if (!resource.tag) throw('registerResourceDecoder: Cannot register generic resource! (Must have static tag attribute.)');
 	VResourceTypes[resource.tag] = resource;
 }
@@ -15,14 +15,14 @@ export enum VHeaderTags {
 	TAG_BODY = '\x30\0\0',
 	TAG_THUMB = '\x01\0\0',
 	TAG_SHEET = '\x10\0\0',
-	TAG_AXC = 'AXC'
+	TAG_AXC = 'AXC',
 }
 
 export class VHeader {
 	readonly tag: string;
 	readonly flags: number;
 	readonly start: number;
-	end!: number;
+	end?: number;
 
 	constructor(tag: string, flags: number, start: number) {
 		this.tag = tag;
@@ -35,19 +35,26 @@ export class VHeader {
 	}
 }
 
-export interface VResource {
+/** Defines a decoder for a {@link VResource} and associates it with a tag. */
+export interface VResourceStatic {
 	readonly tag: string;
-	decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): Promise<VResourceInstance> | VResourceInstance;
+	decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): Promise<VResource> | VResource;
 }
 
-export interface VResourceInstance {
+/** Defines a generic resource entry. All resources are required to implement this interface! */
+export interface VResource {
+	/** The tag of this resource. Accessed by `Vtf` to encode the resource header. */
+	tag: string;
+	/** The flags of this resource. Accessed by `Vtf` to encode the resource header. */
+	flags: number;
+	/** Encode the body of this resource into an ArrayBuffer. */
 	encode(info: VFileHeader): Promise<ArrayBuffer> | ArrayBuffer;
 }
 
 type VImageEither = (VImageData|VEncodedImageData);
 
-/** Represents a resource entry. */
-export class VBaseResource {
+/** Implements a generic resource entry. This can be subclassed to quickly implement {@link VResource} */
+export class VBaseResource implements VResource {
 	readonly tag: string;
 	readonly flags: number;
 	data?: DataBuffer;
@@ -56,10 +63,6 @@ export class VBaseResource {
 		this.tag = tag;
 		this.flags = flags;
 		this.data = data;
-	}
-
-	hasData(): boolean {
-		return !(this.flags & 0x2);
 	}
 
 	static decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): Promise<VBaseResource> | VBaseResource {

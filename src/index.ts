@@ -37,10 +37,7 @@ import './formats/dxt.js';
 // }
 
 // Enums
-export { VFormats, VFlags } from './core/enums.js';
-
-// Utils
-import * as utils from './core/utils.js';
+export { VFormats, VFlags, VCompressionMethods } from './core/enums.js';
 
 // Data collections
 export {
@@ -50,9 +47,6 @@ export {
 	VFrameCollection,
 	VFaceCollection,
 	VSliceCollection } from './core/providers.js';
-
-// Resources
-export { VResource } from './core/resources.js';
 
 export default Vtf;
 export {
