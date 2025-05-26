@@ -96,7 +96,7 @@ export class VImageScaler {
 		for (let x2=0; x2<size2; x2++) {
 			// The (float) center of the filter in the src image
 			// The rest of this code assumes the pixels' "center" is the left side
-			const center_f = (x2 + 0.5) * inv_ratio;
+			const center_f = (x2 + 0.5) * inv_ratio - 0.5;
 			
 			// The pixel indices where the window starts/stops in the src image
 			const start = Math.max(0, Math.floor(center_f - filter_radius));
