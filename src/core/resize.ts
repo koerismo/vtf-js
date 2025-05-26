@@ -144,7 +144,7 @@ export class VImageScaler {
 		let tmp_r = 0.0, tmp_g = 0.0, tmp_b = 0.0, tmp_a = 0.0;
 
 		const tmp0 = src.data;
-		const tmp1 = new (src.getDataConstructor())(this.dest_width * this.dest_height * 4);
+		const tmp1 = new (src.getDataConstructor())(this.dest_width * this.src_height * 4);
 
 		// Resize from (w1, h1) to (w2, h1)
 		for (let y=0; y<this.src_height; y++) {
