@@ -32,7 +32,7 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boo
 	}
 
 	const mips: number[][][] = info.compressed_lengths = new Array(info.mipmaps);
-	for ( let x=0; x<info.mipmaps; x++ ) {
+	for ( let x=info.mipmaps-1; x>=0; x-- ) {
 		const frames: number[][] = mips[x] = new Array(info.frames);
 		for ( let y=0; y<info.frames; y++ ) {
 			const faces: number[] = frames[y] = new Array(face_count);
