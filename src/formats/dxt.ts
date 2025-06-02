@@ -8,7 +8,7 @@ function ceil4(x: number) {
 
 function getBlockAt(image: VImageData<Uint8Array>, dest: Uint8Array, bx: number, by: number) {
 	const src = image.data;
-	
+
 	for (let y=0; y<4; y++) {
 		if (y+by >= image.height) break;
 
@@ -54,8 +54,7 @@ registerCodec(VFormats.DXT1, {
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		
-		
+
 		const padded = padImage(image.convert(Uint8Array));
 		const out = CompressImage(padded, DxtFlags.kDxt1 | ENCODE_FLAGS);
 		return new VEncodedImageData(out, image.width, image.height, VFormats.DXT1);
