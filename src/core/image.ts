@@ -129,6 +129,9 @@ export class VEncodedImageData {
 	}
 
 	decode(): VImageData {
-		return getCodec(this.format).decode(this);
+		const length = this.width * this.height * 4;
+		const out = getCodec(this.format).decode(this);
+		if (out.data.length !== length) throw Error(`VImageData.encode: Decoded ${VFormats[this.format]} image failed length validation! (expected ${length} but got ${out.data.length})`);
+		return out;
 	}
 }

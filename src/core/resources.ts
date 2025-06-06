@@ -116,7 +116,7 @@ export class VBodyResource extends VBaseResource {
 						const data = subview.read_u8(uncompressed_length);
 						const encoded = new VEncodedImageData( data, width, height, info.format );
 						if (lazy) slices[w] = encoded;
-						else slices[w] = codec.decode(encoded);
+						else slices[w] = encoded.decode();
 					}
 				}
 			}

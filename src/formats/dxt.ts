@@ -1,10 +1,12 @@
 import { VFormats } from '../core/enums.js';
 import { VEncodedImageData, VImageData, getCodec, registerCodec } from '../core/image.js';
-import * as DXT from 'dxt-js';
+import { CompressImage, DecompressImage, DxtFlags } from 'libsquish-js';
 
 function ceil4(x: number) {
 	return Math.ceil(x / 4) * 4;
 }
+
+const ENCODE_FLAGS = DxtFlags.kColourClusterFit;
 
 function padImage(image: VImageData<Uint8Array>): VImageData<Uint8Array> {
 	const width = Math.ceil(image.width / 4) * 4;
@@ -57,12 +59,13 @@ registerCodec(VFormats.DXT1, {
 
 	encode(image: VImageData): VEncodedImageData {
 		const padded = padImage(image.convert(Uint8Array));
-		const out = DXT.compress(padded.data, padded.width, padded.height, DXT.flags.DXT1 | DXT.flags.ColourClusterFit);
+		const out = CompressImage(padded, DxtFlags.kDxt1 | ENCODE_FLAGS);
 		return new VEncodedImageData(out, image.width, image.height, VFormats.DXT1);
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
-		const out = DXT.decompress(image.data, ceil4(image.width), ceil4(image.height), DXT.flags.DXT1);
+		const input = { data: image.data, width: ceil4(image.width), height: ceil4(image.height) };
+		const out = DecompressImage(input, DxtFlags.kDxt1);
 		return cropImage(new VImageData(out, image.width, image.height));
 	},
 });
@@ -76,12 +79,13 @@ registerCodec(VFormats.DXT3, {
 
 	encode(image: VImageData): VEncodedImageData {
 		const padded = padImage(image.convert(Uint8Array));
-		const out = DXT.compress(padded.data, padded.width, padded.height, DXT.flags.DXT3 | DXT.flags.ColourClusterFit);
+		const out = CompressImage(padded, DxtFlags.kDxt3 | ENCODE_FLAGS);
 		return new VEncodedImageData(out, image.width, image.height, VFormats.DXT3);
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
-		const out = DXT.decompress(image.data, ceil4(image.width), ceil4(image.height), DXT.flags.DXT3);
+		const input = { data: image.data, width: ceil4(image.width), height: ceil4(image.height) };
+		const out = DecompressImage(input, DxtFlags.kDxt3);
 		return cropImage(new VImageData(out, image.width, image.height));
 	},
 });
@@ -93,12 +97,13 @@ registerCodec(VFormats.DXT5, {
 
 	encode(image: VImageData): VEncodedImageData {
 		const padded = padImage(image.convert(Uint8Array));
-		const out = DXT.compress(padded.data, padded.width, padded.height, DXT.flags.DXT5 | DXT.flags.ColourClusterFit);
+		const out = CompressImage(padded, DxtFlags.kDxt5 | ENCODE_FLAGS);
 		return new VEncodedImageData(out, image.width, image.height, VFormats.DXT5);
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
-		const out = DXT.decompress(image.data, ceil4(image.width), ceil4(image.height), DXT.flags.DXT5);
+		const input = { data: image.data, width: ceil4(image.width), height: ceil4(image.height) };
+		const out = DecompressImage(input, DxtFlags.kDxt5);
 		return cropImage(new VImageData(out, image.width, image.height));
 	},
 });
