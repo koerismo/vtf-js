@@ -77,7 +77,7 @@ function compute_principal(block: Uint8Array) {
 	return g_principal;
 }
 
-function sat3(x) {
+function sat(x: number) {
 	return x < 0 ? 0 : x > 1 ? 1 : x;
 }
 
@@ -119,12 +119,12 @@ function compute_range(block: Uint8Array, out_start: Float32Array, out_end: Floa
 		}
 	}
 
-	out_start[0] = Math.trunc(sat3(start_x) * 31) / 31;
-	out_start[1] = Math.trunc(sat3(start_y) * 63) / 63;
-	out_start[2] = Math.trunc(sat3(start_z) * 31) / 31;
-	out_end[0] = Math.trunc(sat3(end_x) * 31) / 31;
-	out_end[1] = Math.trunc(sat3(end_y) * 63) / 63;
-	out_end[2] = Math.trunc(sat3(end_z) * 31) / 31;
+	out_start[0] = Math.trunc(sat(start_x) * 31) / 31;
+	out_start[1] = Math.trunc(sat(start_y) * 63) / 63;
+	out_start[2] = Math.trunc(sat(start_z) * 31) / 31;
+	out_end[0] = Math.trunc(sat(end_x) * 31) / 31;
+	out_end[1] = Math.trunc(sat(end_y) * 63) / 63;
+	out_end[2] = Math.trunc(sat(end_z) * 31) / 31;
 }
 
 function compress3(block: Uint8Array, metric: Float32Array, out_start: Float32Array, out_end: Float32Array, out_indices: Uint8Array) {
