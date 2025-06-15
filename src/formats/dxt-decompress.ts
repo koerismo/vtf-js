@@ -21,8 +21,11 @@ function decode565(x1: number, x2: number, out: Uint8Array, o: number): number {
 	return v;
 }
 
+// Reuse memory across calls and pray we don't multithread
+const codes = new Uint8Array(16);
+
 function decompressColor(block: Uint8Array, flags: number, out_rgba: Uint8Array) {
-	const codes = new Uint8Array(16);
+	// const codes = new Uint8Array(16);
 
 	const a = decode565(block[0], block[1], codes, 0);
 	const b = decode565(block[2], block[3], codes, 4);
@@ -74,7 +77,7 @@ function decompressDxt3Alpha(block: Uint8Array, out_rgba: Uint8Array) {
 }
 
 function decompressDxt5Alpha(block: Uint8Array, out_rgba: Uint8Array) {
-	const codes = new Uint8Array(8);
+	// const codes = new Uint8Array(8);
 	const a = codes[0] = block[0];
 	const b = codes[1] = block[1];
 
@@ -124,8 +127,7 @@ export function decompressImage(image: VEncodedImageData, flags: number) {
 	const data = image.data;
 	const out = new Uint8Array(image.width * image.height * 4);
 
-	const hasTwoBlocks = (flags & DxtFlags.DXT3 || flags & DxtFlags.DXT5) !== 0;
-	const blockSize = hasTwoBlocks ? 16 : 8;
+	const blockSize = (flags & HAS_ALPHA_BLOCK) ? 16 : 8;
 	const blockDest = new Uint8Array(64);
 
 	let blockIdx = 0;
