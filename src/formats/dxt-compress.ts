@@ -1,18 +1,6 @@
 import { type Vec3 } from '../util/vec3.js';
 import * as V3 from '../util/vec3.js';
-
-export const enum DxtFlags {
-	DXT1 = 0x1,
-	DXT3 = 0x2,
-	DXT5 = 0x4,
-	WeightByAlpha = 0x10,
-	OneBitAlpha = 0x20,
-	MetricPerceptual = 0x100,
-}
-
-export const enum BlockFlags {
-	BlockHasAlpha = 0x1,
-}
+import { DxtFlags } from './dxt.js';
 
 const ALPHA_THRESHOLD = 0.5;
 const ITER_COUNT = 8;

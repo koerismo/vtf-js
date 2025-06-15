@@ -1,10 +1,10 @@
 import { VEncodedImageData, VImageData } from '../core/image.js';
-import { DxtFlags } from './dxt-compress.js';
+import { DxtFlags } from './dxt.js';
 
 // let p_totalTime = 0.0;
 // let p_colorTime = 0.0;
-// let p_alpha3Time = 0.0;
-// let p_alpha5Time = 0.0;
+// let p_alphaTime = 0.0;
+// let p_runCount = 0;
 
 function decode565(x1: number, x2: number, out: Uint8Array, o: number): number {
 	const v = x1 | (x2 << 8);
@@ -54,7 +54,7 @@ function decompressColor(block: Uint8Array, flags: number, out_rgba: Uint8Array)
 	for (let byte=4; byte<8; byte++) {
 		const bits = block[byte];
 		for (let i=0; i<4; i++, p+=4) {
-			const idx = (bits >> (i << 1)) & 3;
+			const idx = ((bits >> (i * 2)) & 3) * 4;
 			out_rgba[p]   = codes[idx];
 			out_rgba[p+1] = codes[idx+1];
 			out_rgba[p+2] = codes[idx+2];
@@ -90,10 +90,10 @@ function decompressDxt5Alpha(block: Uint8Array, out_rgba: Uint8Array) {
 	else {
 		codes[2] = (a*6 + b  ) / 7;
 		codes[3] = (a*5 + b*2) / 7;
-		codes[3] = (a*4 + b*3) / 7;
-		codes[3] = (a*3 + b*4) / 7;
-		codes[4] = (a*2 + b*5) / 7;
-		codes[5] = (a   + b*6) / 7;
+		codes[4] = (a*4 + b*3) / 7;
+		codes[5] = (a*3 + b*4) / 7;
+		codes[6] = (a*2 + b*5) / 7;
+		codes[7] = (a   + b*6) / 7;
 	}
 
 	// Unpack indices and choose from palette
@@ -107,15 +107,17 @@ function decompressDxt5Alpha(block: Uint8Array, out_rgba: Uint8Array) {
 	}
 }
 
+const HAS_ALPHA_BLOCK = DxtFlags.DXT3 | DxtFlags.DXT5;
+
 export function decompressBlock(block: Uint8Array, flags: number, out_rgba: Uint8Array) {
-	decompressColor(block, flags, out_rgba);
-	if (flags & DxtFlags.DXT5) {
-		decompressDxt5Alpha(block.subarray(8), out_rgba);
-	}
-	else if (flags & DxtFlags.DXT3) {
-		decompressDxt3Alpha(block.subarray(8), out_rgba);
-	}
-	return out_rgba;
+	const colorData = (flags & HAS_ALPHA_BLOCK) ? block.subarray(8) : block;
+	decompressColor(colorData, flags, out_rgba);
+
+	if (flags & DxtFlags.DXT5)
+		decompressDxt5Alpha(block, out_rgba);
+	else if (flags & DxtFlags.DXT3)
+		decompressDxt3Alpha(block, out_rgba);	
+	return;
 }
 
 export function decompressImage(image: VEncodedImageData, flags: number) {
@@ -161,7 +163,7 @@ export function decompressImage(image: VEncodedImageData, flags: number) {
 // 	return {
 // 		p_totalTime,
 // 		p_colorTime,
-// 		p_alpha3Time,
-// 		p_alpha5Time,
+// 		p_alphaTime,
+// 		p_runCount
 // 	};
 // }

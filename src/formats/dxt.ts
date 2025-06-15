@@ -2,8 +2,16 @@ import { VFormats } from '../core/enums.js';
 import { VEncodedImageData, VImageData, getCodec, registerCodec } from '../core/image.js';
 // import { CompressImage, DecompressImage, DxtFlags } from 'libsquish-js';
 import { decompressImage } from './dxt-decompress.js';
-import { DxtFlags } from './dxt-compress.js';
 import { ceil4 } from '../core/utils.js';
+
+export const enum DxtFlags {
+	DXT1 = 0x1,
+	DXT3 = 0x2,
+	DXT5 = 0x4,
+	WeightByAlpha = 0x10,
+	OneBitAlpha = 0x20,
+	MetricPerceptual = 0x100,
+}
 
 // https://www.khronos.org/opengl/wiki/S3_Texture_Compression
 
@@ -13,7 +21,7 @@ registerCodec(VFormats.DXT1, {
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		throw 'not implemented!';
+		throw Error('not implemented!');
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
@@ -29,7 +37,7 @@ registerCodec(VFormats.DXT3, {
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		throw 'not implemented!';
+		throw Error('not implemented!');
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
@@ -43,7 +51,7 @@ registerCodec(VFormats.DXT5, {
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		throw 'not implemented';
+		throw Error('not implemented!');
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
