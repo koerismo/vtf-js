@@ -6,15 +6,15 @@ export const VecType = Float32Array;
 const VEC3_SIZE = VecType.BYTES_PER_ELEMENT * 3;
 
 /** Creates a blank new Vec3. @internal */
-export function create(x: number=0, y: number=x, z: number=x): Vec3 {
-	return new VecType([x, y, z]);
+export function create(): Vec3 {
+	return new VecType(3);
 }
 
 export function createArray(length: number|ArrayBufferLike): Vec3[] {
 	let buf: ArrayBufferLike;
 	if (typeof length !== 'number') {
 		buf = length;
-		length = buf.byteLength / VecType.BYTES_PER_ELEMENT;
+		length = Math.trunc(buf.byteLength / VecType.BYTES_PER_ELEMENT);
 	}
 	else {
 		buf = new ArrayBuffer(VEC3_SIZE * length);
@@ -142,7 +142,7 @@ export function scale(out: Vec3, a: Vec3, b: number) {
 	return out;
 }
 
-/** Scales A by B @internal */
+/** Returns A * B + C @internal */
 export function scaleAdd(out: Vec3, a: Vec3, b: number, c: Vec3) {
 	out[0] = a[0] * b + c[0];
 	out[1] = a[1] * b + c[1];
@@ -161,6 +161,11 @@ export function clamp(out: Vec3, a: Vec3, min: number, max: number) {
 /** Returns the length of A @internal */
 export function length(a: Vec3) {
 	return Math.hypot(a[0], a[1], a[2]);
+}
+
+/** Returns the squared length of A @internal */
+export function length2(a: Vec3) {
+	return a[0]**2 + a[1]**2 + a[2]**2;
 }
 
 /** Returns the distance between A and B @internal */

@@ -37,6 +37,11 @@ export function mod(n: number, d: number): number {
 	return ((n % d) + d) % d;
 }
 
+/** Rounds the provided integer to the next multiple of 4. */
+export function ceil4(x: number): number {
+	return ((x + 3) >> 2) * 4;
+}
+
 /** Defines a data compression function. */
 export type CompressFunction = (data: Uint8Array, method: VCompressionMethods, level: number) => Promise<Uint8Array> | Uint8Array;
 /** Defines a data decompression function. */
