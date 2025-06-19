@@ -16,6 +16,7 @@ export enum VHeaderTags {
 	TAG_THUMB = '\x01\0\0',
 	TAG_SHEET = '\x10\0\0',
 	TAG_AXC = 'AXC',
+	TAG_HOT = 'HOT',
 }
 
 export class VHeader {
@@ -207,17 +208,17 @@ export interface SheetSequence {
 	frames: SheetFrame[];
 }
 
-export class VSheetResource extends VBaseResource {
+export class VSheetResource implements VResource {
 	static tag = VHeaderTags.TAG_SHEET;
-	sequences: SheetSequence[];
-	
+	tag = VHeaderTags.TAG_SHEET;
+
 	static {
 		registerResourceType(VSheetResource);
 	}
 
-	constructor(flags: number, sequences: SheetSequence[]) {
-		super(VHeaderTags.TAG_SHEET, flags);
-		this.sequences = sequences;
+	constructor(
+		public flags: number,
+		public sequences: SheetSequence[]) {
 	}
 
 	static decode(header: VHeader, view: DataBuffer, info: VFileHeader): VSheetResource {
@@ -275,6 +276,76 @@ export class VSheetResource extends VBaseResource {
 					view.write_f32(frame.coords[k]);
 				}
 			}
+		}
+
+		return view.buffer;
+	}
+}
+
+interface HotspotRect {
+	flags: number;
+	min_x: number;
+	min_y: number;
+	max_x: number;
+	max_y: number;
+}
+
+export class VHotspotResource implements VResource {
+	static tag = VHeaderTags.TAG_HOT;
+	tag = VHeaderTags.TAG_HOT;
+
+	static {
+		registerResourceType(VHotspotResource);
+	}
+
+	constructor(
+		public flags: number,
+		public version: number,
+		public editorFlags: number,
+		public rects: HotspotRect[]) {
+	}
+
+	static decode(header: VHeader, view: DataBuffer, info: VFileHeader): VHotspotResource {
+		if (!header.hasData())
+			return new VHotspotResource(header.flags, 0, 0, []);
+
+		const version   = view.read_u8();
+		const flags     = view.read_u8();
+		const rectCount = view.read_u16();
+
+		if (version !== 0x1)
+			throw Error(`Failed to parse VHotspotResource: Invalid version!`);
+
+		const rects = Array<HotspotRect>(rectCount);
+		for (let i=0; i<rectCount; i++) {
+			rects[i] = {
+				flags: view.read_u8(),
+				min_x: view.read_u16(),
+				min_y: view.read_u16(),
+				max_x: view.read_u16(),
+				max_y: view.read_u16(),
+			};
+		}
+
+		return new VHotspotResource(header.flags, version, flags, rects);
+	}
+
+	encode(info: VFileHeader): ArrayBuffer {
+		const length = 4 + this.rects.length * 9;
+		const view = new DataBuffer(length);
+		view.set_endian(true);
+
+		view.write_u8(0x1);
+		view.write_u8(this.editorFlags);
+		view.write_u16(this.rects.length);
+
+		for (let i=0; i<this.rects.length; i++) {
+			const rect = this.rects[i];
+			view.write_u8(rect.flags);
+			view.write_u16(rect.min_x);
+			view.write_u16(rect.min_y);
+			view.write_u16(rect.max_x);
+			view.write_u16(rect.max_y);
 		}
 
 		return view.buffer;
