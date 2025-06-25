@@ -3,7 +3,7 @@ import { DataBuffer } from './buffer.js';
 import { VFormats } from './enums.js';
 import { getFaceCount, getHeaderLength, getThumbMip } from './utils.js';
 import { VBodyResource, VHeaderTags, VBaseResource, VThumbResource, VResource } from './resources.js';
-import { VImageData } from './image.js';
+import { VEncodedImageData } from './image.js';
 
 function write_format(id: number) {
 	if (VFormats[id] == undefined) throw Error(`write_format: Encountered invalid format (id=${id}) in header!`);
@@ -98,7 +98,7 @@ Vtf.prototype.encode = async function(this: Vtf): Promise <ArrayBuffer> {
 	// Thumbnail (Fallback to 0x0 if the mipmap is not present)
 	header.write_u32(write_format(VFormats.DXT1));
 	const thumb_mip = getThumbMip(width, height);
-	const thumb_image = thumb_mip < info.mipmaps ? this.data.getImage(thumb_mip, 0, 0, 0) : new VImageData(new Uint8Array(0), 0, 0);
+	const thumb_image = thumb_mip < info.mipmaps ? this.data.getImage(thumb_mip, 0, 0, 0, true) : new VEncodedImageData(new Uint8Array(0), 0, 0, VFormats.DXT1);
 	header.write_u8(thumb_image.width);
 	header.write_u8(thumb_image.height);
 

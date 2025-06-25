@@ -174,9 +174,9 @@ export class VBodyResource extends VBaseResource {
 }
 
 export class VThumbResource extends VBaseResource {
-	image: VImageData;
+	image: VImageData | VEncodedImageData;
 
-	constructor(flags: number, image: VImageData) {
+	constructor(flags: number, image: VImageData | VEncodedImageData) {
 		super(VHeaderTags.TAG_THUMB, flags);
 		this.image = image;
 	}
@@ -184,12 +184,13 @@ export class VThumbResource extends VBaseResource {
 	static decode(header: VHeader, view: DataBuffer, info: VFileHeader): VThumbResource {
 		const codec = getCodec(info.thumb_format);
 		const data = view.read_u8(codec.length(info.thumb_width, info.thumb_height));
-		const image = codec.decode(new VEncodedImageData(data, info.thumb_width, info.thumb_height, info.thumb_format));
-		return new VThumbResource(0x00, image);
+		const image = new VEncodedImageData(data, info.thumb_width, info.thumb_height, info.thumb_format);
+		return new VThumbResource(header.flags, image);
 	}
 
 	encode(info: VFileHeader): ArrayBuffer {
 		if (this.image.width === 0 || this.image.height === 0) return new ArrayBuffer(0);
+		if (this.image.isEncoded) return this.image.data.buffer as ArrayBuffer;
 		return this.image.encode(VFormats.DXT1).data.buffer as ArrayBuffer;
 	}
 }
@@ -282,7 +283,13 @@ export class VSheetResource implements VResource {
 	}
 }
 
-interface HotspotRect {
+export const enum HotSpotRectFlags {
+	AllowRotation   = 0x1,
+	AllowReflection = 0x2,
+	AltGroup        = 0x4,
+}
+
+export interface HotspotRect {
 	flags: number;
 	min_x: number;
 	min_y: number;
@@ -314,7 +321,7 @@ export class VHotspotResource implements VResource {
 		const rectCount = view.read_u16();
 
 		if (version !== 0x1)
-			throw Error(`Failed to parse VHotspotResource: Invalid version!`);
+			throw Error(`Failed to parse VHotspotResource: Invalid version! (Expected 1, got ${version})`);
 
 		const rects = Array<HotspotRect>(rectCount);
 		for (let i=0; i<rectCount; i++) {
@@ -335,7 +342,10 @@ export class VHotspotResource implements VResource {
 		const view = new DataBuffer(length);
 		view.set_endian(true);
 
-		view.write_u8(0x1);
+		if (this.version !== 0x1)
+			throw Error(`Failed to write VHotspotResource: Invalid version! (Expected 1, got ${this.version})`);
+
+		view.write_u8(this.version);
 		view.write_u8(this.editorFlags);
 		view.write_u16(this.rects.length);
 
