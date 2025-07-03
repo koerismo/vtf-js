@@ -15,7 +15,7 @@
 		"./addons/compress/node": "./src/addons/compress/node.ts",
 		"./addons/compress/fflate": "./src/addons/compress/fflate.ts"
 	},
-	"include": ["src/"],
+	"exclude": ["/", "!src/", "!README.md"],
 
 	"devDependencies": {
 		"npm:@types/node": "^22.10.2",
