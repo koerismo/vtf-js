@@ -6,8 +6,8 @@ const TD = new TextDecoder();
 
 export class DataBuffer extends Uint8Array {
 	pointer = 0;
-	protected view: DataView;
-	protected little = false;
+	view: DataView;
+	protected little = true;
 
 	constructor(length: number);
 	constructor(array: ArrayLike<number> | ArrayBufferLike);
@@ -30,7 +30,7 @@ export class DataBuffer extends Uint8Array {
 
 	/** Creates a new DataBuffer within the specified bounds. */
 	ref(start=0, length: number=this.length - start): DataBuffer {
-		const buf = new DataBuffer(this.buffer, start, length);
+		const buf = new DataBuffer(this.buffer, start + this.byteOffset, length);
 		buf.set_endian(this.little);
 		return buf;
 	}
@@ -78,6 +78,7 @@ export class DataBuffer extends Uint8Array {
 	}
 
 	read_u16(): number;
+	read_u16(length: undefined, little?: boolean): number;
 	read_u16(length: number, little?: boolean): Uint16Array;
 	read_u16(length?: number, little: boolean=this.little): number|Uint16Array {
 		const start = this.pointer;
@@ -107,6 +108,7 @@ export class DataBuffer extends Uint8Array {
 	}
 
 	read_u32(): number;
+	read_u32(length: undefined, little?: boolean): number;
 	read_u32(length: number, little?: boolean): Uint32Array;
 	read_u32(length?: number, little: boolean=this.little): number|Uint32Array {
 		const start = this.pointer;
@@ -163,6 +165,7 @@ export class DataBuffer extends Uint8Array {
 	}
 
 	read_i16(): number;
+	read_i16(length: undefined, little?: boolean): number;
 	read_i16(length: number, little?: boolean): Int16Array;
 	read_i16(length?: number, little: boolean=this.little): number|Int16Array {
 		const start = this.pointer;
@@ -192,6 +195,7 @@ export class DataBuffer extends Uint8Array {
 	}
 
 	read_i32(): number;
+	read_i32(length: undefined, little?: boolean): number;
 	read_i32(length: number, little?: boolean): Int32Array;
 	read_i32(length?: number, little: boolean=this.little): number|Int32Array {
 		const start = this.pointer;
@@ -221,6 +225,7 @@ export class DataBuffer extends Uint8Array {
 	}
 
 	read_f32(): number;
+	read_f32(length: undefined, little?: boolean): number;
 	read_f32(length: number, little?: boolean): Float32Array;
 	read_f32(length?: number, little: boolean=this.little): number|Float32Array {
 		const start = this.pointer;
@@ -250,6 +255,7 @@ export class DataBuffer extends Uint8Array {
 	}
 
 	read_f64(): number;
+	read_f64(length: undefined, little?: boolean): number;
 	read_f64(length: number, little?: boolean): Float64Array;
 	read_f64(length?: number, little: boolean=this.little): number|Float64Array {
 		const start = this.pointer;
@@ -278,8 +284,6 @@ export class DataBuffer extends Uint8Array {
 		return;
 	}
 
-	read_str(): string;
-	read_str(length: number): string;
 	read_str(length?: number): string {
 		const start = this.pointer;
 		let end = start + <number>length;

@@ -1,9 +1,9 @@
-import { getHeaderLength, getFaceCount } from './utils.js';
-import { Vtf, VFileHeader } from '../vtf.js';
+import { Vtf, VFileHeader, VConstructorOptions } from '../vtf.js';
 import { DataBuffer } from './buffer.js';
-import { VFormats } from './enums.js';
+import { VCompressionMethods, VFormats, NO_DATA } from './enums.js';
+import { getHeaderLength, getFaceCount } from './utils.js';
+import { VBaseResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags, type VResource } from './resources.js';
 import { getCodec } from './image.js';
-import { VResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags } from './resources.js';
 
 function read_format(id: number) {
 	if (VFormats[id] == undefined) throw Error(`read_format: Encountered invalid format (id=${id}) in header!`);
@@ -13,26 +13,28 @@ function read_format(id: number) {
 function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boolean {
 	const face_count = getFaceCount(info);
 
-	if (header.flags & 0x2) {
+	if (header.flags & NO_DATA) {
 		if (header.start !== 0) throw Error(`decode_axc: Expected inline compression value of 0. Got ${header.start} instead!`);
-		info.compression = 0;
+		info.compression_level = 0;
 		return false;
 	}
 
-	const view = buffer.ref(header.start);
-	const length = view.read_u32();
-	info.compression = view.read_i32();
+	const view = buffer.ref(header.start + 0x4);
+	info.compression_level = view.read_i16();
+	info.compression_method = view.read_i16();
 
-	const mips = info.compressed_lengths = new Array(info.mipmaps);
-	for ( let x=0; x<info.mipmaps; x++ ) {
-		const frames = mips[x] = new Array(info.frames);
+	// Legacy AXC v1 support - default to Deflate
+	if (!info.compression_method) {
+		info.compression_method = VCompressionMethods.Deflate;
+	}
+
+	const mips: number[][][] = info.compressed_lengths = new Array(info.mipmaps);
+	for ( let x=info.mipmaps-1; x>=0; x-- ) {
+		const frames: number[][] = mips[x] = new Array(info.frames);
 		for ( let y=0; y<info.frames; y++ ) {
-			const faces = frames[y] = new Array(face_count);
+			const faces: number[] = frames[y] = new Array(face_count);
 			for ( let z=0; z<face_count; z++ ) {
-				const slices = faces[z] = new Array(info.slices);
-				for ( let w=0; w<info.slices; w++ ) {
-					slices[w] = view.read_u32();
-				}
+				faces[z] = view.read_u32();
 			}
 		}
 	}
@@ -41,14 +43,14 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boo
 }
 
 // @ts-expect-error Overloads break for some reason?
-Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false, lazy_decode: boolean=false): Vtf|VFileHeader {
+Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_decode: boolean=true): Promise<Vtf | VFileHeader> {
 	const info = new VFileHeader();
-	info.compression = 0;
+	info.compression_level = 0;
 
 	const view = new DataBuffer(data);
-	view.set_endian(true);
 
 	const sign = view.read_str(4);
+	if (sign === 'VTFX') throw Error('Vtf.decode: Console vtfs are not supported!');
 	if (sign !== 'VTF\0') throw Error(`Vtf.decode: Encountered invalid file signature! ("${sign}")`);
 
 	// File format version
@@ -101,62 +103,64 @@ Vtf.decode = function(data: ArrayBuffer, header_only: boolean=false, lazy_decode
 	else {
 		const body_offset = header_length + getCodec(info.thumb_format).length(info.thumb_width, info.thumb_height);
 		const data = view.ref(body_offset);
-		body = VBodyResource.decode(new VHeader(VHeaderTags.TAG_BODY, 0x0, body_offset), data, info, lazy_decode);
+		body = await VBodyResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_BODY, 0x0, body_offset), data, info, lazy_decode);
 	}
 
 	// Parse resource headers
-
-	let last_data_header: number|null = null;
 	for ( let i=0; i<resource_count; i++ ) {
+		const fourcc = view.read_u32(undefined, false);
+		const offset = view.read_u32();
 		const header = new VHeader(
-			view.read_str(3),
-			view.read_u8(),
-			view.read_u32()
+			fourcc >> 8,
+			fourcc & 0xff,
+			offset
 		);
 
 		// TODO: "special" header tags, especially for unofficial features, are BAD.
 		if (header.tag === VHeaderTags.TAG_AXC) {
-			const has_body = decode_axc(header, view, info);
-			if (last_data_header !== null && has_body) headers[last_data_header].end = header.start;
-			last_data_header = null;
+			decode_axc(header, view, info);
 			continue;
 		}
 
 		headers.push(header);
-		if (header.hasData()) {
-			if (last_data_header !== null) headers[last_data_header].end = header.start;
-			last_data_header = headers.length-1;
-		}
-	}
-
-	if (last_data_header !== null) {
-		headers[last_data_header].end = view.length;
 	}
 
 	// Parse resource bodies
-
 	for ( let i=0; i<headers.length; i++ ) {
 		const header = headers[i];
+		let length: number | undefined;
+		let start = header.start;
 
-		let data: DataBuffer|undefined;
-		if (!(header.flags & 0x2))
-			data = view.ref(header.start, header.end - header.start);
-
-		if (header.tag === VHeaderTags.TAG_BODY) {
-			body = VBodyResource.decode(header, data!, info);
+		// Ignore thumb data
+		if (header.tag === VHeaderTags.TAG_LEGACY_THUMB) {
 			continue;
 		}
 
-		if (header.tag === VHeaderTags.TAG_THUMB) {
+		// All modern resources have a uint32 at the body start to declare the content size
+		if (header.tag !== VHeaderTags.TAG_LEGACY_BODY) {
+			length = view.view.getUint32(start, true);
+			start += 4;
+		}
+
+		let data: DataBuffer | undefined;
+		if (!(header.flags & NO_DATA))
+			data = view.ref(start, length);
+
+		if (header.tag === VHeaderTags.TAG_LEGACY_BODY) {
+			if (!data) throw Error('Vtf.decode: Body resource has no data! (0x2 flag set)');
+			body = await VBodyResource.decode(header, data, info, lazy_decode);
 			continue;
 		}
 
-		const type = VResourceTypes[header.tag] ?? VResource;
-		meta.push(type.decode(header, data, info));
+		const type = VResourceTypes[header.tag] ?? VBaseResource;
+		meta.push(await type.decode(header, data, info));
 	}
 
 	if (!body)
 		throw Error('Vtf.decode: Vtf does not contain a body resource!');
 
-	return new Vtf(body.images, info);
+	const options: VConstructorOptions = info;
+	options.meta = meta;
+
+	return new Vtf(body.images, options);
 }

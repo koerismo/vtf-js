@@ -1,36 +1,13 @@
-import { DataBuffer } from './buffer.js';
-import { VFormats } from './enums.js';
 import { VFileHeader, Vtf } from '../vtf.js';
-import { getFaceCount, getHeaderLength, getMipSize, getThumbMip } from './utils.js';
-import { VBodyResource, VHeaderTags, VResource, VThumbResource } from './resources.js';
-import { VImageData } from './image.js';
-
-function write_format(id: number) {
-	if (VFormats[id] == undefined) throw Error(`write_format: Encountered invalid format (id=${id}) in header!`);
-	return id;
-}
+import { DataBuffer } from './buffer.js';
+import { NO_DATA, VFormats } from './enums.js';
+import { byteswap3, getFaceCount, getHeaderLength, getThumbMip } from './utils.js';
+import { VBodyResource, VHeaderTags, VBaseResource, VThumbResource, VResource } from './resources.js';
+import { VEncodedImageData } from './image.js';
 
 function write_header(buf: DataBuffer, res: VResource, pos: number) {
-	buf.write_str(res.tag, 3);
-	buf.write_u8(res.flags);
+	buf.write_u32((res.tag << 8) | (res.flags & 0xff), false);
 	buf.write_u32(pos);
-}
-
-function write_chunks(chunks: ArrayBuffer[]): ArrayBuffer {
-	let length = 0;
-	for (const chunk of chunks) {
-		length += chunk.byteLength;
-	}
-
-	const view = new Uint8Array(length);
-
-	let i = 0;
-	for (const chunk of chunks) {
-		view.set(new Uint8Array(chunk), i);
-		i += chunk.byteLength;
-	}
-
-	return view.buffer;
 }
 
 function write_axc(info: VFileHeader) {
@@ -38,11 +15,10 @@ function write_axc(info: VFileHeader) {
 	if (info.version < 6) throw Error('write_axc: Compression requires VTF version 6+');
 
 	const face_count = getFaceCount(info);
-	const axc_length = 8 + info.frames * info.mipmaps * info.slices * face_count * 4;
+	const axc_length = 4 + info.frames * info.mipmaps * info.slices * face_count * 4;
 	const axc = new DataBuffer(axc_length);
-	axc.set_endian(true);
-	axc.write_u32(axc_length);
-	axc.write_i32(info.compression);
+	axc.write_i16(info.compression_level);
+	axc.write_i16(info.compression_method);
 
 	const mips = info.compressed_lengths;
 	for (let x = info.mipmaps-1; x >= 0; x--) {
@@ -50,10 +26,7 @@ function write_axc(info: VFileHeader) {
 		for (let y = 0; y < info.frames; y++) {
 			const faces = frames[y];
 			for (let z = 0; z < face_count; z++) {
-				const slices = faces[z];
-				for (let w = 0; w < info.slices; w++) {
-					axc.write_u32(slices[w]);
-				}
+				axc.write_u32(faces[z]);
 			}
 		}
 	}
@@ -61,23 +34,17 @@ function write_axc(info: VFileHeader) {
 	return axc.buffer;
 }
 
-Vtf.prototype.encode = function(this: Vtf): ArrayBuffer {
+Vtf.prototype.encode = async function(this: Vtf): Promise <ArrayBuffer> {
 	// Each chunk is a section of the file. e.g. [header, axc, body1, body2, body3]
-	const chunks: ArrayBuffer[] = [];
 	const info = VFileHeader.fromVtf(this);
 
 	let resource_count = this.meta.length + 2;
-	if (info.compression !== 0) resource_count += 1;
-
+	if (info.compression_level !== 0) resource_count += 1;
 
 	const header_length = getHeaderLength(this.version, resource_count);
 	const header = new DataBuffer(header_length);
-	chunks.push(header);
 
-	header.set_endian(true);
 	header.write_str('VTF\0', 4);
-
-	// File format version
 	header.write_u32(7);
 	header.write_u32(this.version);
 	header.write_u32(header_length);
@@ -94,32 +61,34 @@ Vtf.prototype.encode = function(this: Vtf): ArrayBuffer {
 	header.write_f32(info.reflectivity);
 	header.pad(4);
 	header.write_f32(info.bump_scale);
-	header.write_u32(write_format(info.format));
+	header.write_u32(info.format);
 	header.write_u8(info.mipmaps);
 
 	// Thumbnail (Fallback to 0x0 if the mipmap is not present)
-	header.write_u32(write_format(VFormats.DXT1));
+	header.write_u32(VFormats.DXT1);
 	const thumb_mip = getThumbMip(width, height);
-	const thumb_image = thumb_mip < info.mipmaps ? this.data.getImage(thumb_mip, 0, 0, 0) : new VImageData(new Uint8Array(0), 0, 0);
+	const thumb_image = thumb_mip < info.mipmaps ? this.data.getImage(thumb_mip, 0, 0, 0, true) : new VEncodedImageData(new Uint8Array(0), 0, 0, VFormats.DXT1);
 	header.write_u8(thumb_image.width);
 	header.write_u8(thumb_image.height);
 
-	// Initial chunks
-	const thumb_resource = new VThumbResource(0x00, thumb_image);
-	const body_resource = new VBodyResource(0x00, this.data);
+	// Prepare body/thumb resources
+	const thumb_resource = new VThumbResource(0x0, thumb_image);
+	const body_resource = new VBodyResource(0x0, this.data);
 	const thumb_data = thumb_resource.encode(info);
-	const body_data = body_resource.encode(info);
-	chunks.push(thumb_data);
-	chunks.push(body_data);
+	const body_data = await body_resource.encode(info);
 
 	// v7.2 +
 	if (this.version > 1) {
 		header.write_u16(this.data.sliceCount());
 	}
 
-	// v7.1-7.2: Skip writing headers
+	// v7.1-7.2: Use non-chunked format:
 	if (this.version < 3) {
-		return write_chunks(chunks);
+		const file = new DataBuffer(header.byteLength + thumb_data.byteLength + body_data.byteLength);
+		file.write_u8(header);
+		file.write_u8(new Uint8Array(thumb_data));
+		file.write_u8(new Uint8Array(body_data));
+		return file.buffer;
 	}
 
 	// v7.3 +
@@ -127,25 +96,46 @@ Vtf.prototype.encode = function(this: Vtf): ArrayBuffer {
 	header.write_u32(resource_count);
 	header.pad(8);
 
-	// Write resource headers
-	let filepos = header.length;
-	write_header(header, thumb_resource, filepos);filepos += thumb_data.byteLength;
-	write_header(header, body_resource, filepos); filepos += body_data.byteLength;
+	// Begin collecting chunks and accumulating filesize
+	let filesize = header.byteLength;
+	const chunks: { resource: VResource, data: ArrayBuffer|undefined }[] = new Array(2);
+	chunks[0] = { resource: body_resource, data: body_data };   filesize += body_data.byteLength;
+	chunks[1] = { resource: thumb_resource, data: thumb_data }; filesize += thumb_data.byteLength;
 
-	if (info.compression !== 0) {
+	// Append compression chunk if requested
+	if (info.compression_level !== 0) {
 		const axc_data = write_axc(info);
-		write_header(header, new VResource(VHeaderTags.TAG_AXC, 0x00), filepos);
-		filepos += axc_data.byteLength;
-		chunks.push(axc_data);
+		chunks.push({ resource: new VBaseResource(VHeaderTags.TAG_AXC, 0x00), data: axc_data });
+		filesize += axc_data.byteLength + 4;
 	}
 
-	for (const res of this.meta) {
-		write_header(header, res, filepos);
-
-		const res_data = res.encode(info);
-		filepos += res_data.byteLength;
-		chunks.push(res_data);
+	// Fill in meta chunks
+	for (const resource of this.meta) {
+		const data = await resource.encode(info);
+		chunks.push({ resource, data });
+		if (data) filesize += data.byteLength + (resource.isLegacy() ? 0 : 4);
 	}
 
-	return write_chunks(chunks);
+	// Sort chunks by tag as LE integers
+	chunks.sort((a, b) => {
+		return byteswap3(a.resource.tag) - byteswap3(b.resource.tag);
+	});
+
+	// Write into file
+	const file = new DataBuffer(filesize);
+	file.seek(header.byteLength);
+
+	for (const { resource, data } of chunks) {
+		write_header(header, resource, file.pointer);
+		const no_data = !!(resource.flags & NO_DATA);
+		if ((data === undefined) !== no_data) throw Error(`NO_DATA flag does not match data provided! (NO_DATA=${no_data})`);
+		if (!data) continue;
+		if (!resource.isLegacy()) file.write_u32(data.byteLength);
+		file.write_u8(new Uint8Array(data));
+	}
+
+	file.seek(0x0);
+	file.write_u8(header);
+
+	return file.buffer;
 }

@@ -1,10 +1,17 @@
 import { VFormats } from './enums.js';
-import { VFilters, VResizeOptions, resizeFiltered, resizeNearest } from './resize.js';
+import { VFilter, VFilters, VImageScaler } from './resize.js';
 import { clamp } from './utils.js';
 
 /** An array of decoded RGBA pixels. */
-export type VPixelArray = Uint8Array|Uint16Array|Uint32Array|Float32Array|Float16Array;
-export type VPixelArrayConstructor = Uint8ArrayConstructor|Uint16ArrayConstructor|Uint32ArrayConstructor|Float32ArrayConstructor|Float16ArrayConstructor;
+export type VPixelArray = Uint8Array|Uint16Array|Uint32Array|Float32Array|Float64Array|Float16Array;
+
+/** A generic constructor for VPixelArray types. */
+export interface VPixelArrayConstructor<T extends VPixelArray = VPixelArray> {
+	new (length?: number): T;
+    new (array: ArrayLike<number> | Iterable<number>): T;
+    new (buffer: ArrayBufferLike, byteOffset?: number, length?: number): T;
+	readonly BYTES_PER_ELEMENT: number;
+}
 
 /** An object that defines an image encoder/decoder for a given format. */
 export interface VCodec {
@@ -46,14 +53,16 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		this.height = height;
 	}
 
-	/** Returns a remapped copy of this image with the specified data format, normalizing floating-point formats to 0-1.
+	/**
+	 * Returns a remapped copy of this image with the specified data format, normalizing floating-point formats to 0-1.
+	 * If this image is already of the specified format, this method returns self.
 	 * If `do_clamp` is set to true, the data will be clamped between 0 and the array's maximum value.
 	 * @example const converted: VImageData<Float32Array> = image.convert(Float32Array);
 	 */
-	convert<T extends VPixelArrayConstructor>(type: T, do_clamp=true): VImageData<InstanceType<T>> {
-		if (this.data instanceof type.constructor) return <VImageData<InstanceType<T>>>(this as unknown);
+	convert<T extends VPixelArray = VPixelArray>(type: VPixelArrayConstructor<T>, do_clamp=true): VImageData<T> {
+		if (this.data instanceof type) return <VImageData<T>><unknown>this;
 
-		const out = new type(this.data.length) as InstanceType<T>;
+		const out = new type(this.data.length) as T;
 		const is_input_int  = !(this.data instanceof Float32Array || this.data instanceof Float64Array || (HAS_FLOAT16 && this.data instanceof Float16Array));
 		const is_output_int = !(      out instanceof Float32Array ||       out instanceof Float64Array || (HAS_FLOAT16 &&       out instanceof Float16Array));
 
@@ -84,19 +93,33 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		return out;
 	}
 
-	/** Returns a resampled copy of this image with the given dimensions. */
-	resize(width: number, height: number, options?: Partial<VResizeOptions>): VImageData {
-		if (width > this.width || height > this.height) throw Error(`VImageData.resize: Image upsampling is not supported at this time!`);
+	/** Dummy function - returns self. */
+	decode(): VImageData {
+		return this;
+	}
+
+	/**
+	 * Returns a resampled copy of this image with the given dimensions.
+	 * ### If you are batch-resizing images, create and reuse a VImageScaler for better performance!
+	 */
+	resize(width: number, height: number, options?: Partial<{ filter: VFilter }>): VImageData<D> {
 		options ??= {};
 		options.filter ??= VFilters.Triangle;
 		
-		// Performance isn't ideal on the current filter system. For now, override Point with alternative nearest implementation.
-		if (options.filter === VFilters.Point) return resizeNearest(this, width, height);
-		return resizeFiltered(this, width, height, options as VResizeOptions);
+		const scaler = new VImageScaler(this.width, this.height, width, height, options.filter);
+		const out_data = new (<VPixelArrayConstructor>this.data.constructor)(width * height * 4) as D;
+		const out = new VImageData(out_data, width, height);
+
+		return scaler.resize(this, out);
+	}
+
+	/** Retrieves the constructor of this image's data with a type-safe wrapper. */
+	getDataConstructor(): VPixelArrayConstructor<D> {
+		return <VPixelArrayConstructor<D>> this.data.constructor;
 	}
 }
 
-/** VTF-encoded image data. */
+/** Format-encoded image data. */
 export class VEncodedImageData {
 	readonly isEncoded = true as const;
 
@@ -112,7 +135,17 @@ export class VEncodedImageData {
 		this.format = format;
 	}
 
+	/** Decodes this image into RGBA pixel data. */
 	decode(): VImageData {
-		return getCodec(this.format).decode(this);
+		const length = this.width * this.height * 4;
+		const out = getCodec(this.format).decode(this);
+		if (out.data.length !== length) throw Error(`VImageData.encode: Decoded ${VFormats[this.format]} image failed length validation! (expected ${length} but got ${out.data.length})`);
+		return out;
+	}
+
+	/** If necessary, decodes and encodes this image into the desired format. Otherwise, returns self. */
+	encode(format: VFormats): VEncodedImageData {
+		if (format === this.format) return this;
+		return this.decode().encode(format);
 	}
 }

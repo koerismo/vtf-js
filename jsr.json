@@ -1,7 +1,8 @@
 {
+	"$schema": "https://jsr.io/schema/config-file.v1.json",
 	"name": "@koerismo/vtf",
 	"description": "A javascript IO library for the Valve Texture Format.",
-	"version": "0.9.1",
+	"version": "0.9.2",
 	"license": "LGPL-3.0-or-later",
 	"author": "Koerismo",
 	"repository": { "type": "git", "url": "git+https://github.com/koerismo/vtf-js.git" },
@@ -9,13 +10,15 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./utils": "./src/core/utils.ts",
-		"./resources": "./src/core/resources.ts"
+		"./resources": "./src/core/resources.ts",
+		"./addons/squish": "./src/addons/squish.ts",
+		"./addons/compress/node": "./src/addons/compress/node.ts",
+		"./addons/compress/fflate": "./src/addons/compress/fflate.ts"
 	},
 	"exclude": ["/", "!src/", "!README.md"],
 
 	"devDependencies": {
 		"npm:@types/node": "^22.10.2",
-		"jsr:@types/pako": "^2.0.3",
 		"jsr:@typescript-eslint/eslint-plugin": "^5.62.0",
 		"jsr:@typescript-eslint/parser": "^5.62.0",
 		"jsr:eslint": "^8.57.0",
@@ -24,7 +27,7 @@
 		"jsr:typescript": "^5.4.2"
 	},
 	"dependencies": {
-		"npm:dxt-js": "^0.0.3",
-		"npm:pako": "^2.1.0"
+		"npm:fflate": "^0.8.2",
+		"npm:libsquish-js": "^1.0.1"
 	}
 }

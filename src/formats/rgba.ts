@@ -1,5 +1,5 @@
 import { VFormats } from '../core/enums.js';
-import { VCodec, VEncodedImageData, VImageData, registerCodec, HAS_FLOAT16 } from '../core/image.js';
+import { VCodec, VEncodedImageData, VImageData, registerCodec, HAS_FLOAT16, type VPixelArrayConstructor } from '../core/image.js';
 
 const PixelDataTypes = {
 	'Uint8': 1,
@@ -9,7 +9,7 @@ const PixelDataTypes = {
 	'Float32': 4,
 } as const;
 
-const PixelArrayTypes = {
+const PixelArrayTypes: Record<string, VPixelArrayConstructor> = {
 	'Uint8': Uint8Array,
 	'Uint16': Uint16Array,
 	'Uint32': Uint32Array,
@@ -27,7 +27,7 @@ function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, 
 	const SET = 'set' + type as `set${keyof typeof PixelDataTypes}`;
 	const GET = 'get' + type as `get${keyof typeof PixelDataTypes}`;
 	const ARR = PixelArrayTypes[type];
-	const maxValue = PixelFloatTypes[type] ? 1 : 2 ** (ARR.BYTES_PER_ELEMENT * 8) - 1;
+	const maxValue = (type in PixelFloatTypes) ? 1 : 2 ** (ARR.BYTES_PER_ELEMENT * 8) - 1;
 
 	const increment = +(red != null) + +(green != null) + +(blue != null) + +(alpha != null);
 	const bpp = PixelDataTypes[type] * increment;
