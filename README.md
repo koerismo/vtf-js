@@ -31,7 +31,9 @@ The following formats are supported by default.
 
 ## Additional Setup
 
-While `vtf-js` should work mostly out of the box, there are several things that this package needs help with - DXT encoding/decoding, and Strata Deflate/ZSTD compression.
+While `vtf-js` should work mostly out of the box, there are several things that this package needs help with - DXT encoding, and Strata Deflate/ZSTD compression.
+
+vtf-js includes a DXTN decoder by default. Unfortunately, native encoding is not supported at this time. To allow encoding DXT images, the `vtf-js/addons/squish` module can be used to register the `libsquish-js` library for encoding/decoding DXTN images, which replaces the `dxt-js` library used in previous versions.
 
 Support for Deflate decompression is provided by default using the standard [Compression Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Compression_Streams_API), however this compression interface is limited in functionality, and a compression level of `-1` is enforced when encoding due to technical limitations.
 

@@ -1,78 +1,73 @@
 import { VEncodedImageData, VImageData, getCodec } from './image.js';
 import { DataBuffer } from './buffer.js';
 import { VFileHeader } from '../vtf.js';
-import { VFormats } from './enums.js';
+import { VFormats, NO_DATA } from './enums.js';
 import { VDataCollection, VDataProvider } from './providers.js';
 import { getFaceCount, getMipSize, compress, decompress } from './utils.js';
 
-export const VResourceTypes: {[key: string]: VResourceStatic} = {};
-export function registerResourceType(resource: VResourceStatic) {
-	if (!resource.tag) throw('registerResourceDecoder: Cannot register generic resource! (Must have static tag attribute.)');
-	VResourceTypes[resource.tag] = resource;
+export const VResourceTypes: {[key: number]: VResourceStatic} = {};
+export function registerResourceType(resource: VResourceStatic, tag: number) {
+	VResourceTypes[tag] = resource;
 }
 
 export enum VHeaderTags {
-	TAG_BODY = '\x30\0\0',
-	TAG_THUMB = '\x01\0\0',
-	TAG_SHEET = '\x10\0\0',
-	TAG_AXC = 'AXC',
-	TAG_HOT = 'HOT',
+	TAG_LEGACY_BODY  = 0x30_00_00,
+	TAG_LEGACY_THUMB = 0x01_00_00,
+	TAG_SHEET        = 0x10_00_00,
+	TAG_AXC          = 0x41_58_43, // AXC
+	TAG_HOTSPOT      = 0x2B_00_00, // +\0\0
 }
 
 export class VHeader {
-	readonly tag: string;
-	readonly flags: number;
-	readonly start: number;
-	end?: number;
-
-	constructor(tag: string, flags: number, start: number) {
-		this.tag = tag;
-		this.flags = flags;
-		this.start = start;
+	constructor(
+		public readonly tag: number,
+		public readonly flags: number,
+		public readonly start: number,
+		public length?: number) {
 	}
 
 	hasData(): boolean {
-		return !(this.flags & 0x2);
+		return !(this.flags & NO_DATA);
 	}
 }
 
 /** Defines a decoder for a {@link VResource} and associates it with a tag. */
 export interface VResourceStatic {
-	readonly tag: string;
 	decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): Promise<VResource> | VResource;
 }
 
 /** Defines a generic resource entry. All resources are required to implement this interface! */
 export interface VResource {
 	/** The tag of this resource. Accessed by `Vtf` to encode the resource header. */
-	tag: string;
+	tag: number;
 	/** The flags of this resource. Accessed by `Vtf` to encode the resource header. */
 	flags: number;
+	/** Returns whether this resource should be considered a "legacy" resource with no predefined length. */
+	isLegacy(): boolean;
 	/** Encode the body of this resource into an ArrayBuffer. */
-	encode(info: VFileHeader): Promise<ArrayBuffer> | ArrayBuffer;
+	encode(info: VFileHeader): Promise<ArrayBuffer|undefined> | ArrayBuffer|undefined;
 }
 
 type VImageEither = (VImageData|VEncodedImageData);
 
 /** Implements a generic resource entry. This can be subclassed to quickly implement {@link VResource} */
 export class VBaseResource implements VResource {
-	readonly tag: string;
-	readonly flags: number;
-	data?: DataBuffer;
+	constructor(
+		public readonly tag: number,
+		public readonly flags: number,
+		public raw?: DataBuffer) {
+	}
 
-	constructor(tag: string, flags: number, data?: DataBuffer) {
-		this.tag = tag;
-		this.flags = flags;
-		this.data = data;
+	isLegacy(): boolean {
+		return this.tag === VHeaderTags.TAG_LEGACY_BODY || this.tag === VHeaderTags.TAG_LEGACY_THUMB;
 	}
 
 	static decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): Promise<VBaseResource> | VBaseResource {
 		return new VBaseResource(header.tag, header.flags, view);
 	}
 
-	encode(info: VFileHeader): Promise<ArrayBuffer> | ArrayBuffer {
-		if (!this.data) return new ArrayBuffer(0);
-		return this.data.buffer;
+	encode(info: VFileHeader): Promise<ArrayBuffer|undefined> | ArrayBuffer|undefined {
+		return this.raw?.buffer;
 	}
 }
 
@@ -80,7 +75,7 @@ export class VBodyResource extends VBaseResource {
 	images: VDataProvider;
 
 	constructor(flags: number, images: VDataProvider) {
-		super(VHeaderTags.TAG_BODY, flags);
+		super(VHeaderTags.TAG_LEGACY_BODY, flags);
 		this.images = images;
 	}
 
@@ -148,10 +143,14 @@ export class VBodyResource extends VBaseResource {
 					const subview = new DataBuffer(uncompressed_length * info.slices);
 
 					for ( let w=0; w < info.slices; w++ ) { // slices
-						const slice = this.images.getImage(x, y, z, w).encode(info.format).data;
-						subview.write_u8(slice);
+						const slice = this.images.getImage(x, y, z, w, true);
+
+						// If slice is encoded, .encode() will no-op if the format matches. Otherwise, it is re-encoded.
+						// If slice isn't encoded, it will be encoded into the desired format.
+						const sliceData = slice.encode(info.format).data;
+						subview.write_u8(sliceData);
 					}
-					
+
 					// Compress
 					let data: Uint8Array = subview;
 					if (info.compression_level !== 0) {
@@ -177,7 +176,7 @@ export class VThumbResource extends VBaseResource {
 	image: VImageData | VEncodedImageData;
 
 	constructor(flags: number, image: VImageData | VEncodedImageData) {
-		super(VHeaderTags.TAG_THUMB, flags);
+		super(VHeaderTags.TAG_LEGACY_THUMB, flags);
 		this.image = image;
 	}
 
@@ -190,7 +189,6 @@ export class VThumbResource extends VBaseResource {
 
 	encode(info: VFileHeader): ArrayBuffer {
 		if (this.image.width === 0 || this.image.height === 0) return new ArrayBuffer(0);
-		if (this.image.isEncoded) return this.image.data.buffer as ArrayBuffer;
 		return this.image.encode(VFormats.DXT1).data.buffer as ArrayBuffer;
 	}
 }
@@ -209,17 +207,15 @@ export interface SheetSequence {
 	frames: SheetFrame[];
 }
 
-export class VSheetResource implements VResource {
-	static tag = VHeaderTags.TAG_SHEET;
-	tag = VHeaderTags.TAG_SHEET;
-
+export class VSheetResource extends VBaseResource {
 	static {
-		registerResourceType(VSheetResource);
+		registerResourceType(VSheetResource, VHeaderTags.TAG_SHEET);
 	}
 
 	constructor(
-		public flags: number,
+		flags: number,
 		public sequences: SheetSequence[]) {
+		super(VHeaderTags.TAG_SHEET, flags);
 	}
 
 	static decode(header: VHeader, view: DataBuffer, info: VFileHeader): VSheetResource {
@@ -228,7 +224,7 @@ export class VSheetResource implements VResource {
 		const sequence_count = view.read_u32();
 		const sequences = new Array<SheetSequence>(sequence_count);
 		for (let i=0; i<sequence_count; i++) {
-			const _id = view.read_u32();
+			view.pad(4); // const id = view.read_u32();
 			const clamp = !!view.read_u32();
 			const frame_count = view.read_u32();
 			const duration = view.read_f32();
@@ -297,19 +293,17 @@ export interface HotspotRect {
 	max_y: number;
 }
 
-export class VHotspotResource implements VResource {
-	static tag = VHeaderTags.TAG_HOT;
-	tag = VHeaderTags.TAG_HOT;
-
+export class VHotspotResource extends VBaseResource {
 	static {
-		registerResourceType(VHotspotResource);
+		registerResourceType(VHotspotResource, VHeaderTags.TAG_HOTSPOT);
 	}
 
 	constructor(
-		public flags: number,
+		flags: number,
 		public version: number,
 		public editorFlags: number,
 		public rects: HotspotRect[]) {
+			super(VHeaderTags.TAG_HOTSPOT, flags);
 	}
 
 	static decode(header: VHeader, view: DataBuffer, info: VFileHeader): VHotspotResource {
@@ -340,7 +334,6 @@ export class VHotspotResource implements VResource {
 	encode(info: VFileHeader): ArrayBuffer {
 		const length = 4 + this.rects.length * 9;
 		const view = new DataBuffer(length);
-		view.set_endian(true);
 
 		if (this.version !== 0x1)
 			throw Error(`Failed to write VHotspotResource: Invalid version! (Expected 1, got ${this.version})`);

@@ -1,6 +1,7 @@
 import { VCodecs } from '../dist/core/image.js';
 import { VImageData, VFormats } from '../dist/index.js';
 import assert from 'node:assert/strict';
+import '../dist/addons/squish.js';
 
 /**
  * 

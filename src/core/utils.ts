@@ -42,6 +42,11 @@ export function ceil4(x: number): number {
 	return ((x + 3) >> 2) * 4;
 }
 
+/** Converts 0xAABBCC to 0xCCBBAA. */
+export function byteswap3(x: number): number {
+    return (x & 0xff) << 16 | (x & 0xff00) | (x & 0xff0000) >> 16;
+}
+
 /** Defines a data compression function. */
 export type CompressFunction = (data: Uint8Array, method: VCompressionMethods, level: number) => Promise<Uint8Array> | Uint8Array;
 /** Defines a data decompression function. */

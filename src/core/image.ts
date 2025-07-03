@@ -53,7 +53,9 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		this.height = height;
 	}
 
-	/** Returns a remapped copy of this image with the specified data format, normalizing floating-point formats to 0-1.
+	/**
+	 * Returns a remapped copy of this image with the specified data format, normalizing floating-point formats to 0-1.
+	 * If this image is already of the specified format, this method returns self.
 	 * If `do_clamp` is set to true, the data will be clamped between 0 and the array's maximum value.
 	 * @example const converted: VImageData<Float32Array> = image.convert(Float32Array);
 	 */
@@ -91,6 +93,11 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		return out;
 	}
 
+	/** Dummy function - returns self. */
+	decode(): VImageData {
+		return this;
+	}
+
 	/**
 	 * Returns a resampled copy of this image with the given dimensions.
 	 * ### If you are batch-resizing images, create and reuse a VImageScaler for better performance!
@@ -112,7 +119,7 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 	}
 }
 
-/** Vtf-encoded image data. */
+/** Format-encoded image data. */
 export class VEncodedImageData {
 	readonly isEncoded = true as const;
 
@@ -128,10 +135,17 @@ export class VEncodedImageData {
 		this.format = format;
 	}
 
+	/** Decodes this image into RGBA pixel data. */
 	decode(): VImageData {
 		const length = this.width * this.height * 4;
 		const out = getCodec(this.format).decode(this);
 		if (out.data.length !== length) throw Error(`VImageData.encode: Decoded ${VFormats[this.format]} image failed length validation! (expected ${length} but got ${out.data.length})`);
 		return out;
+	}
+
+	/** If necessary, decodes and encodes this image into the desired format. Otherwise, returns self. */
+	encode(format: VFormats): VEncodedImageData {
+		if (format === this.format) return this;
+		return this.decode().encode(format);
 	}
 }

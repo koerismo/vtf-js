@@ -83,3 +83,5 @@ export enum VCompressionMethods {
 	Deflate = 8,
 	ZSTD = 93,
 }
+
+export const NO_DATA = 0x2;

@@ -1,6 +1,6 @@
 import type { VDataProvider } from './core/providers.js';
 import { VCompressionMethods, VFormats } from './core/enums.js';
-import { VBaseResource } from './core/resources.js';
+import { VBaseResource, VResource } from './core/resources.js';
 import { getThumbMip } from './core/utils.js';
 
 export interface VConstructorOptions {
@@ -21,7 +21,7 @@ export class Vtf {
 	public version: number;
 	public format: VFormats;
 	public flags: number;
-	public meta: VBaseResource[];
+	public meta: VResource[];
 
 	public reflectivity: Float32Array;
 	public first_frame: number;
@@ -58,14 +58,21 @@ export class Vtf {
 		this.compression_method = options?.compression_method ?? VCompressionMethods.Deflate;
 	}
 
+	/** Encodes this Vtf object into an ArrayBuffer. */
 	encode(): Promise<ArrayBuffer> {
 		throw Error('Vtf.encode: Implementation override not present!');
 	}
 
+	/**
+	 * Parses the provided ArrayBuffer into a new Vtf object.
+	 * @param data The Vtf file data.
+	 * @param header_only (default: `false`) If true, a VFileHeader will be returned instead, which only contains the header contents.
+	 * @param lazy_decode (default: `true`) If false, all data in the Vtf will be decoded in this function call. Otherwise, images will only be decoded when requested.
+	 */
 	static decode(data: ArrayBuffer): Promise<Vtf>;
 	static decode(data: ArrayBuffer, header_only: false, lazy_decode?: boolean): Promise<Vtf>;
 	static decode(data: ArrayBuffer, header_only: true, lazy_decode?: boolean): Promise<VFileHeader>;
-	static decode(data: ArrayBuffer, header_only: boolean=false, lazy_decode: boolean=false): Promise<Vtf|VFileHeader> {
+	static decode(data: ArrayBuffer, header_only: boolean=false, lazy_decode: boolean=true): Promise<Vtf|VFileHeader> {
 		throw Error('Vtf.decode: Implementation override not present!');
 	}
 }
@@ -90,6 +97,7 @@ export class VFileHeader {
 	compression_level!: number;
 	compressed_lengths?: number[][][];
 
+	/** Creates a new VFileHeader from the provided Vtf object. Used internally when encoding. */
 	static fromVtf(vtf: Vtf): VFileHeader {
 		const header = new VFileHeader();
 		header.version = vtf.version;

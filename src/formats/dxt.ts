@@ -8,9 +8,10 @@ export const enum DxtFlags {
 	DXT1 = 0x1,
 	DXT3 = 0x2,
 	DXT5 = 0x4,
-	WeightByAlpha = 0x10,
-	OneBitAlpha = 0x20,
-	MetricPerceptual = 0x100,
+
+	OneBitAlpha = 0x100,
+	WeightByAlpha = 0x200,
+	MetricPerceptual = 0x400,
 }
 
 // https://www.khronos.org/opengl/wiki/S3_Texture_Compression
@@ -21,7 +22,7 @@ registerCodec(VFormats.DXT1, {
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		throw Error('not implemented!');
+		throw Error('DXT compression is unsupported by the default backend!');
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
@@ -33,11 +34,11 @@ registerCodec(VFormats.DXT1_ONEBITALPHA, getCodec(VFormats.DXT1));
 
 registerCodec(VFormats.DXT3, {
 	length(width, height) {
-		return ceil4(width) * ceil4(height) * 1;
+		return ceil4(width) * ceil4(height);
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		throw Error('not implemented!');
+		throw Error('DXT compression is unsupported by the default backend!');
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
@@ -47,11 +48,11 @@ registerCodec(VFormats.DXT3, {
 
 registerCodec(VFormats.DXT5, {
 	length(width, height) {
-		return ceil4(width) * ceil4(height) * 1;
+		return ceil4(width) * ceil4(height);
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		throw Error('not implemented!');
+		throw Error('DXT compression is unsupported by the default backend!');
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
