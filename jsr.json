@@ -1,4 +1,5 @@
 {
+	"$schema": "https://jsr.io/schema/config-file.v1.json",
 	"name": "@koerismo/vtf",
 	"description": "A javascript IO library for the Valve Texture Format.",
 	"version": "0.9.2",
@@ -10,9 +11,11 @@
 		".": "./src/index.ts",
 		"./utils": "./src/core/utils.ts",
 		"./resources": "./src/core/resources.ts",
-		"./addons/*": "./src/addons/*.ts"
+		"./addons/squish": "./src/addons/squish.ts",
+		"./addons/compress/node": "./src/addons/compress/node.ts",
+		"./addons/compress/fflate": "./src/addons/compress/fflate.ts"
 	},
-	"exclude": ["/", "!src/", "!README.md"],
+	"include": ["src/"],
 
 	"devDependencies": {
 		"npm:@types/node": "^22.10.2",

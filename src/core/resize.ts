@@ -86,7 +86,7 @@ export class VImageScaler {
 			}
 	}
 
-	protected calc_coeffs(size1: number, size2: number, filter: VFilter, cache: Record<string, Float32Array>) {
+	protected calc_coeffs(size1: number, size2: number, filter: VFilter, cache: Record<string, Float32Array>): CoeffsLine[] {
 		const inv_ratio = size1 / size2;
 		const filter_scale = Math.max(1, inv_ratio);
 		const filter_radius = filter_scale * filter.radius;
