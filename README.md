@@ -2,7 +2,7 @@
 *A javascript IO library for the Valve Texture Format.*
 
 ## Overview
-`vtf-js` is a canvas-independent library for reading and authoring Vtfs. The library supports encoding and decoding VTF versions 7.1 - 7.6, including Strata-format compressed Vtfs when `fflate` is installed. Mipmap generation is automated by default, however interfaces for manually specifying image data for each mipmap are also available (see `VDataCollection`).
+`vtf-js` is a canvas-independent library for reading and authoring Vtfs. The library supports encoding and decoding VTF versions 7.1 - 7.6, including Strata-format compressed Vtfs. Mipmap generation is automated by default, however interfaces for manually specifying image data for each mipmap are also available (see `VDataCollection`).
 
 The following formats are supported by default.
 
@@ -33,7 +33,7 @@ The following formats are supported by default.
 
 While `vtf-js` should work mostly out of the box, there are several things that this package needs help with: DXT encoding, and Strata Deflate/ZSTD compression.
 
-`vtf-js` includes a DXT decoder by default. Unfortunately, native encoding is not supported at this time. To enable this functionality the `vtf-js/addons/squish` module can be used to register the `libsquish-js` library for encoding/decoding.
+`vtf-js` includes a DXT decoder by default. Unfortunately, native encoding is not supported at this time. To enable this functionality, the `vtf-js/addons/squish` module can be used to register the `libsquish-js` library for encoding/decoding.
 
 Support for Deflate decompression is provided by default using the standard [Compression Streams API](https://developer.mozilla.org/en-US/docs/Web/API/Compression_Streams_API), however this compression interface is limited in functionality, and a compression level of `-1` is enforced when encoding due to technical limitations.
 
