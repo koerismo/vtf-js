@@ -3,6 +3,7 @@ import { VCompressionMethods, VFormats } from './core/enums.js';
 import { VBaseResource, VResource } from './core/resources.js';
 import { getThumbMip } from './core/utils.js';
 
+/** Options for use with the {@link Vtf} constructor. */
 export interface VConstructorOptions {
 	version?: number;
 	format?: VFormats;
@@ -16,6 +17,13 @@ export interface VConstructorOptions {
 	compression_method?: VCompressionMethods;
 }
 
+/**
+ * A decoded Vtf.
+ * ```ts
+ * const vtf = await Vtf.decode(myBuffer);
+ * const image = vtf.data.getImage(0, 0, 0, 0);
+ * ```
+ */
 export class Vtf {
 	public data: VDataProvider;
 	public version: number;
@@ -77,6 +85,7 @@ export class Vtf {
 	}
 }
 
+/** A decoded Vtf header. Returned by `Vtf.decode(...)` when `header_only` is `true`. */
 export class VFileHeader {
 	version!: number;
 	width!: number;

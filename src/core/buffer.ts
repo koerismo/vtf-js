@@ -1,9 +1,10 @@
-//  NOTE: The code below can be found on npm as "stupid-buffer" for use in other projects.
-
 const TE = new TextEncoder();
 const TD = new TextDecoder();
 
-
+/**
+ * Wraps DataView with utility functions and pointer offsets.
+ * This class is also available separately in the `stupid-buffer` npm package.
+ */
 export class DataBuffer extends Uint8Array {
 	pointer = 0;
 	view: DataView;

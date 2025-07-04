@@ -5,11 +5,15 @@ import { VFormats, NO_DATA } from './enums.js';
 import { VDataCollection, VDataProvider } from './providers.js';
 import { getFaceCount, getMipSize, compress, decompress } from './utils.js';
 
+/** A map of header tags and their corresponding decoders. Using {@link registerResourceType} to register new tags is recommended! */
 export const VResourceTypes: {[key: number]: VResourceStatic} = {};
+
+/** Registers a resource to be used when the specified tag is encountered. */
 export function registerResourceType(resource: VResourceStatic, tag: number) {
 	VResourceTypes[tag] = resource;
 }
 
+/** A collection of common resource header tags as BE 24-bit integers. */
 export enum VHeaderTags {
 	TAG_LEGACY_BODY  = 0x30_00_00,
 	TAG_LEGACY_THUMB = 0x01_00_00,
@@ -18,6 +22,7 @@ export enum VHeaderTags {
 	TAG_HOTSPOT      = 0x2B_00_00, // +\0\0
 }
 
+/** Implements a resource header. This serves as a container to provide to {@link VResourceStatic} when decoding. */
 export class VHeader {
 	constructor(
 		public readonly tag: number,
@@ -26,12 +31,13 @@ export class VHeader {
 		public length?: number) {
 	}
 
+	/** Returns true if the `0x2` flag is unset. */
 	hasData(): boolean {
 		return !(this.flags & NO_DATA);
 	}
 }
 
-/** Defines a decoder for a {@link VResource} and associates it with a tag. */
+/** Defines a resource decoder. */
 export interface VResourceStatic {
 	decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): Promise<VResource> | VResource;
 }
@@ -50,7 +56,7 @@ export interface VResource {
 
 type VImageEither = (VImageData|VEncodedImageData);
 
-/** Implements a generic resource entry. This can be subclassed to quickly implement {@link VResource} */
+/** Implements a generic resource entry. This can be subclassed to quickly implement {@link VResource}. */
 export class VBaseResource implements VResource {
 	constructor(
 		public readonly tag: number,
@@ -71,6 +77,7 @@ export class VBaseResource implements VResource {
 	}
 }
 
+/** @internal The hi-res image data resource. This is managed internally! */
 export class VBodyResource extends VBaseResource {
 	images: VDataProvider;
 
@@ -172,6 +179,7 @@ export class VBodyResource extends VBaseResource {
 	}
 }
 
+/** @internal The low-res image data resource. This is managed internally! */
 export class VThumbResource extends VBaseResource {
 	image: VImageData | VEncodedImageData;
 
@@ -279,12 +287,14 @@ export class VSheetResource extends VBaseResource {
 	}
 }
 
+/** Defines flags which can be used to modify the behavior of Hotspot regions. */
 export const enum HotSpotRectFlags {
 	AllowRotation   = 0x1,
 	AllowReflection = 0x2,
 	AltGroup        = 0x4,
 }
 
+/** Defines a Hotspot rect in pixel space. */
 export interface HotspotRect {
 	flags: number;
 	min_x: number;
@@ -293,6 +303,7 @@ export interface HotspotRect {
 	max_y: number;
 }
 
+/** The Hotspot data resource. See {@link https://wiki.stratasource.org/modding/overview/vtf-hotspot-resource this page} for more information. */
 export class VHotspotResource extends VBaseResource {
 	static {
 		registerResourceType(VHotspotResource, VHeaderTags.TAG_HOTSPOT);
