@@ -128,6 +128,7 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_
 	// Parse resource bodies
 	for ( let i=0; i<headers.length; i++ ) {
 		const header = headers[i];
+		const has_data = header.hasData();
 		let length: number | undefined;
 		let start = header.start;
 
@@ -137,13 +138,13 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_
 		}
 
 		// All modern resources have a uint32 at the body start to declare the content size
-		if (header.tag !== VHeaderTags.TAG_LEGACY_BODY) {
+		if (has_data && header.tag !== VHeaderTags.TAG_LEGACY_BODY) {
 			length = view.view.getUint32(start, true);
 			start += 4;
 		}
 
 		let data: DataBuffer | undefined;
-		if (!(header.flags & NO_DATA))
+		if (has_data)
 			data = view.ref(start, length);
 
 		if (header.tag === VHeaderTags.TAG_LEGACY_BODY) {
