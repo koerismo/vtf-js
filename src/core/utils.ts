@@ -16,9 +16,9 @@ export function getHeaderLength(version: number, resources: number=0): number {
 
 /** Returns the number of faces that should be expected with the given header. */
 export function getFaceCount(info: VFileHeader): 1|6|7 {
-	const is_env = (info.flags & VFlags.Envmap);
-	if (info.version < 5 && info.first_frame === -1) return is_env ? 7 : 1;
-	return is_env ? 6 : 1;
+	if (!(info.flags & VFlags.Envmap)) return 1;
+	if (info.version < 5 && info.first_frame === -1) return 7;
+	return 6;
 }
 
 /** Returns the first mipmap which does not exceed `target` in width or height. */

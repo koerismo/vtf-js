@@ -34,7 +34,9 @@ export enum VFormats {
 	ATI2N,						// Red, Green BC5 compressed format - 8 bpp
 	ATI1N,						// Red BC4 compressed format - 4 bpp
 	
-	IMAGE_FORMAT_BC7 = 70,
+	R8 = 69,
+	BC7 = 70,
+	BC6H = 71,
 }
 
 export enum VFlags {
