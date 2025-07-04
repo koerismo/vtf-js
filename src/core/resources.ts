@@ -18,6 +18,8 @@ export enum VHeaderTags {
 	TAG_LEGACY_BODY  = 0x30_00_00,
 	TAG_LEGACY_THUMB = 0x01_00_00,
 	TAG_SHEET        = 0x10_00_00,
+	TAG_LOD          = 0x4C_4F_44, // LOD
+	TAG_TS0          = 0x54_54_30, // TS0
 	TAG_AXC          = 0x41_58_43, // AXC
 	TAG_HOTSPOT      = 0x2B_00_00, // +\0\0
 }
@@ -284,6 +286,64 @@ export class VSheetResource extends VBaseResource {
 		}
 
 		return view.buffer;
+	}
+}
+
+export class VTextureSettingsResource extends VBaseResource {
+	static {
+		registerResourceType(VTextureSettingsResource, VHeaderTags.TAG_TS0);
+	}
+
+	constructor(
+		flags: number,
+		public textureFlags: number) {
+		super(VHeaderTags.TAG_TS0, flags);
+	}
+
+	static decode(header: VHeader, view?: DataBuffer): VTextureSettingsResource {
+		if (!view) return new VTextureSettingsResource(0, 0);
+		return new VTextureSettingsResource(header.flags, view.read_u32());
+	}
+
+	encode(): ArrayBuffer {
+		const view = new DataView(new ArrayBuffer(4));
+		view.setUint32(0, this.textureFlags, true);
+		return view.buffer;
+	}
+}
+
+export class VTextureLODResource extends VBaseResource {
+	static {
+		registerResourceType(VTextureLODResource, VHeaderTags.TAG_LOD);
+	}
+
+	constructor(
+		flags: number,
+		public resolutionClampX: number,
+		public resolutionClampY: number,
+		public x360_resolutionClampX: number,
+		public x360_resolutionClampY: number) {
+		super(VHeaderTags.TAG_LOD, flags);
+	}
+
+	static decode(header: VHeader, view?: DataBuffer): VTextureLODResource {
+		if (!view) throw Error(`No data provided for LOD control resource!`);
+		return new VTextureLODResource(
+			header.flags,
+			view[0],
+			view[1],
+			view[2],
+			view[3]
+		);
+	}
+
+	encode(): ArrayBuffer {
+		const arr = new Uint8Array(4);
+		arr[0] = this.resolutionClampX;
+		arr[1] = this.resolutionClampY;
+		arr[2] = this.x360_resolutionClampX;
+		arr[3] = this.x360_resolutionClampY;
+		return arr.buffer;
 	}
 }
 
