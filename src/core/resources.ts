@@ -17,10 +17,12 @@ export function registerResourceType(resource: VResourceStatic, tag: number) {
 export enum VHeaderTags {
 	TAG_LEGACY_BODY  = 0x30_00_00,
 	TAG_LEGACY_THUMB = 0x01_00_00,
+	TAG_CRC          = 0x43_52_43,
+	TAG_KVD          = 0x48_56_44,
+	TAG_LOD          = 0x4C_4F_44,
 	TAG_SHEET        = 0x10_00_00,
-	TAG_LOD          = 0x4C_4F_44, // LOD
-	TAG_TS0          = 0x54_54_30, // TS0
-	TAG_AXC          = 0x41_58_43, // AXC
+	TAG_TS0          = 0x54_54_30,
+	TAG_AXC          = 0x41_58_43,
 	TAG_HOTSPOT      = 0x2B_00_00, // +\0\0
 }
 
@@ -289,9 +291,9 @@ export class VSheetResource extends VBaseResource {
 	}
 }
 
-export class VTextureSettingsResource extends VBaseResource {
+export class VExtendedSettingsResource extends VBaseResource {
 	static {
-		registerResourceType(VTextureSettingsResource, VHeaderTags.TAG_TS0);
+		registerResourceType(VExtendedSettingsResource, VHeaderTags.TAG_TS0);
 	}
 
 	constructor(
@@ -300,9 +302,9 @@ export class VTextureSettingsResource extends VBaseResource {
 		super(VHeaderTags.TAG_TS0, flags);
 	}
 
-	static decode(header: VHeader, view?: DataBuffer): VTextureSettingsResource {
-		if (!view) return new VTextureSettingsResource(0, 0);
-		return new VTextureSettingsResource(header.flags, view.read_u32());
+	static decode(header: VHeader, view?: DataBuffer): VExtendedSettingsResource {
+		if (!view) return new VExtendedSettingsResource(0, 0);
+		return new VExtendedSettingsResource(header.flags, view.read_u32());
 	}
 
 	encode(): ArrayBuffer {
@@ -312,9 +314,9 @@ export class VTextureSettingsResource extends VBaseResource {
 	}
 }
 
-export class VTextureLODResource extends VBaseResource {
+export class VLodControlResource extends VBaseResource {
 	static {
-		registerResourceType(VTextureLODResource, VHeaderTags.TAG_LOD);
+		registerResourceType(VLodControlResource, VHeaderTags.TAG_LOD);
 	}
 
 	constructor(
@@ -326,9 +328,9 @@ export class VTextureLODResource extends VBaseResource {
 		super(VHeaderTags.TAG_LOD, flags);
 	}
 
-	static decode(header: VHeader, view?: DataBuffer): VTextureLODResource {
+	static decode(header: VHeader, view?: DataBuffer): VLodControlResource {
 		if (!view) throw Error(`No data provided for LOD control resource!`);
-		return new VTextureLODResource(
+		return new VLodControlResource(
 			header.flags,
 			view[0],
 			view[1],
