@@ -7,6 +7,13 @@ settings:
 importers:
 
   .:
+    dependencies:
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.2
+      libsquish-js:
+        specifier: ^1.0.1
+        version: 1.0.1
     devDependencies:
       '@eslint/js':
         specifier: ^9.30.1
@@ -41,13 +48,6 @@ importers:
       typescript-eslint:
         specifier: ^8.35.1
         version: 8.35.1(eslint@9.30.1)(typescript@5.8.3)
-    optionalDependencies:
-      fflate:
-        specifier: ^0.8.2
-        version: 0.8.2
-      libsquish-js:
-        specifier: ^1.0.1
-        version: 1.0.1
 
 packages:
 
@@ -1365,8 +1365,7 @@ snapshots:
     dependencies:
       reusify: 1.1.0
 
-  fflate@0.8.2:
-    optional: true
+  fflate@0.8.2: {}
 
   file-entry-cache@8.0.0:
     dependencies:
@@ -1478,8 +1477,7 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
 
-  libsquish-js@1.0.1:
-    optional: true
+  libsquish-js@1.0.1: {}
 
   locate-path@6.0.0:
     dependencies:
