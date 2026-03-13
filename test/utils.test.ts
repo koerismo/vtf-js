@@ -2,15 +2,19 @@ import { VFlags, type VFileHeader } from '../dist/index.js';
 import { getFaceCount, getHeaderLength, getMipSize } from '../dist/core/utils.js';
 import assert from 'node:assert/strict';
 
+function f(x: Partial<VFileHeader>) {
+	return x as VFileHeader;
+}
+
 describe('Utility functions', () => {
 
 	it('getFaceCount', () => {
-		assert.strictEqual(getFaceCount(<VFileHeader>{ flags: 0x00,          version: 5, first_frame: 0 }), 1);
-		assert.strictEqual(getFaceCount(<VFileHeader>{ flags: 0x00,          version: 4, first_frame: -1 }), 1);
-		assert.strictEqual(getFaceCount(<VFileHeader>{ flags: VFlags.Envmap, version: 5, first_frame: 0 }), 6);
-		assert.strictEqual(getFaceCount(<VFileHeader>{ flags: VFlags.Envmap, version: 4, first_frame: 0 }), 6);
-		assert.strictEqual(getFaceCount(<VFileHeader>{ flags: VFlags.Envmap, version: 5, first_frame: -1 }), 6);
-		assert.strictEqual(getFaceCount(<VFileHeader>{ flags: VFlags.Envmap, version: 4, first_frame: -1 }), 7);
+		assert.strictEqual(getFaceCount(f({ flags: 0x00,          version: 5, first_frame: 0 })), 1);
+		assert.strictEqual(getFaceCount(f({ flags: 0x00,          version: 4, first_frame: -1 })), 1);
+		assert.strictEqual(getFaceCount(f({ flags: VFlags.Envmap, version: 5, first_frame: 0 })), 6);
+		assert.strictEqual(getFaceCount(f({ flags: VFlags.Envmap, version: 4, first_frame: 0 })), 6);
+		assert.strictEqual(getFaceCount(f({ flags: VFlags.Envmap, version: 5, first_frame: -1 })), 6);
+		assert.strictEqual(getFaceCount(f({ flags: VFlags.Envmap, version: 4, first_frame: -1 })), 7);
 	});
 
 	it('getHeaderLength', () => {
