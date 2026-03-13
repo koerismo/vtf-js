@@ -1,4 +1,4 @@
-import { Vtf, VDataCollection, VImageData, VFormats, VFrameCollection } from '../dist/index.js';
+import { Vtf, VImageData, VFormats, VFrameCollection } from '../dist/index.js';
 import '../dist/addons/compress/node.js';
 
 import { deepStrictEqual } from 'node:assert/strict';
@@ -41,9 +41,10 @@ describe('Vtf', () => {
 			});
 
 			const encoded = await vtf.encode();
-			const decoded = await Vtf.decode(encoded, false, false);
+			const decoded = await Vtf.decode(encoded, false);
 			const found = decoded.data.getImage(0, 0, 0, 0);
 			deepStrictEqual(image, found, `Image match failed on v${version} (compression ${compression_level})`);
 		});
 	}
+
 });

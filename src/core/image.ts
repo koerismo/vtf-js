@@ -90,8 +90,7 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		const input_max  = is_input_int  ? 2 ** (this.data.BYTES_PER_ELEMENT * 8) - 1 : 1;
 		const output_max = is_output_int ? 2 ** (      out.BYTES_PER_ELEMENT * 8) - 1 : 1;
 
-		// Add 0.5 to round for int outputs, since the default behavior is to floor them.
-		const add_factor = +is_output_int * 0.5;
+		const add_factor = 0; // +is_output_int * 0.5;
 		const mult_factor = output_max / input_max;
 
 		if (do_clamp) {

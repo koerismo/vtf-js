@@ -122,23 +122,19 @@ export class VDataCollection implements VDataProvider {
 		return this;
 	}
 
-	setImageDangerous(image: VImageEither, mip: number, frame: number, face: number, slice: number) {
-		this.vdata[mip][frame][face][slice] = image;
-	}
-
 	setImage(image: VImageEither, mip: number=0, frame: number=0, face: number=0, slice: number=0) {
 		if (!this.isInBounds(mip, frame, face, slice))
 			throw Error(`setImage: Attempted to set image out-of-bounds!`);
 
 		const [w_exp, h_exp] = getMipSize(mip, this.width, this.height);
-		if (image.width !== w_exp || image.height !== h_exp) throw Error(`vtf-js: Expected image to be ${w_exp}x${h_exp} for mipmap ${mip}, but got ${image.width}x${image.height} instead!`);
+		if (image.width !== w_exp || image.height !== h_exp) throw Error(`setImage: Expected image to be ${w_exp}x${h_exp} for mipmap ${mip}, but got ${image.width}x${image.height} instead!`);
 
 		this.vdata[mip][frame][face][slice] = image;
 	}
 
 	/** Gets the specified image from the data provider, decoding if necessary unless `allowEncoded` is true. */
 	getImage(mip: number, frame: number, face: number, slice: number, allowEncoded?: false): VImageData;
-	getImage(mip: number, frame: number, face: number, slice: number, allowEncoded?: boolean): VImageEither;
+	getImage(mip: number, frame: number, face: number, slice: number, allowEncoded: boolean): VImageEither;
 	getImage(mip: number, frame: number, face: number, slice: number, allowEncoded: boolean=false): VImageEither {
 		if (!this.isInBounds(mip, frame, face, slice))
 			throw Error(`getImage: Attempted to get image out-of-bounds!`);
@@ -146,9 +142,9 @@ export class VDataCollection implements VDataProvider {
 		let image = this.vdata[mip][frame][face][slice];
 		if (!image) {
 			if (mip === 0)
-				throw Error(`Image at (${mip}, ${frame}, ${face}, ${slice}) does not exist in collection!`);
+				throw Error(`getImage: Image at (${mip}, ${frame}, ${face}, ${slice}) does not exist in collection!`);
 			else
-				throw Error(`Mipmap at (${mip}, ${frame}, ${face}, ${slice}) does not exist in collection! Did you forget to run generateMips?`);
+				throw Error(`getImage: Mipmap at (${mip}, ${frame}, ${face}, ${slice}) does not exist in collection! Did you forget to run generateMips?`);
 		}
 
 		if (image.isEncoded && !allowEncoded)

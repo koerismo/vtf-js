@@ -17,7 +17,7 @@
 		"./addons/*": "./dist/addons/*.js"
 	},
 	"scripts": {
-		"test": "mocha",
+		"test": "mocha --extension=js,ts",
 		"build": "tsc",
 		"watch": "tsc --watch"
 	},

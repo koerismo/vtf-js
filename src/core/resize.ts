@@ -49,8 +49,10 @@ export const VFilters = {
 	Box:		<VFilter>{ radius: 1, kernel: x => x < 0.5 ? 1.0 : 0.0 },
 	Mitchell:	<VFilter>{ radius: 2, kernel: make_bicubic(1/3, 1/3) },
 	CatRom:		CatRomDefaultFilter,
-	/** Lanczos-3 filtering - A sinc filter that acts identically to Valve's NICE filter. */
+	/** Lanczos-3 filtering. */
 	Lanczos3:	<VFilter>{ radius: 3, kernel: x => x < 3.0 ? sinc(x) * sinc(x / 3.0) : 0.0 },
+	/** Valve NICE filtering. Equivalent to Lanczos-3, but with a sharpening factor added to match VTEX output. */
+	NICE:		<VFilter>{ radius: 3, kernel: x => x < 3.0 ? sinc(x) * sinc(x / 3.0) * (x > 1 ? 1.8 : 1.0) : 0.0 }
 } as const;
 
 
