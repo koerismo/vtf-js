@@ -22,7 +22,7 @@ const PixelFloatTypes = {
 	'Float32': true,
 } as const;
 
-function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, red: number|null, green: number|null, blue: number|null, alpha: number|null, avg: boolean=false, isFloat: boolean=false) {
+function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, red: number|null, green: number|null, blue: number|null, alpha: number|null, avg: boolean=false) {
 
 	const SET = 'set' + type as `set${keyof typeof PixelDataTypes}`;
 	const GET = 'get' + type as `get${keyof typeof PixelDataTypes}`;

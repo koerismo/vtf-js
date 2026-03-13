@@ -5,7 +5,9 @@
 	"author": "Koerismo",
 	"license": "LGPL-3.0-or-later",
 	"type": "module",
-	"files": ["dist/"],
+	"files": [
+		"dist/"
+	],
 	"main": "dist/index.js",
 	"exports": {
 		".": "./dist/index.js",
@@ -33,21 +35,20 @@
 		"url": "https://github.com/koerismo/vtf-js/issues"
 	},
 	"devDependencies": {
-		"@eslint/js": "^9.30.1",
+		"@eslint/js": "^9.39.4",
 		"@types/mocha": "^10.0.10",
-		"@types/node": "^24.0.10",
-		"@typescript-eslint/eslint-plugin": "^8.35.1",
-		"@typescript-eslint/parser": "^8.35.1",
-		"eslint": "^9.30.1",
-		"globals": "^16.3.0",
-		"mocha": "^11.7.1",
-		"sharp": "^0.34.2",
-		"typescript": "^5.8.3",
-		"typescript-eslint": "^8.35.1"
+		"@types/node": "^25.3.5",
+		"@typescript-eslint/eslint-plugin": "^8.56.1",
+		"@typescript-eslint/parser": "^8.56.1",
+		"eslint": "^9.39.4",
+		"globals": "^16.5.0",
+		"mocha": "^11.7.5",
+		"sharp": "^0.34.5",
+		"typescript": "^5.9.3",
+		"typescript-eslint": "^8.56.1"
 	},
 	"dependencies": {
 		"fflate": "^0.8.2",
-		"libsquish-js": "^1.0.1"
-	},
-	"packageManager": "pnpm@10.11.0"
+		"libsquish-js": "^1.0.2"
+	}
 }

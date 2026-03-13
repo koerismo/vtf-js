@@ -22,7 +22,6 @@ export { VFormats, VFlags, VCompressionMethods } from './core/enums.js';
 export {
 	VDataProvider,
 	VDataCollection,
-	VMipmapProvider,
 	VFrameCollection,
 	VFaceCollection,
 	VSliceCollection } from './core/providers.js';

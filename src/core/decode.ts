@@ -43,7 +43,7 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boo
 }
 
 // @ts-expect-error Overloads break for some reason?
-Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_decode: boolean=true): Promise<Vtf | VFileHeader> {
+Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false): Promise<Vtf | VFileHeader> {
 	const info = new VFileHeader();
 	info.compression_level = 0;
 
@@ -103,7 +103,7 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_
 	else {
 		const body_offset = header_length + getCodec(info.thumb_format).length(info.thumb_width, info.thumb_height);
 		const data = view.ref(body_offset);
-		body = await VBodyResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_BODY, 0x0, body_offset), data, info, lazy_decode);
+		body = await VBodyResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_BODY, 0x0, body_offset), data, info);
 	}
 
 	// Parse resource headers
@@ -149,7 +149,7 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_
 
 		if (header.tag === VHeaderTags.TAG_LEGACY_BODY) {
 			if (!data) throw Error('Vtf.decode: Body resource has no data! (0x2 flag set)');
-			body = await VBodyResource.decode(header, data, info, lazy_decode);
+			body = await VBodyResource.decode(header, data, info);
 			continue;
 		}
 

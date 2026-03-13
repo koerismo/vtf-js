@@ -68,8 +68,8 @@ export let compress: CompressFunction = async (data, method, level) => {
 		throw Error('vtf-js: Default compression backend only supports compression level `-1`. Import a `vtf-js/addons/compress/*` module or call `setCompressionMethod` to better support encoding Strata-compressed Vtfs!');
 	if (method !== VCompressionMethods.Deflate)
 		throw Error(`vtf-js: Default compression backend only supports Deflate compression!`);
-	
-	const inStream = new Blob([data]).stream();
+
+	const inStream = new Blob([data as Uint8Array<ArrayBuffer>]).stream();
 	const compStream = new CompressionStream('deflate');
 	const outStream = inStream.pipeThrough(compStream);
 	const n = new Response(outStream);
@@ -78,10 +78,16 @@ export let compress: CompressFunction = async (data, method, level) => {
 
 /** Decompresses the specified Uint8Array with the given options and returns the result. `level` is not currently used, but is included in the signature for future compatibility. */
 export let decompress: DecompressFunction = async (data, method, _level) => {
-	if (method !== VCompressionMethods.Deflate)
-		throw Error(`vtf-js: Default decompression backend only supports Deflate decompression!`);
-	const inStream = new Blob([data]).stream();
-	const decompStream = new DecompressionStream('deflate');
+	let methodStr: string;
+	switch (method) {
+		case VCompressionMethods.Deflate: { methodStr = 'deflate'; break }
+		case VCompressionMethods.ZSTD: { methodStr = 'zstd'; break }
+		default:
+			throw Error(`vtf-js: Unrecognized compression method ${method}!`);
+	}
+
+	const inStream = new Blob([data as Uint8Array<ArrayBuffer>]).stream();
+	const decompStream = new DecompressionStream(methodStr as CompressionFormat);
 	const outStream = inStream.pipeThrough(decompStream);
 	const n = new Response(outStream);
 	return new Uint8Array(await n.arrayBuffer());

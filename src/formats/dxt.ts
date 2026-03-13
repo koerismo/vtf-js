@@ -4,6 +4,8 @@ import { VEncodedImageData, VImageData, getCodec, registerCodec } from '../core/
 import { decompressImage } from './dxt-decompress.js';
 import { ceil4 } from '../core/utils.js';
 
+const ERROR_NOT_SUPPORTED = Error('vtf-js: DXT compression is unsupported by the default backend!');
+
 export const enum DxtFlags {
 	DXT1 = 0x1,
 	DXT3 = 0x2,
@@ -22,7 +24,7 @@ registerCodec(VFormats.DXT1, {
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		throw Error('DXT compression is unsupported by the default backend!');
+		throw ERROR_NOT_SUPPORTED;
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
@@ -38,7 +40,7 @@ registerCodec(VFormats.DXT3, {
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		throw Error('DXT compression is unsupported by the default backend!');
+		throw ERROR_NOT_SUPPORTED;
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
@@ -52,7 +54,7 @@ registerCodec(VFormats.DXT5, {
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		throw Error('DXT compression is unsupported by the default backend!');
+		throw ERROR_NOT_SUPPORTED;
 	},
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {

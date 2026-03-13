@@ -79,7 +79,7 @@ Vtf.prototype.encode = async function(this: Vtf): Promise <ArrayBuffer> {
 
 	// v7.2 +
 	if (this.version > 1) {
-		header.write_u16(this.data.sliceCount());
+		header.write_u16(this.data.getSliceCount());
 	}
 
 	// v7.1-7.2: Use non-chunked format:
