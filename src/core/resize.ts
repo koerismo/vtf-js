@@ -47,7 +47,9 @@ export const VFilters = {
 	Triangle:	<VFilter>{ radius: 1, kernel: x => Math.max(0, 1 - x) },
 	/** Box filtering - Evenly blends in the four closest pixels. */
 	Box:		<VFilter>{ radius: 1, kernel: x => x < 0.5 ? 1.0 : 0.0 },
+	/** Mitchell–Netravali bicubic filtering. */
 	Mitchell:	<VFilter>{ radius: 2, kernel: make_bicubic(1/3, 1/3) },
+	/** Catmull-Rom bicubic filtering. */
 	CatRom:		CatRomDefaultFilter,
 	/** Lanczos-3 filtering. */
 	Lanczos3:	<VFilter>{ radius: 3, kernel: x => x < 3.0 ? sinc(x) * sinc(x / 3.0) : 0.0 },
@@ -132,6 +134,10 @@ export class VImageScaler {
 		return coeffs;
 	}
 
+	/**
+	 * Resizes the provided source image and copies it into the provided destination image.
+	 * This method assumes a linear color space.
+	 */
 	resize<T extends VPixelArray>(src: VImageData<T>, dst: VImageData<T>, clamp: boolean=true): VImageData<T> {
 		if (src.width !== this.src_width || src.height !== this.src_height)
 			throw Error(`VImageScaler.resize input does not match expected dimensions! (expected ${this.src_width}x${this.src_height} but got ${src.width}x${src.height})`);

@@ -255,7 +255,7 @@ export class DataBuffer extends Uint8Array {
 		return;
 	}
 
-	read_f64(): number;
+	/* read_f64(): number;
 	read_f64(length: undefined, little?: boolean): number;
 	read_f64(length: number, little?: boolean): Float64Array;
 	read_f64(length?: number, little: boolean=this.little): number|Float64Array {
@@ -283,7 +283,7 @@ export class DataBuffer extends Uint8Array {
 		this.pointer += value.length * 8;
 		for ( let i=0; i<value.length; i++ ) this.view.setFloat64(start + i*8, value[i], little);
 		return;
-	}
+	} */
 
 	read_str(length?: number): string {
 		const start = this.pointer;
