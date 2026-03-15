@@ -37,7 +37,10 @@ function make_bicubic(b: number, c: number) {
 
 const CatRomDefaultFilter: VFilter = { radius: 2, kernel: make_bicubic(0.0, 0.5) };
 
-/** @see {@link Filter} */
+/**
+ * Built-in filters for image rescaling.
+ * @see {@link VFilter}
+ */
 export const VFilters = {
 	/** Default filter, used by {@link VImageScaler} if not explicitly specified. Alias to {@link VFilters.CatRom} */
 	Default:	CatRomDefaultFilter,
@@ -54,11 +57,13 @@ export const VFilters = {
 	/** Lanczos-3 filtering. */
 	Lanczos3:	<VFilter>{ radius: 3, kernel: x => x < 3.0 ? sinc(x) * sinc(x / 3.0) : 0.0 },
 	/** Valve NICE filtering. Equivalent to Lanczos-3, but with a sharpening factor added to match VTEX output. */
-	NICE:		<VFilter>{ radius: 3, kernel: x => x < 3.0 ? sinc(x) * sinc(x / 3.0) * (x > 1 ? 1.8 : 1.0) : 0.0 }
+	NICE:		<VFilter>{ radius: 3, kernel: x => x < 3.0 ? sinc(x) * sinc(x / 3.0) * (x > 1 ? 1.8 : 1.0) : 0.0 },
+	/** Modified Valve NICE filtering. Equivalent to {@link VFilters.NICE} but with the sharpening factor decreased. */
+	NICER:		<VFilter>{ radius: 3, kernel: x => x < 3.0 ? sinc(x) * sinc(x / 3.0) * (x > 1 ? 1.4 : 1.0) : 0.0 },
 } as const;
 
 
-/** Defines a filter that can be used to resize images. */
+/** Defines a filter that can be used to rescale images. */
 export interface VFilter {
 	kernel: (distance: number) => number;
 	radius: number;
@@ -138,7 +143,7 @@ export class VImageScaler {
 	 * Resizes the provided source image and copies it into the provided destination image.
 	 * This method assumes a linear color space.
 	 */
-	resize<T extends VPixelArray>(src: VImageData<T>, dst: VImageData<T>, clamp: boolean=true): VImageData<T> {
+	resize<T extends VPixelArray>(src: VImageData<T>, dst: VImageData<T>, do_clamp: boolean=true): VImageData<T> {
 		if (src.width !== this.src_width || src.height !== this.src_height)
 			throw Error(`VImageScaler.resize input does not match expected dimensions! (expected ${this.src_width}x${this.src_height} but got ${src.width}x${src.height})`);
 		if (dst.width !== this.dest_width || dst.height !== this.dest_height)
@@ -152,7 +157,7 @@ export class VImageScaler {
 		// If clamping is enabled, use a clamp function.
 		// Otherwise, make a no-op which should get optimized out.
 		const valueMax = getPixelArrayMax(dst.data);
-		const c = clamp
+		const c = do_clamp
 			? ((n: number) => (n >= valueMax ? valueMax : n <= 0 ? 0 : n))
 			: ((n: number) => n);
 

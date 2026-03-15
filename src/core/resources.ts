@@ -1,7 +1,7 @@
 import { VEncodedImageData, getCodec, type VImageEither } from './image.js';
 import { DataBuffer } from './buffer.js';
 import { VFileHeader } from '../vtf.js';
-import { NO_DATA } from './enums.js';
+import { NO_DATA, VFormats } from './enums.js';
 import { VDataCollection, VDataProvider } from './providers.js';
 import { getFaceCount, getMipSize, compress, decompress } from './utils.js';
 
@@ -31,9 +31,8 @@ export class VHeader {
 	constructor(
 		public readonly tag: number,
 		public readonly flags: number,
-		public readonly start: number,
-		public length?: number) {
-	}
+		public readonly start: number
+	) {}
 
 	/** Returns true if the `0x2` flag is unset. */
 	hasData(): boolean {
@@ -47,31 +46,30 @@ type Awaitable<T> = T | Promise<T>;
 
 /** Defines a resource decoder. */
 export interface VResourceStatic {
-	decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): Awaitable<VResource>;
+	/** If true, this resource should be considered a "legacy" resource with no predefined length. Defaults to false. */
+	readonly isLegacy?: boolean;
+	/** Decodes this resource from its raw data. */
+	decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader): Awaitable<VResource>;
 }
 
 /** Defines a generic resource entry. All resources are required to implement this interface! */
 export interface VResource {
 	/** The tag of this resource. Accessed by `Vtf` to encode the resource header. */
-	tag: number;
+	readonly tag: number;
 	/** The flags of this resource. Accessed by `Vtf` to encode the resource header. */
 	flags: number;
-	/** Returns whether this resource should be considered a "legacy" resource with no predefined length. */
-	isLegacy(): boolean;
 	/** Encode the body of this resource into an ArrayBuffer. */
 	encode(info: VFileHeader): Awaitable<ArrayBuffer | undefined>;
 }
 
 /** Implements a generic resource entry. This can be subclassed to quickly implement {@link VResource}. */
 export class VBaseResource implements VResource {
+	static readonly legacy: boolean = false;
+
 	constructor(
 		public readonly tag: number,
 		public readonly flags: number,
 		public raw?: DataBuffer) {
-	}
-
-	isLegacy(): boolean {
-		return this.tag === VHeaderTags.TAG_LEGACY_BODY || this.tag === VHeaderTags.TAG_LEGACY_THUMB;
 	}
 
 	static decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): Awaitable<VBaseResource | VErrorResource> {
@@ -96,6 +94,8 @@ export class VErrorResource extends VBaseResource {
 
 /** @internal The hi-res image data resource. This is managed internally! */
 export class VBodyResource extends VBaseResource {
+	static readonly legacy = true;
+
 	constructor(
 			flags: number,
 			public images: VDataProvider
@@ -197,11 +197,15 @@ export class VBodyResource extends VBaseResource {
 
 /** @internal The low-res image data resource. This is managed internally! */
 export class VThumbResource extends VBaseResource {
+	static readonly legacy = true;
+	public image: VImageEither;
+
 	constructor(
 			flags: number,
-			public image: VImageEither
+			image?: VImageEither
 		) {
 		super(VHeaderTags.TAG_LEGACY_THUMB, flags);
+		this.image = image ?? new VEncodedImageData(new Uint8Array(0), 0, 0, VFormats.DXT1);
 	}
 
 	static decode(header: VHeader, view: DataBuffer, info: VFileHeader): VThumbResource {
@@ -211,8 +215,12 @@ export class VThumbResource extends VBaseResource {
 		return new VThumbResource(header.flags, image);
 	}
 
+	hasThumb(): boolean {
+		return this.image.width !== 0 && this.image.height !== 0;
+	}
+
 	encode(info: VFileHeader): ArrayBuffer {
-		if (this.image.width === 0 || this.image.height === 0) return new ArrayBuffer(0);
+		if (!this.hasThumb()) return new ArrayBuffer(0);
 		return this.image.encode(info.thumb_format).data.buffer as ArrayBuffer;
 	}
 }

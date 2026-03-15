@@ -2,6 +2,7 @@ import type { VDataProvider } from './core/providers.js';
 import { VCompressionMethods, VFormats } from './core/enums.js';
 import { VBaseResource, VResource, VThumbResource } from './core/resources.js';
 import { getThumbMip } from './core/utils.js';
+import { getCodec } from './core/image.js';
 
 /** Options for use with the {@link Vtf} constructor. */
 export interface VConstructorOptions {
@@ -9,6 +10,7 @@ export interface VConstructorOptions {
 	format?: VFormats;
 	flags?: number;
 	meta?: VBaseResource[];
+	thumb?: VThumbResource;
 
 	reflectivity?: Float32Array;
 	first_frame?: number;
@@ -45,16 +47,17 @@ export class Vtf {
 		this.format = options?.format ?? VFormats.RGBA8888;
 		this.flags = options?.flags ?? 0x0;
 		this.meta = options?.meta ?? [];
+		this.thumb = options?.thumb;
 
 
 		if (options?.reflectivity) {
 			this.reflectivity = options.reflectivity;
 		}
 		else {
-			const smallest_mip_index = getThumbMip(...this.data.getSize(0,0,0,0), 1);
+			const smallest_mip_index = getThumbMip(...this.data.getSize(), 1);
 			if (smallest_mip_index < this.data.getMipmapCount()) {
-				const smallest_mip = this.data.getImage(smallest_mip_index, 0, 0, 0).convert(Float32Array);
-				this.reflectivity = smallest_mip.data.slice(0,3);
+				const smallest_mip = this.data.getImage(smallest_mip_index, 0, 0, 0).coerce(Float32Array);
+				this.reflectivity = smallest_mip.data.slice(0, 3);
 			}
 			else {
 				this.reflectivity = new Float32Array(3).fill(0);
@@ -112,13 +115,27 @@ export class VFileHeader {
 		const header = new VFileHeader();
 		header.version = vtf.version;
 		[header.width, header.height] = vtf.data.getSize();
+		
 		header.flags = vtf.flags;
+		header.flags |= getCodec(vtf.format, false)?.alpha ?? 0;
+		
 		header.frames = vtf.data.getFrameCount();
 		header.first_frame = vtf.first_frame;
 		header.reflectivity = vtf.reflectivity;
 		header.bump_scale = vtf.bump_scale;
 		header.format = vtf.format;
 		header.mipmaps = vtf.data.getMipmapCount();
+
+		header.thumb_format = VFormats.DXT1;
+		if (vtf.thumb) {
+			header.thumb_width = vtf.thumb.image.width;
+			header.thumb_height = vtf.thumb.image.height;
+		}
+		else {
+			header.thumb_width = 0x0;
+			header.thumb_height = 0x0;
+		}
+
 		header.slices = vtf.data.getSliceCount();
 		header.compression_method = vtf.compression_method;
 		header.compression_level = vtf.compression_level;

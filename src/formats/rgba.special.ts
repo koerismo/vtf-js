@@ -1,8 +1,8 @@
-import { VFormats } from '../core/enums.js';
+import { VFormats, VFlags } from '../core/enums.js';
 import { VEncodedImageData, VImageData, registerCodec } from '../core/image.js';
 
 /** Encodes a RGB888 Vec3 as a 565 16-bit int. @internal */
-export function encode565(a: Uint8Array, index=0, r=0, g=1, b=2) {
+export function encode565(a: ArrayLike<number>, index=0, r=0, g=1, b=2) {
 	return (
 		((Math.round(a[index+r] / 0xff * 0b11111)  << 11) & 0b1111100000000000) |
 		((Math.round(a[index+g] / 0xff * 0b111111) << 5)  & 0b0000011111100000) |
@@ -10,21 +10,23 @@ export function encode565(a: Uint8Array, index=0, r=0, g=1, b=2) {
 	);
 }
 
-/** Decodes a 16-bit int as an RGB323232F Vec3. @internal */
-export function decode565(out: Float32Array, a: number, offset: number=0, r=0, g=1, b=2): Float32Array {
-	out[offset+r] = (((a & 0b1111100000000000) >> 11) / 0b11111);
-	out[offset+g] = (((a & 0b0000011111100000) >> 5)  / 0b111111);
-	out[offset+b] = (((a & 0b0000000000011111) >> 0)  / 0b11111);
+/** Decodes a 16-bit int as an RGB888 Vec3. @internal */
+export function decode565(out: Uint8Array, a: number, offset: number=0, r=0, g=1, b=2): Uint8Array {
+	out[offset+r] = Math.round(((a & 0b1111100000000000) >> 11) / 0b11111 * 0xff);
+	out[offset+g] = Math.round(((a & 0b0000011111100000) >> 5)  / 0b111111 * 0xff);
+	out[offset+b] = Math.round(((a & 0b0000000000011111) >> 0)  / 0b11111 * 0xff);
 	return out;
 }
 
 registerCodec(VFormats.RGB565, {
+	alpha: VFlags.None,
+
 	length(width, height) {
 		return width * height * 2;
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		const src = image.convert(Uint8Array).data;
+		const src = image.coerce(Uint8Array).data;
 		const pixels = image.width * image.height;
 
 		const target = new Uint8Array(pixels * 2);
@@ -40,26 +42,28 @@ registerCodec(VFormats.RGB565, {
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
 		const src = image.data;
 		const pixels = image.width * image.height;
-		const target = new Float32Array(pixels * 4);
+		const target = new Uint8Array(pixels * 4);
 		const view = new DataView(src.buffer);
 
 		for ( let i=0; i<pixels; i++ ) {
 			const d = i*4;
 			decode565(target, view.getUint16(i*2, true), d);
-			target[d+3] = 1.0;
+			target[d+3] = 255;
 		}
 
-		return new VImageData(target, image.width, image.height).convert(Uint8Array);
+		return new VImageData(target, image.width, image.height);
 	}
 });
 
 registerCodec(VFormats.BGR565, {
+	alpha: VFlags.None,
+
 	length(width, height) {
 		return width * height * 2;
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		const src = image.convert(Uint8Array).data;
+		const src = image.coerce(Uint8Array).data;
 		const pixels = image.width * image.height;
 
 		const target = new Uint8Array(pixels * 2);
@@ -75,20 +79,22 @@ registerCodec(VFormats.BGR565, {
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
 		const src = image.data;
 		const pixels = image.width * image.height;
-		const target = new Float32Array(pixels * 4);
+		const target = new Uint8Array(pixels * 4);
 		const view = new DataView(src.buffer);
 
 		for ( let i=0; i<pixels; i++ ) {
 			const d = i*4;
 			decode565(target, view.getUint16(i*2, true), d, 2, 1, 0);
-			target[d+3] = 1.0;
+			target[d+3] = 255;
 		}
 
-		return new VImageData(target, image.width, image.height).convert(Uint8Array);
+		return new VImageData(target, image.width, image.height);
 	}
 });
 
 registerCodec(VFormats.IA88, {
+	alpha: VFlags.EightBitAlpha,
+
 	length(width, height) {
 		return width * height * 2;
 	},
@@ -96,7 +102,7 @@ registerCodec(VFormats.IA88, {
 	encode(image: VImageData): VEncodedImageData {
 		const pixels = image.width * image.height;
 		const out = new Uint8Array(pixels * 2);
-		const src = image.convert(Uint8Array).data;
+		const src = image.coerce(Uint8Array).data;
 
 		for ( let i=0; i<pixels; i++ ) {
 			const s = i * 4;

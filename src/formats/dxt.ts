@@ -1,4 +1,4 @@
-import { VFormats } from '../core/enums.js';
+import { VFormats, VFlags } from '../core/enums.js';
 import { VEncodedImageData, VImageData, getCodec, registerCodec } from '../core/image.js';
 // import { CompressImage, DecompressImage, DxtFlags } from 'libsquish-js';
 import { decompressImage } from './dxt-decompress.js';
@@ -19,6 +19,8 @@ export const enum DxtFlags {
 // https://www.khronos.org/opengl/wiki/S3_Texture_Compression
 
 registerCodec(VFormats.DXT1, {
+	alpha: VFlags.None,
+
 	length(width, height) {
 		return ceil4(width) * ceil4(height) * 0.5;
 	},
@@ -32,9 +34,14 @@ registerCodec(VFormats.DXT1, {
 	},
 });
 
-registerCodec(VFormats.DXT1_ONEBITALPHA, getCodec(VFormats.DXT1));
+registerCodec(VFormats.DXT1_ONEBITALPHA, {
+	...getCodec(VFormats.DXT1),
+	alpha: VFlags.OneBitAlpha,
+});
 
 registerCodec(VFormats.DXT3, {
+	alpha: VFlags.EightBitAlpha,
+
 	length(width, height) {
 		return ceil4(width) * ceil4(height);
 	},
@@ -49,6 +56,8 @@ registerCodec(VFormats.DXT3, {
 });
 
 registerCodec(VFormats.DXT5, {
+	alpha: VFlags.EightBitAlpha,
+
 	length(width, height) {
 		return ceil4(width) * ceil4(height);
 	},

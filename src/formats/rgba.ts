@@ -1,4 +1,4 @@
-import { VFormats } from '../core/enums.js';
+import { VFormats, VFlags } from '../core/enums.js';
 import { VCodec, VEncodedImageData, VImageData, registerCodec, HAS_FLOAT16, type VPixelArrayConstructor } from '../core/image.js';
 
 const PixelDataTypes = {
@@ -22,7 +22,7 @@ const PixelFloatTypes = {
 	'Float32': true,
 } as const;
 
-function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, red: number|null, green: number|null, blue: number|null, alpha: number|null, avg: boolean=false) {
+function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, red: number|null, green: number|null, blue: number|null, alpha: number|null, avg: boolean=false): VCodec {
 
 	const SET = 'set' + type as `set${keyof typeof PixelDataTypes}`;
 	const GET = 'get' + type as `get${keyof typeof PixelDataTypes}`;
@@ -35,12 +35,14 @@ function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, 
 	// console.log('Creating format', VFormats[format], type, ARR, bpp);
 
 	return {
+		alpha: alpha ? VFlags.EightBitAlpha : VFlags.None,
+
 		length(width, height) {
 			return width * height * bpp;
 		},
 
 		encode(source) {
-			const image = source.convert(ARR);
+			const image = source.coerce(ARR);
 			const length = image.width * image.height;
 			const out = new Uint8Array(length * bpp);
 			const view = new DataView(out.buffer);

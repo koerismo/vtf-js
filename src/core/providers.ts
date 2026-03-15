@@ -1,4 +1,4 @@
-import { VEncodedImageData, VImageData, type VImageEither } from './image.js';
+import { VImageData, type VImageEither } from './image.js';
 import { VFilter, VFilters, VImageScaler } from './resize.js';
 import { getMipSize, getThumbMip } from './utils.js';
 
@@ -51,7 +51,7 @@ export class VDataCollection implements VDataProvider {
 	protected height: number = 0;
 	protected invalidated: boolean = false;
 
-	public resizeFilter: VFilter = VFilters.Mitchell;
+	public resizeFilter: VFilter = VFilters.Default;
 	public resizeClamp: boolean = false;
 
 	constructor(width: number, height: number);
@@ -63,9 +63,9 @@ export class VDataCollection implements VDataProvider {
 		if (typeof options === 'object') {
 			if (options.resizeFilter) this.resizeFilter = options.resizeFilter;
 			if (options.resizeClamp) this.resizeClamp = options.resizeClamp;
-			this.resize(options);
 			this.width = options.width;
 			this.height = options.height;
+			this.resize(options);
 		} else {
 			this.width = options;
 			this.height = height!;
@@ -100,12 +100,17 @@ export class VDataCollection implements VDataProvider {
 	}
 
 	/** Resizes this data collection. This does not resize the actual images! */
-	resize(options?: Partial<VCollectionSize & { noClear: boolean }>): this {
+	resize(options?: Partial<VCollectionSize>): this {
 		if (options) {
 			if (options.mips) this.mipmapCount = options.mips;
 			if (options.frames) this.frameCount = options.frames;
 			if (options.faces) this.faceCount = options.faces;
 			if (options.slices) this.sliceCount = options.slices;
+		}
+
+		// TODO: ADD A BETTER WAY OF AUTO-SETTING MIP LEVELS!!!
+		if (this.mipmapCount === -1) {
+			this.mipmapCount = Math.max(1, getThumbMip(this.width, this.height, 1) + 1);
 		}
 
 		this.vdata.length = this.mipmapCount;
@@ -169,7 +174,6 @@ export class VDataCollection implements VDataProvider {
 		const scalerCache: Record<string, VImageScaler> = {};
 		const getScaler = (from: [number, number], to: [number, number]) => {
 			const key = from[0] + ':' + from[1] + '/' + to[0] + ':' + to[1];
-			console.log('getting scaler', key);
 			return key in scalerCache
 				? scalerCache[key]
 				: (scalerCache[key] = new VImageScaler(...from, ...to, filter));
@@ -192,7 +196,7 @@ export class VDataCollection implements VDataProvider {
 
 							const curMipDims = getMipSize(x, this.width, this.height);
 							const scaler = getScaler([lastMip.width, lastMip.height], curMipDims);
-							curMip = VImageData.blank(lastMip.getDataConstructor(), ...curMipDims);
+							curMip = VImageData.blank(...curMipDims, lastMip.getDataConstructor());
 							scaler.resize(lastMip, curMip, this.resizeClamp);
 							this.setImage(curMip, x, y, z, w);
 						}

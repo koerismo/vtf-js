@@ -1,23 +1,31 @@
-import { VFormats } from './enums.js';
-import { VFilter, VFilters, VImageScaler } from './resize.js';
+import { VFormats, type VFlags } from './enums.js';
+import { VImageScaler, type VFilter } from './resize.js';
 import { clamp } from './utils.js';
 
 /** An array of decoded RGBA pixels. */
-export type VPixelArray = Uint8Array|Uint16Array|Uint32Array|Float32Array|Float64Array|Float16Array;
+export type VPixelArray<T extends ArrayBufferLike = ArrayBufferLike> =
+	| Uint8Array<T>
+	| Uint16Array<T>
+	| Uint32Array<T>
+	| Float32Array<T>
+	| Float64Array<T>
+	| Float16Array<T>;
 
 /** Represents an encoded OR decoded image. */
 export type VImageEither<D extends VPixelArray = VPixelArray> = VImageData<D> | VEncodedImageData;
 
 /** A generic constructor for VPixelArray types. */
 export interface VPixelArrayConstructor<T extends VPixelArray = VPixelArray> {
-	new (length?: number): T;
-    new (array: ArrayLike<number> | Iterable<number>): T;
-    new (buffer: ArrayBufferLike, byteOffset?: number, length?: number): T;
+	new (): T;
+	new (length: number): T;
+	new (array: ArrayLike<number> | Iterable<number>): T;
+	new (buffer: ArrayBufferLike, byteOffset?: number, length?: number): T;
 	readonly BYTES_PER_ELEMENT: number;
 }
 
 /** An object that defines an image encoder/decoder for a given format. */
 export interface VCodec {
+	alpha: VFlags.None | VFlags.OneBitAlpha | VFlags.EightBitAlpha;
 	length(width: number, height: number): number;
 	encode(data: VImageData): VEncodedImageData;
 	decode(data: VEncodedImageData): VImageData;
@@ -27,11 +35,11 @@ export interface VCodec {
 export const HAS_FLOAT16 = typeof Float16Array !== 'undefined';
 
 /** Returns whether the given array contains float values. */
-export function isArrayFloat(arr: VPixelArray): boolean {
+export function isArrayFloat(arr: VPixelArray): arr is (Float32Array | Float64Array | Float16Array) {
 	return (arr instanceof Float32Array || arr instanceof Float64Array || (HAS_FLOAT16 && arr instanceof Float16Array));
 }
 
-/** Returns the maximum value for the given unsigned int array, or 1.0 if the array is a float array. */
+/** Returns the maximum value for the given array. (ex. `255` for a Uint8Array, `1.0` for a Float32Array) */
 export function getPixelArrayMax(arr: VPixelArray): number {
 	if (isArrayFloat(arr)) return 1;
 	return 2 ** (arr.BYTES_PER_ELEMENT * 8) - 1;
@@ -69,20 +77,32 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 
 	/**
 	 * Creates a blank image of the given datatype and size.
-	*/
-	static blank<T extends VPixelArray = VPixelArray>(dtype: VPixelArrayConstructor<T>, width: number, height: number): VImageData<T> {
+	 */
+	static blank<T extends VPixelArray = VPixelArray>(width: number, height: number, dtype: VPixelArrayConstructor<T>): VImageData<T> {
 		return new VImageData(new dtype(width * height * 4), width, height);
 	}
 
+	/** Creates a copy of this image. */
+	copy(): VImageData<D> {
+		return new VImageData(this.data.slice() as D, this.width, this.height);
+	}
+
 	/**
-	 * Returns a remapped copy of this image with the specified data format, normalizing floating-point formats to 0-1.
-	 * If this image is already of the specified format, this method returns self.
-	 * If `do_clamp` is set to true, the data will be clamped between 0 and the array's maximum value.
+	 * Returns a converted copy of this image with the specified data format.
+	 * @param type
+	 * @param [do_clamp=true] If true, clamps between 0 and the array's pixel-white value. Defaults to true.
+	 * @param [do_round=false] If true, rounds values when converting to integer data. Defaults to false.
 	 * @example const converted: VImageData<Float32Array> = image.convert(Float32Array);
 	 */
-	convert<T extends VPixelArray = VPixelArray>(type: VPixelArrayConstructor<T>, do_clamp=true): VImageData<T> {
-		if (this.data instanceof type) return <VImageData<T>><unknown>this;
+	convert<T extends VPixelArray = VPixelArray>(
+		type: VPixelArrayConstructor<T>,
+		do_clamp: boolean=true,
+		do_round: boolean=false,
+	): VImageData<T> {
 
+		if (this.data instanceof type)
+			return this.copy() as unknown as VImageData<T>;
+			
 		const out = new type(this.data.length) as T;
 		const is_input_int  = !isArrayFloat(this.data);
 		const is_output_int = !isArrayFloat(out);
@@ -90,7 +110,7 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		const input_max  = is_input_int  ? 2 ** (this.data.BYTES_PER_ELEMENT * 8) - 1 : 1;
 		const output_max = is_output_int ? 2 ** (      out.BYTES_PER_ELEMENT * 8) - 1 : 1;
 
-		const add_factor = 0; // +is_output_int * 0.5;
+		const add_factor = (do_round && is_output_int) ? 0.5 : 0;
 		const mult_factor = output_max / input_max;
 
 		if (do_clamp) {
@@ -103,6 +123,16 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		}
 
 		return new VImageData(out, this.width, this.height);
+	}
+
+	/** Returns a converted copy of this image if the given format does not match, and returns itself otherwise. See {@link convert} */
+	coerce<T extends VPixelArray = VPixelArray>(
+		type: VPixelArrayConstructor<T>,
+		do_clamp?: boolean,
+		do_round?: boolean,
+	): VImageData<T> {
+		if (this.data instanceof type) return this as unknown as VImageData<T>;
+		return this.convert(type, do_clamp, do_round);
 	}
 
 	/** Encodes this image into the specified format and validates the length of the resulting data. */
@@ -125,10 +155,9 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 	 */
 	resize(width: number, height: number, options?: Partial<{ filter: VFilter, clamp: boolean }>): VImageData<D> {
 		options ??= {};
-		options.filter ??= VFilters.Default;
 
 		const scaler = new VImageScaler(this.width, this.height, width, height, options.filter);
-		const out = VImageData.blank(this.getDataConstructor(), width, height);
+		const out = VImageData.blank(width, height, this.getDataConstructor());
 		return scaler.resize(this, out, options.clamp);
 	}
 

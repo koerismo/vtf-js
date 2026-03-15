@@ -40,6 +40,7 @@ export enum VFormats {
 }
 
 export enum VFlags {
+	None										= 0x0,
 	PointSample									= 0x00000001,
 	Trilinear									= 0x00000002,
 	ClampS										= 0x00000004,

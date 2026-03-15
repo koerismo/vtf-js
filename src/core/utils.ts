@@ -1,5 +1,6 @@
 import { VFileHeader } from '../vtf.js';
 import { VCompressionMethods, VFlags } from './enums.js';
+import { VHeader, VHeaderTags, VResource, VResourceTypes } from './resources.js';
 
 /** Returns the size of a given mipmap if mipmap 0 is of size `width`,`height` */
 export function getMipSize(mipmap: number, width: number, height: number): [number, number] {
@@ -25,6 +26,11 @@ export function getFaceCount(info: VFileHeader): 1|6|7 {
 export function getThumbMip(width: number, height: number, target=16): number {
 	const size = Math.max(width, height);
 	return Math.ceil(Math.log2(size)) - Math.log2(target);
+}
+
+export function isLegacy(res: VResource | VHeader) {
+	if (res.tag === VHeaderTags.TAG_LEGACY_BODY || res.tag === VHeaderTags.TAG_LEGACY_THUMB) return true;
+	return !!(VResourceTypes[res.tag]?.isLegacy);
 }
 
 /** Clamps the value `x` between `a` and `b` */

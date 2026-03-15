@@ -1,9 +1,8 @@
 import { VFileHeader, Vtf } from '../vtf.js';
 import { DataBuffer } from './buffer.js';
-import { NO_DATA, VFormats } from './enums.js';
-import { byteswap3, getFaceCount, getHeaderLength, getThumbMip } from './utils.js';
+import { NO_DATA } from './enums.js';
+import { byteswap3, getFaceCount, getHeaderLength, isLegacy } from './utils.js';
 import { VBodyResource, VHeaderTags, VBaseResource, VThumbResource, VResource } from './resources.js';
-import { VEncodedImageData } from './image.js';
 
 function write_header(buf: DataBuffer, res: VResource, pos: number) {
 	buf.write_u32((res.tag << 8) | (res.flags & 0xff), false);
@@ -64,17 +63,15 @@ Vtf.prototype.encode = async function(this: Vtf): Promise <ArrayBuffer> {
 	header.write_u32(info.format);
 	header.write_u8(info.mipmaps);
 
-	// Thumbnail (Fallback to 0x0 if the mipmap is not present)
-	header.write_u32(VFormats.DXT1);
-	const thumb_mip = getThumbMip(width, height);
-	const thumb_image = thumb_mip < info.mipmaps ? this.data.getImage(thumb_mip, 0, 0, 0, true) : new VEncodedImageData(new Uint8Array(0), 0, 0, VFormats.DXT1);
-	header.write_u8(thumb_image.width);
-	header.write_u8(thumb_image.height);
+	// Thumbnail
+	header.write_u32(info.thumb_format);
+	header.write_u8(info.thumb_width);
+	header.write_u8(info.thumb_height);
 
 	// Prepare body/thumb resources
-	const thumb_resource = new VThumbResource(0x0, thumb_image);
-	const body_resource = new VBodyResource(0x0, this.data);
+	const thumb_resource = this.thumb ?? new VThumbResource(0x0);
 	const thumb_data = thumb_resource.encode(info);
+	const body_resource = new VBodyResource(0x0, this.data);
 	const body_data = await body_resource.encode(info);
 
 	// v7.2 +
@@ -113,7 +110,7 @@ Vtf.prototype.encode = async function(this: Vtf): Promise <ArrayBuffer> {
 	for (const resource of this.meta) {
 		const data = await resource.encode(info);
 		chunks.push({ resource, data });
-		if (data) filesize += data.byteLength + (resource.isLegacy() ? 0 : 4);
+		if (data) filesize += data.byteLength + (isLegacy(resource) ? 0 : 4);
 	}
 
 	// Sort chunks by tag as LE integers
@@ -130,7 +127,7 @@ Vtf.prototype.encode = async function(this: Vtf): Promise <ArrayBuffer> {
 		const no_data = !!(resource.flags & NO_DATA);
 		if ((data === undefined) !== no_data) throw Error(`NO_DATA flag does not match data provided! (NO_DATA=${no_data})`);
 		if (!data) continue;
-		if (!resource.isLegacy()) file.write_u32(data.byteLength);
+		if (!isLegacy(resource)) file.write_u32(data.byteLength);
 		file.write_u8(new Uint8Array(data));
 	}
 
