@@ -31,6 +31,18 @@ function make_bicubic(b: number, c: number) {
 // 	return 0;
 // }
 
+function filter_vtex_nice(x: number): number {
+	if (x >= 3)	return 0;
+	return sinc(x) * sinc(x / 3) * (x > 1 ? 1.8 : 1);
+}
+
+function filter_spp_nice(x: number): number {
+	if (x >= 3) return 0;
+	const NICE_SHARPEN = 1.25;
+
+	const v = sinc(x) * sinc(x / 3.0);
+	return v < 0 ? v * NICE_SHARPEN : v;
+}
 
 // Some of the below was adapted from the resize-rs project.
 // https://github.com/PistonDevelopers/resize/blob/master/src/lib.rs
@@ -45,21 +57,21 @@ export const VFilters = {
 	/** Default filter, used by {@link VImageScaler} if not explicitly specified. Alias to {@link VFilters.CatRom} */
 	Default:	CatRomDefaultFilter,
 	/** Point filtering - Always picks the nearest pixel when resampling. */
-	Point:		<VFilter>{ radius: 0, kernel: () => 1.0 },
+	Point:		<VFilter>{ radius: 0, kernel: () => 1 },
 	/** Triangle/bilinear filtering - Blends the four pixels surrounding a given point. */
 	Triangle:	<VFilter>{ radius: 1, kernel: x => Math.max(0, 1 - x) },
 	/** Box filtering - Evenly blends in the four closest pixels. */
-	Box:		<VFilter>{ radius: 1, kernel: x => x < 0.5 ? 1.0 : 0.0 },
+	Box:		<VFilter>{ radius: 1, kernel: x => x < 0.5 ? 1 : 0 },
 	/** Mitchell–Netravali bicubic filtering. */
 	Mitchell:	<VFilter>{ radius: 2, kernel: make_bicubic(1/3, 1/3) },
 	/** Catmull-Rom bicubic filtering. */
 	CatRom:		CatRomDefaultFilter,
 	/** Lanczos-3 filtering. */
-	Lanczos3:	<VFilter>{ radius: 3, kernel: x => x < 3.0 ? sinc(x) * sinc(x / 3.0) : 0.0 },
+	Lanczos3:	<VFilter>{ radius: 3, kernel: x => x < 3 ? sinc(x) * sinc(x / 3) : 0 },
 	/** Valve NICE filtering. Equivalent to Lanczos-3, but with a sharpening factor added to match VTEX output. */
-	NICE:		<VFilter>{ radius: 3, kernel: x => x < 3.0 ? sinc(x) * sinc(x / 3.0) * (x > 1 ? 1.8 : 1.0) : 0.0 },
-	/** Modified Valve NICE filtering. Equivalent to {@link VFilters.NICE} but with the sharpening factor decreased. */
-	NICER:		<VFilter>{ radius: 3, kernel: x => x < 3.0 ? sinc(x) * sinc(x / 3.0) * (x > 1 ? 1.4 : 1.0) : 0.0 },
+	NICE:		<VFilter>{ radius: 3, kernel: filter_vtex_nice },
+	/** Modified Valve NICE filtering. Equivalent to Lanczos-3, but with a less-intense sharpening factor added to match sourcepp output. */
+	NICER:		<VFilter>{ radius: 3, kernel: filter_spp_nice },
 } as const;
 
 
