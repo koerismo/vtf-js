@@ -49,17 +49,19 @@ export class Vtf {
 		this.meta = options?.meta ?? [];
 		this.thumb = options?.thumb;
 
+		const dataSize = this.data.getSize();
+		const dataMipCount = this.data.getMipmapCount();
 
 		if (options?.reflectivity) {
 			this.reflectivity = options.reflectivity;
-		}
-		else {
-			const smallest_mip_index = getThumbMip(...this.data.getSize(), 1);
-			if (smallest_mip_index < this.data.getMipmapCount()) {
-				const smallest_mip = this.data.getImage(smallest_mip_index, 0, 0, 0).coerce(Float32Array);
+		} else {
+			const pixelMipIdx = getThumbMip(...dataSize, 1);
+			if (pixelMipIdx < dataMipCount) {
+				const smallest_mip = this.data
+					.getImage(pixelMipIdx, 0, 0, 0)
+					.coerce(Float32Array);
 				this.reflectivity = smallest_mip.data.slice(0, 3);
-			}
-			else {
+			} else {
 				this.reflectivity = new Float32Array(3).fill(0);
 			}
 		}
@@ -115,10 +117,10 @@ export class VFileHeader {
 		const header = new VFileHeader();
 		header.version = vtf.version;
 		[header.width, header.height] = vtf.data.getSize();
-		
+
 		header.flags = vtf.flags;
 		header.flags |= getCodec(vtf.format, false)?.alpha ?? 0;
-		
+
 		header.frames = vtf.data.getFrameCount();
 		header.first_frame = vtf.first_frame;
 		header.reflectivity = vtf.reflectivity;
@@ -130,8 +132,7 @@ export class VFileHeader {
 		if (vtf.thumb) {
 			header.thumb_width = vtf.thumb.image.width;
 			header.thumb_height = vtf.thumb.image.height;
-		}
-		else {
+		} else {
 			header.thumb_width = 0x0;
 			header.thumb_height = 0x0;
 		}
