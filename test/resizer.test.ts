@@ -26,15 +26,15 @@ function applyToImageCopy<T extends VPixelArray>(img: VImageData<T>, func: (n: n
 	return new VImageData(newDat, img.width, img.height);
 }
 
-function writeOutputImage(path: string, image: VImageData) {
-	sharp(
-			image.convert(Uint8Array).data,
-			{ raw: { channels: 4, width: image.width, height: image.height }}
-		)
-		.removeAlpha()
-		.png()
-		.toFile(path);
-}
+// function writeOutputImage(path: string, image: VImageData) {
+// 	sharp(
+// 			image.convert(Uint8Array).data,
+// 			{ raw: { channels: 4, width: image.width, height: image.height }}
+// 		)
+// 		.removeAlpha()
+// 		.png()
+// 		.toFile(path);
+// }
 
 async function checkResizeFilter(imFrom: string, imTo: string, filter: VFilter) {
 	const fromData = await getInputImage(imFrom);
