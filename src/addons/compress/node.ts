@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { deflate, inflate } from 'node:zlib';
-// import { zstdCompress, zstdDecompress, constants } from 'node:zlib';
+import * as zlib from 'node:zlib';
+
+export const HAS_ZSTD = ('zstdCompress' in zlib);
 
 import { setCompressionMethod } from '../../core/utils.js';
 import { VCompressionMethods } from '../../core/enums.js';
@@ -17,18 +18,18 @@ function wrap(m: (data: Uint8Array, arg: any, cb: (error: Error|null, result: an
 	}
 }
 
-const inflateNode = wrap(inflate);
-const deflateNode = wrap(deflate);
-// const zstdDecompressNode = wrap(zstdDecompress);
-// const zstdCompressNode = wrap(zstdCompress);
+const inflateNode = wrap(zlib.inflate);
+const deflateNode = wrap(zlib.deflate);
+const zstdDecompressNode = wrap(zlib.zstdDecompress);
+const zstdCompressNode = wrap(zlib.zstdCompress);
 
 function compressNode(data: Uint8Array, method: VCompressionMethods, level: number): Promise<Uint8Array> {
 	switch (method) {
 		case VCompressionMethods.Deflate:
 			return deflateNode(data, { level: level });
 		case VCompressionMethods.ZSTD:
-			throw Error('vtf-js: Node compression backend does not support ZSTD compression!');
-			// return zstdCompressNode(data, { params: { [constants.ZSTD_c_compressionLevel]: level } });
+			if (HAS_ZSTD) return zstdCompressNode(data, { params: { [zlib.constants.ZSTD_c_compressionLevel]: level } });
+			throw Error('vtf-js: Your Node environment does not support ZSTD compression!');
 	}
 }
 
@@ -37,8 +38,8 @@ async function decompressNode(data: Uint8Array, method: VCompressionMethods, lev
 		case VCompressionMethods.Deflate:
 			return inflateNode(data, {});
 		case VCompressionMethods.ZSTD:
-			throw Error('vtf-js: Node compression backend does not support ZSTD decompression!');
-			// return zstdDecompressNode(data, {});
+			if (HAS_ZSTD) return zstdDecompressNode(data, {});
+			throw Error('vtf-js: Your Node environment does not support ZSTD decompression!');
 	}
 }
 

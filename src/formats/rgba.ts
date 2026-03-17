@@ -107,7 +107,25 @@ registerCodec(VFormats.RGB323232F, createGenericRGBA(VFormats.RGB323232F, 'Float
 registerCodec(VFormats.RGBA16161616, createGenericRGBA(VFormats.RGBA16161616, 'Uint16', 0, 2, 4, 6));
 registerCodec(VFormats.RGBA32323232F, createGenericRGBA(VFormats.RGBA32323232F, 'Float32', 0, 4, 8, 12));
 
-if (HAS_FLOAT16)
-	registerCodec(VFormats.RGBA16161616F, createGenericRGBA(VFormats.RGBA16161616F, 'Float16', 0, 2, 4, 6));
-else
-	console.warn(`vtf-js: Your environment does not support Float16Array. RGBA16161616F codec has not been registered!`);
+if (HAS_FLOAT16) {
+	registerCodec(
+		VFormats.RGBA16161616F,
+		createGenericRGBA(VFormats.RGBA16161616F, 'Float16', 0, 2, 4, 6)
+	);
+} else {
+	registerCodec(VFormats.RGBA16161616F, {
+		alpha: VFlags.EightBitAlpha,
+	
+		length(width, height) {
+			return width * height * 8;
+		},
+
+		encode() {
+			throw Error('vtf-js: Failed to encode image. Your environment does not support Float16Array!');
+		},
+
+		decode() {
+			throw Error('vtf-js: Failed to decode image. Your environment does not support Float16Array!');
+		},
+	});
+}
