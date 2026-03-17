@@ -137,6 +137,19 @@ export class VDataCollection implements VDataProvider {
 		this.vdata[mip][frame][face][slice] = image;
 	}
 
+	/**
+	 * Alias to quickly check if a mip of a given size exists within this collection, returning it if so.
+	 * 
+	 * Unlike {@link getImage}, this method **allows encoded images by default.** Beware!
+	 */
+	getThumbMip(maxDim: number, frame: number, face: number, slice: number, allowEncoded: false): VImageData | undefined;
+	getThumbMip(maxDim: number, frame?: number, face?: number, slice?: number, allowEncoded?: boolean): VImageEither | undefined;
+	getThumbMip(maxDim: number, frame: number=0, face: number=0, slice: number=0, allowEncoded: boolean=true): VImageEither | undefined {
+		const mip = getThumbMip(this.width, this.height, maxDim);
+		if (mip >= this.mipmapCount) return;
+		return this.getImage(mip, frame, face, slice, allowEncoded);
+	}
+
 	/** Gets the specified image from the data provider, decoding if necessary unless `allowEncoded` is true. */
 	getImage(mip: number, frame: number, face: number, slice: number, allowEncoded?: false): VImageData;
 	getImage(mip: number, frame: number, face: number, slice: number, allowEncoded: boolean): VImageEither;
@@ -159,6 +172,7 @@ export class VDataCollection implements VDataProvider {
 	}
 
 	getSize(mip: number=0): [number, number] {
+		if (mip === 0) return [this.width, this.height];
 		return getMipSize(mip, this.width, this.height);
 	}
 

@@ -81,7 +81,10 @@ export class VBaseResource implements VResource {
 	}
 }
 
-/** @internal Represents a resource which failed to be parsed by its respective handler. */
+/**
+ * @internal Represents a resource which failed to be parsed by its respective handler.
+ * @todo TODO: This is not implemented yet!
+ */
 export class VErrorResource extends VBaseResource {
 	constructor(
 			tag: number,
@@ -195,7 +198,7 @@ export class VBodyResource extends VBaseResource {
 	}
 }
 
-/** @internal The low-res image data resource. This is managed internally! */
+/** The low-res image data resource. */
 export class VThumbResource extends VBaseResource {
 	static readonly legacy = true;
 	public image: VImageEither;
@@ -215,12 +218,12 @@ export class VThumbResource extends VBaseResource {
 		return new VThumbResource(header.flags, image);
 	}
 
-	hasThumb(): boolean {
+	hasImage(): boolean {
 		return this.image.width !== 0 && this.image.height !== 0;
 	}
 
 	encode(info: VFileHeader): ArrayBuffer {
-		if (!this.hasThumb()) return new ArrayBuffer(0);
+		if (!this.hasImage()) return new ArrayBuffer(0);
 		return this.image.encode(info.thumb_format).data.buffer as ArrayBuffer;
 	}
 }
