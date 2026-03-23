@@ -52,7 +52,7 @@ export class VDataCollection implements VDataProvider {
 	protected invalidated: boolean = false;
 
 	public resizeFilter: VFilter = VFilters.Default;
-	public resizeClamp: boolean = false;
+	// public resizeClamp: boolean = false;
 
 	constructor(width: number, height: number);
 	constructor(options: VSliceSize & Partial<VDataCollectionOptions>);
@@ -62,7 +62,7 @@ export class VDataCollection implements VDataProvider {
 	) {
 		if (typeof options === 'object') {
 			if (options.resizeFilter) this.resizeFilter = options.resizeFilter;
-			if (options.resizeClamp) this.resizeClamp = options.resizeClamp;
+			// if (options.resizeClamp) this.resizeClamp = options.resizeClamp;
 			this.width = options.width;
 			this.height = options.height;
 			this.resize(options);
@@ -211,7 +211,7 @@ export class VDataCollection implements VDataProvider {
 							const curMipDims = getMipSize(x, this.width, this.height);
 							const scaler = getScaler([lastMip.width, lastMip.height], curMipDims);
 							curMip = VImageData.blank(...curMipDims, lastMip.getDataConstructor());
-							scaler.resize(lastMip, curMip, this.resizeClamp);
+							scaler.resize(lastMip, curMip);
 							this.setImage(curMip, x, y, z, w);
 						}
 
@@ -235,7 +235,7 @@ export class VDataCollection implements VDataProvider {
 
 /** A class that extends VMipmapProvider but takes an array of frames in the constructor. */
 export class VFrameCollection extends VDataCollection {
-	constructor(frameList: VImageData[], options?: VDataCollectionOptions) {
+	constructor(frameList: VImageData[], options: Partial<VDataCollectionOptions>={}) {
 		if (!frameList.length) throw Error('VFrameCollection constructor requires at least one item in the provided array!');
 		const width = frameList[0].width, height = frameList[0].height;
 		super({ width, height, frames: frameList.length, ...options });
@@ -248,7 +248,7 @@ export class VFrameCollection extends VDataCollection {
 
 /** A class that extends VMipmapProvider but takes an array of faces in the constructor. */
 export class VFaceCollection extends VDataCollection {
-	constructor(faceList: VImageData[], options?: VDataCollectionOptions) {
+	constructor(faceList: VImageData[], options: Partial<VDataCollectionOptions>={}) {
 		if (!faceList.length) throw Error('VFaceCollection constructor requires at least one item in the provided array!');
 		const width = faceList[0].width, height = faceList[0].height;
 		super({ width, height, faces: faceList.length, ...options });
@@ -261,7 +261,7 @@ export class VFaceCollection extends VDataCollection {
 
 /** A class that extends VMipmapProvider but takes an array of slices in the constructor. */
 export class VSliceCollection extends VDataCollection {
-	constructor(sliceList: VImageData[], options?: VDataCollectionOptions) {
+	constructor(sliceList: VImageData[], options: Partial<VDataCollectionOptions>={}) {
 		if (!sliceList.length) throw Error('VSliceCollection constructor requires at least one item in the provided array!');
 		const width = sliceList[0].width, height = sliceList[0].height;
 		super({ width, height, slices: sliceList.length, ...options });

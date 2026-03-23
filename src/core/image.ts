@@ -153,12 +153,10 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 	 * Returns a resampled copy of this image with the given dimensions.
 	 * ### If you are batch-resizing images, create and reuse a VImageScaler for better performance!
 	 */
-	resize(width: number, height: number, options?: Partial<{ filter: VFilter, clamp: boolean }>): VImageData<D> {
-		options ??= {};
-
+	resize(width: number, height: number, options: Partial<{ filter: VFilter }>={}): VImageData<D> {
 		const scaler = new VImageScaler(this.width, this.height, width, height, options.filter);
 		const out = VImageData.blank(width, height, this.getDataConstructor());
-		return scaler.resize(this, out, options.clamp);
+		return scaler.resize(this, out);
 	}
 
 	/** Retrieves the constructor of this image's data with a type-safe wrapper. */

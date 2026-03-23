@@ -155,7 +155,7 @@ export class VImageScaler {
 	 * Resizes the provided source image and copies it into the provided destination image.
 	 * This method assumes a linear color space.
 	 */
-	resize<T extends VPixelArray>(src: VImageData<T>, dst: VImageData<T>, do_clamp: boolean=true): VImageData<T> {
+	resize<T extends VPixelArray>(src: VImageData<T>, dst: VImageData<T>): VImageData<T> {
 		if (src.width !== this.src_width || src.height !== this.src_height)
 			throw Error(`VImageScaler.resize input does not match expected dimensions! (expected ${this.src_width}x${this.src_height} but got ${src.width}x${src.height})`);
 		if (dst.width !== this.dest_width || dst.height !== this.dest_height)
@@ -169,8 +169,9 @@ export class VImageScaler {
 		// If clamping is enabled, use a clamp function.
 		// Otherwise, make a no-op which should get optimized out.
 		const valueMax = getPixelArrayMax(dst.data);
-		const c = do_clamp
-			? ((n: number) => (n >= valueMax ? valueMax : n <= 0 ? 0 : n))
+
+		const c = valueMax !== 1
+			? ((n: number) => Math.round(n >= valueMax ? valueMax : n <= 0 ? 0 : n))
 			: ((n: number) => n);
 
 		const tmp0 = src.data;
