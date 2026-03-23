@@ -83,10 +83,10 @@ export class Vtf {
 	 * @param header_only (default: `false`) If true, a VFileHeader will be returned instead, which only contains the header contents.
 	 * @param lazy_decode (default: `true`) If false, all data in the Vtf will be decoded in this function call. Otherwise, images will only be decoded when requested.
 	 */
-	static decode(data: ArrayBuffer): Promise<Vtf>;
-	static decode(data: ArrayBuffer, header_only: false): Promise<Vtf>;
+	static decode(data: ArrayBuffer, header_only?: false): Promise<Vtf>;
 	static decode(data: ArrayBuffer, header_only: true): Promise<VFileHeader>;
-	static decode(data: ArrayBuffer, header_only: boolean=false): Promise<Vtf|VFileHeader> {
+	static decode(data: ArrayBuffer, header_only: boolean): Promise<Vtf | VFileHeader>;
+	static decode(data: ArrayBuffer, header_only: boolean=false): Promise<Vtf | VFileHeader> {
 		throw Error('Vtf.decode: Implementation override not present!');
 	}
 }
