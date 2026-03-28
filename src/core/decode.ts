@@ -154,7 +154,6 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false): Prom
 		}
 
 		if (header.tag === VHeaderTags.TAG_LEGACY_THUMB) {
-			if (!data) throw Error('Vtf.decode: Thumb resource has no data! (0x2 flag set)');
 			thumb = VThumbResource.decode(header, data, info);
 			continue;
 		}

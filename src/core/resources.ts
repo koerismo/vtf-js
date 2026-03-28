@@ -68,7 +68,7 @@ export class VBaseResource implements VResource {
 
 	constructor(
 		public readonly tag: number,
-		public readonly flags: number,
+		public flags: number,
 		public raw?: DataBuffer) {
 	}
 
@@ -209,10 +209,15 @@ export class VThumbResource extends VBaseResource {
 		) {
 		super(VHeaderTags.TAG_LEGACY_THUMB, flags);
 		this.image = image ?? new VEncodedImageData(new Uint8Array(0), 0, 0, VFormats.DXT1);
+		flags = (flags ^ (flags & NO_DATA)) | (this.hasImage() ? 0 : NO_DATA);
 	}
 
-	static decode(header: VHeader, view: DataBuffer, info: VFileHeader): VThumbResource {
+	static decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader): VThumbResource {
 		const codec = getCodec(info.thumb_format);
+		if (!view) {
+			if (info.thumb_width === 0 || info.thumb_height === 0) return new VThumbResource(header.flags);
+			throw Error('VThumbnailResource: Attempted to decode non-empty thumbnail without any data!');
+		}
 		const data = view.read_u8(codec.length(info.thumb_width, info.thumb_height));
 		const image = new VEncodedImageData(data, info.thumb_width, info.thumb_height, info.thumb_format);
 		return new VThumbResource(header.flags, image);
@@ -339,7 +344,7 @@ export class VExtendedSettingsResource extends VBaseResource {
 
 export class VLodControlResource extends VBaseResource {
 	static {
-		registerResourceType(VLodControlResource, VHeaderTags.TAG_LOD);
+		// registerResourceType(VLodControlResource, VHeaderTags.TAG_LOD);
 	}
 
 	constructor(
