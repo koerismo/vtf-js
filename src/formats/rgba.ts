@@ -1,4 +1,4 @@
-import { VFormats } from '../core/enums.js';
+import { VFormats, VFlags } from '../core/enums.js';
 import { VCodec, VEncodedImageData, VImageData, registerCodec, HAS_FLOAT16, type VPixelArrayConstructor } from '../core/image.js';
 
 const PixelDataTypes = {
@@ -22,7 +22,7 @@ const PixelFloatTypes = {
 	'Float32': true,
 } as const;
 
-function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, red: number|null, green: number|null, blue: number|null, alpha: number|null, avg: boolean=false, isFloat: boolean=false) {
+function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, red: number|null, green: number|null, blue: number|null, alpha: number|null, avg: boolean=false): VCodec {
 
 	const SET = 'set' + type as `set${keyof typeof PixelDataTypes}`;
 	const GET = 'get' + type as `get${keyof typeof PixelDataTypes}`;
@@ -35,12 +35,14 @@ function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, 
 	// console.log('Creating format', VFormats[format], type, ARR, bpp);
 
 	return {
+		alpha: alpha ? VFlags.EightBitAlpha : VFlags.None,
+
 		length(width, height) {
 			return width * height * bpp;
 		},
 
 		encode(source) {
-			const image = source.convert(ARR);
+			const image = source.coerce(ARR);
 			const length = image.width * image.height;
 			const out = new Uint8Array(length * bpp);
 			const view = new DataView(out.buffer);
@@ -105,7 +107,25 @@ registerCodec(VFormats.RGB323232F, createGenericRGBA(VFormats.RGB323232F, 'Float
 registerCodec(VFormats.RGBA16161616, createGenericRGBA(VFormats.RGBA16161616, 'Uint16', 0, 2, 4, 6));
 registerCodec(VFormats.RGBA32323232F, createGenericRGBA(VFormats.RGBA32323232F, 'Float32', 0, 4, 8, 12));
 
-if (HAS_FLOAT16)
-	registerCodec(VFormats.RGBA16161616F, createGenericRGBA(VFormats.RGBA16161616F, 'Float16', 0, 2, 4, 6));
-else
-	console.warn(`vtf-js: Your environment does not support Float16Array. RGBA16161616F codec has not been registered!`);
+if (HAS_FLOAT16) {
+	registerCodec(
+		VFormats.RGBA16161616F,
+		createGenericRGBA(VFormats.RGBA16161616F, 'Float16', 0, 2, 4, 6)
+	);
+} else {
+	registerCodec(VFormats.RGBA16161616F, {
+		alpha: VFlags.EightBitAlpha,
+	
+		length(width, height) {
+			return width * height * 8;
+		},
+
+		encode() {
+			throw Error('vtf-js: Failed to encode image. Your environment does not support Float16Array!');
+		},
+
+		decode() {
+			throw Error('vtf-js: Failed to decode image. Your environment does not support Float16Array!');
+		},
+	});
+}

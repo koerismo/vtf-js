@@ -1,4 +1,4 @@
-import { VImageData } from '../dist/core/image.js';
+import { VImageData } from '../dist/index.js';
 import assert from 'node:assert/strict';
 
 describe('VImageData', () => {
@@ -15,11 +15,23 @@ describe('VImageData', () => {
 		assert.deepStrictEqual(f3, f2, 'Color accuracy has degraded!');
 	});
 
+	it('Ensure conversion rounds correctly', () => {
+		const f0 = new VImageData(new Float32Array([0.1,0.2,0.3,0.4,0.5]), 512, 512);
+		const u1 = f0.convert(Uint8Array);
+		const f1 = u1.convert(Float32Array);
+
+		assert.strictEqual(f0.data[0], 0.10000000149011612);
+		assert.strictEqual(f1.data[0], 0.09803921729326248);
+
+		assert.strictEqual(f0.data[1], 0.20000000298023224);
+		assert.strictEqual(f1.data[1], 0.20000000298023224);
+	});
+
 	it('Ensure conversion is accurate', () => {
 		const image = new VImageData(new Float32Array([0.0,0.1,0.2, 0.8,0.9,1.0]), 512, 512);
 		const u1 = image.convert(Uint32Array);
 		const f1 = u1.convert(Float32Array);
-		
+
 		assert.strictEqual(u1.data[0], 0, 'Int 0.0 is not 0!');
 		assert.strictEqual(f1.data[0], 0, 'Float 0.0 is not 0!');
 		assert.strictEqual(u1.data[5], 0xffffffff, 'Int 1.0 is not max!');

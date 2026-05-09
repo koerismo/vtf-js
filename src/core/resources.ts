@@ -1,7 +1,7 @@
-import { VEncodedImageData, VImageData, getCodec } from './image.js';
+import { VEncodedImageData, getCodec, type VImageEither } from './image.js';
 import { DataBuffer } from './buffer.js';
 import { VFileHeader } from '../vtf.js';
-import { VFormats, NO_DATA } from './enums.js';
+import { NO_DATA, VFormats } from './enums.js';
 import { VDataCollection, VDataProvider } from './providers.js';
 import { getFaceCount, getMipSize, compress, decompress } from './utils.js';
 
@@ -17,8 +17,12 @@ export function registerResourceType(resource: VResourceStatic, tag: number) {
 export enum VHeaderTags {
 	TAG_LEGACY_BODY  = 0x30_00_00,
 	TAG_LEGACY_THUMB = 0x01_00_00,
+	TAG_CRC          = 0x43_52_43,
+	TAG_KVD          = 0x48_56_44,
+	TAG_LOD          = 0x4C_4F_44,
 	TAG_SHEET        = 0x10_00_00,
-	TAG_AXC          = 0x41_58_43, // AXC
+	TAG_TS0          = 0x54_54_30,
+	TAG_AXC          = 0x41_58_43,
 	TAG_HOTSPOT      = 0x2B_00_00, // +\0\0
 }
 
@@ -27,9 +31,8 @@ export class VHeader {
 	constructor(
 		public readonly tag: number,
 		public readonly flags: number,
-		public readonly start: number,
-		public length?: number) {
-	}
+		public readonly start: number
+	) {}
 
 	/** Returns true if the `0x2` flag is unset. */
 	hasData(): boolean {
@@ -37,68 +40,87 @@ export class VHeader {
 	}
 }
 
+
+type Awaitable<T> = T | Promise<T>;
+
+
 /** Defines a resource decoder. */
 export interface VResourceStatic {
-	decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): Promise<VResource> | VResource;
+	/** If true, this resource should be considered a "legacy" resource with no predefined length. Defaults to false. */
+	readonly isLegacy?: boolean;
+	/** Decodes this resource from its raw data. */
+	decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader): Awaitable<VResource>;
 }
 
 /** Defines a generic resource entry. All resources are required to implement this interface! */
 export interface VResource {
 	/** The tag of this resource. Accessed by `Vtf` to encode the resource header. */
-	tag: number;
+	readonly tag: number;
 	/** The flags of this resource. Accessed by `Vtf` to encode the resource header. */
 	flags: number;
-	/** Returns whether this resource should be considered a "legacy" resource with no predefined length. */
-	isLegacy(): boolean;
 	/** Encode the body of this resource into an ArrayBuffer. */
-	encode(info: VFileHeader): Promise<ArrayBuffer|undefined> | ArrayBuffer|undefined;
+	encode(info: VFileHeader): Awaitable<ArrayBuffer | undefined>;
 }
-
-type VImageEither = (VImageData|VEncodedImageData);
 
 /** Implements a generic resource entry. This can be subclassed to quickly implement {@link VResource}. */
 export class VBaseResource implements VResource {
+	static readonly legacy: boolean = false;
+
 	constructor(
 		public readonly tag: number,
-		public readonly flags: number,
+		public flags: number,
 		public raw?: DataBuffer) {
 	}
 
-	isLegacy(): boolean {
-		return this.tag === VHeaderTags.TAG_LEGACY_BODY || this.tag === VHeaderTags.TAG_LEGACY_THUMB;
-	}
-
-	static decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): Promise<VBaseResource> | VBaseResource {
+	static decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): Awaitable<VBaseResource | VErrorResource> {
 		return new VBaseResource(header.tag, header.flags, view);
 	}
 
-	encode(info: VFileHeader): Promise<ArrayBuffer|undefined> | ArrayBuffer|undefined {
+	encode(info: VFileHeader): Awaitable<ArrayBuffer | undefined> {
 		return this.raw?.buffer;
+	}
+}
+
+/**
+ * @internal Represents a resource which failed to be parsed by its respective handler.
+ * @todo TODO: This is not implemented yet!
+ */
+export class VErrorResource extends VBaseResource {
+	constructor(
+			tag: number,
+			flags: number,
+			public error: string | Error
+		) {
+		super(tag, flags);
 	}
 }
 
 /** @internal The hi-res image data resource. This is managed internally! */
 export class VBodyResource extends VBaseResource {
-	images: VDataProvider;
+	static readonly legacy = true;
 
-	constructor(flags: number, images: VDataProvider) {
+	constructor(
+			flags: number,
+			public images: VDataProvider
+		) {
 		super(VHeaderTags.TAG_LEGACY_BODY, flags);
-		this.images = images;
 	}
 
-	static async decode(header: VHeader, view: DataBuffer, info: VFileHeader, lazy: boolean=false): Promise<VBodyResource> {
+	static async decode(header: VHeader, view: DataBuffer, info: VFileHeader): Promise<VBodyResource> {
 		const face_count = getFaceCount(info);
 		const codec = getCodec(info.format);
+		const collection = new VDataCollection({
+			width: info.width,
+			height: info.height,
+			mips: info.mipmaps,
+			frames: info.frames,
+			faces: face_count,
+			slices: info.slices,
+		});
 
-		const mips: VImageEither[][][][] = new Array(info.mipmaps);
 		for ( let x=info.mipmaps-1; x>=0; x-- ) { // Vtfs store mipmaps smallest-to-largest
-			
-			const frames: VImageEither[][][] = mips[x] = new Array(info.frames);
 			for ( let y=0; y<info.frames; y++ ) {
-				
-				const faces: VImageEither[][] = frames[y] = new Array(face_count);
 				for ( let z=0; z<face_count; z++ ) {
-
 					const [width, height] = getMipSize(x, info.width, info.height);
 					const uncompressed_length = codec.length(width, height);
 
@@ -114,19 +136,16 @@ export class VBodyResource extends VBaseResource {
 						view.pointer += subview.length;
 					}
 
-					const slices: VImageEither[] = faces[z] = new Array(info.slices);
 					for ( let w=0; w<info.slices; w++ ) {
 						const data = subview.read_u8(uncompressed_length);
-						const encoded = new VEncodedImageData( data, width, height, info.format );
-						if (lazy) slices[w] = encoded;
-						else slices[w] = encoded.decode();
+						const image = new VEncodedImageData(data, width, height, info.format);
+						collection.setImage(image, x, y, z, w);
 					}
 				}
 			}
 		}
 
-		const images = new VDataCollection(mips);
-		return new VBodyResource(header.flags, images);
+		return new VBodyResource(header.flags, collection);
 	}
 
 	async encode(info: VFileHeader): Promise<ArrayBuffer> {
@@ -179,25 +198,38 @@ export class VBodyResource extends VBaseResource {
 	}
 }
 
-/** @internal The low-res image data resource. This is managed internally! */
+/** The low-res image data resource. */
 export class VThumbResource extends VBaseResource {
-	image: VImageData | VEncodedImageData;
+	static readonly legacy = true;
+	public image: VImageEither;
 
-	constructor(flags: number, image: VImageData | VEncodedImageData) {
+	constructor(
+			flags: number,
+			image?: VImageEither
+		) {
 		super(VHeaderTags.TAG_LEGACY_THUMB, flags);
-		this.image = image;
+		this.image = image ?? new VEncodedImageData(new Uint8Array(0), 0, 0, VFormats.DXT1);
+		flags = (flags ^ (flags & NO_DATA)) | (this.hasImage() ? 0 : NO_DATA);
 	}
 
-	static decode(header: VHeader, view: DataBuffer, info: VFileHeader): VThumbResource {
+	static decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader): VThumbResource {
 		const codec = getCodec(info.thumb_format);
+		if (!view) {
+			if (info.thumb_width === 0 || info.thumb_height === 0) return new VThumbResource(header.flags);
+			throw Error('VThumbnailResource: Attempted to decode non-empty thumbnail without any data!');
+		}
 		const data = view.read_u8(codec.length(info.thumb_width, info.thumb_height));
 		const image = new VEncodedImageData(data, info.thumb_width, info.thumb_height, info.thumb_format);
 		return new VThumbResource(header.flags, image);
 	}
 
+	hasImage(): boolean {
+		return this.image.width !== 0 && this.image.height !== 0;
+	}
+
 	encode(info: VFileHeader): ArrayBuffer {
-		if (this.image.width === 0 || this.image.height === 0) return new ArrayBuffer(0);
-		return this.image.encode(VFormats.DXT1).data.buffer as ArrayBuffer;
+		if (!this.hasImage()) return new ArrayBuffer(0);
+		return this.image.encode(info.thumb_format).data.buffer as ArrayBuffer;
 	}
 }
 
@@ -275,15 +307,73 @@ export class VSheetResource extends VBaseResource {
 				const frame = sequence.frames[j];
 				view.write_f32(frame.duration);
 
-				if (coord_count !== frame.coords.length) throw Error(`Expected ${coord_count} coordinate sets, but got ${frame.coords.length}!`);
+				if (coord_count !== frame.coords.length) throw Error(`vtf-js: Expected ${coord_count} coordinate sets, but got ${frame.coords.length}!`);
 				for (let k=0; k<coord_count; k++) {
-					if (frame.coords[k].length !== 4) throw Error('SheetFrame coords must be of length 4!');
+					if (frame.coords[k].length !== 4) throw Error('vtf-js: SheetFrame coords must be of length 4!');
 					view.write_f32(frame.coords[k]);
 				}
 			}
 		}
 
 		return view.buffer;
+	}
+}
+
+export class VExtendedSettingsResource extends VBaseResource {
+	static {
+		registerResourceType(VExtendedSettingsResource, VHeaderTags.TAG_TS0);
+	}
+
+	constructor(
+		flags: number,
+		public textureFlags: number) {
+		super(VHeaderTags.TAG_TS0, flags);
+	}
+
+	static decode(header: VHeader, view?: DataBuffer): VExtendedSettingsResource {
+		if (!view) return new VExtendedSettingsResource(0, 0);
+		return new VExtendedSettingsResource(header.flags, view.read_u32());
+	}
+
+	encode(): ArrayBuffer {
+		const view = new DataView(new ArrayBuffer(4));
+		view.setUint32(0, this.textureFlags, true);
+		return view.buffer;
+	}
+}
+
+export class VLodControlResource extends VBaseResource {
+	static {
+		// registerResourceType(VLodControlResource, VHeaderTags.TAG_LOD);
+	}
+
+	constructor(
+		flags: number,
+		public resolutionClampX: number,
+		public resolutionClampY: number,
+		public x360_resolutionClampX: number,
+		public x360_resolutionClampY: number) {
+		super(VHeaderTags.TAG_LOD, flags);
+	}
+
+	static decode(header: VHeader, view?: DataBuffer): VLodControlResource {
+		if (!view) throw Error(`No data provided for LOD control resource!`);
+		return new VLodControlResource(
+			header.flags,
+			view[0],
+			view[1],
+			view[2],
+			view[3]
+		);
+	}
+
+	encode(): ArrayBuffer {
+		const arr = new Uint8Array(4);
+		arr[0] = this.resolutionClampX;
+		arr[1] = this.resolutionClampY;
+		arr[2] = this.x360_resolutionClampX;
+		arr[3] = this.x360_resolutionClampY;
+		return arr.buffer;
 	}
 }
 
@@ -310,23 +400,23 @@ export class VHotspotResource extends VBaseResource {
 	}
 
 	constructor(
-		flags: number,
-		public version: number,
-		public editorFlags: number,
-		public rects: HotspotRect[]) {
-			super(VHeaderTags.TAG_HOTSPOT, flags);
+			flags: number,
+			public version: number,
+			public editorFlags: number,
+			public rects: HotspotRect[]
+		) {
+		super(VHeaderTags.TAG_HOTSPOT, flags);
 	}
 
 	static decode(header: VHeader, view: DataBuffer, info: VFileHeader): VHotspotResource {
 		if (!header.hasData())
 			return new VHotspotResource(header.flags, 0, 0, []);
 
-		const version   = view.read_u8();
+		const version = view.read_u8();
+		if (version !== 0x1) throw Error(`Failed to parse VHotspotResource: Invalid version! (Expected 1, got ${version})`);
+
 		const flags     = view.read_u8();
 		const rectCount = view.read_u16();
-
-		if (version !== 0x1)
-			throw Error(`Failed to parse VHotspotResource: Invalid version! (Expected 1, got ${version})`);
 
 		const rects = Array<HotspotRect>(rectCount);
 		for (let i=0; i<rectCount; i++) {
@@ -343,11 +433,11 @@ export class VHotspotResource extends VBaseResource {
 	}
 
 	encode(info: VFileHeader): ArrayBuffer {
-		const length = 4 + this.rects.length * 9;
-		const view = new DataBuffer(length);
-
 		if (this.version !== 0x1)
 			throw Error(`Failed to write VHotspotResource: Invalid version! (Expected 1, got ${this.version})`);
+
+		const length = 4 + this.rects.length * 9;
+		const view = new DataBuffer(length);
 
 		view.write_u8(this.version);
 		view.write_u8(this.editorFlags);

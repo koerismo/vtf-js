@@ -3,13 +3,7 @@ import { VImageData, VFormats } from '../dist/index.js';
 import assert from 'node:assert/strict';
 import '../dist/addons/squish.js';
 
-/**
- * 
- * @param {number} width 
- * @param {number} height 
- * @returns 
- */
-function makeTestImage(width, height) {
+function makeTestImage(width: number, height: number): VImageData<Float64Array> {
 	const data = new Float64Array(width * height * 4);
 	for (let i=0; i<data.length; i++) {
 		data[i] = (i % 256) / 255.0;
@@ -17,16 +11,7 @@ function makeTestImage(width, height) {
 	return new VImageData(data, width, height);
 }
 
-/**
- * 
- * @param {VImageData} a 
- * @param {VImageData} b 
- * @param {number} channel_a 
- * @param {number} channel_b 
- * @param {number} threshold 
- * @returns {boolean}
- */
-function diffImages(a, b, channel_a, channel_b, threshold=0) {
+function diffImages(a: VImageData, b: VImageData, channel_a: number, channel_b: number, threshold=0): boolean {
 	let diff = 0;
 	for (let i=0; i<a.data.length; i+=4) {
 		diff += Math.abs(a.data[i+channel_a] - b.data[i+channel_b]);
@@ -38,7 +23,7 @@ function diffImages(a, b, channel_a, channel_b, threshold=0) {
  * @param {VImageData} a 
  * @param {VImageData} b 
  */
-function checkImageSizes(a, b) {
+function checkImageSizes(a: VImageData, b: VImageData) {
 	return (a.width === b.width) && (a.height === b.height) && (a.data.length === b.data.length);
 }
 
@@ -85,7 +70,7 @@ describe('Format IO Difftest', () => {
 			const small_out = small.encode(format).decode().convert(Float64Array);
 			const weird_out = weird.encode(format).decode().convert(Float64Array);
 
-			const assertDiff = (cA, cB, max_diff=F32_THRESHOLD) => {
+			const assertDiff = (cA: number, cB: number, max_diff=F32_THRESHOLD) => {
 				assert(diffImages(big, big_out, cA, cB, max_diff), `Channel diff ${cA}-${cB} failed on image! [big]`);
 				assert(diffImages(small, small_out, cA, cB, max_diff), `Channel diff ${cA}-${cB} failed on image! [small]`);
 				assert(diffImages(weird, weird_out, cA, cB, max_diff), `Channel diff ${cA}-${cB} failed on image! [weird]`);

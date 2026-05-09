@@ -1,8 +1,8 @@
 import { Vtf, VFileHeader, VConstructorOptions } from '../vtf.js';
 import { DataBuffer } from './buffer.js';
 import { VCompressionMethods, VFormats, NO_DATA } from './enums.js';
-import { getHeaderLength, getFaceCount } from './utils.js';
-import { VBaseResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags, type VResource } from './resources.js';
+import { getHeaderLength, getFaceCount, isLegacy } from './utils.js';
+import { VBaseResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags, type VResource, VThumbResource } from './resources.js';
 import { getCodec } from './image.js';
 
 function read_format(id: number) {
@@ -43,7 +43,7 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boo
 }
 
 // @ts-expect-error Overloads break for some reason?
-Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_decode: boolean=true): Promise<Vtf | VFileHeader> {
+Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false): Promise<Vtf | VFileHeader> {
 	const info = new VFileHeader();
 	info.compression_level = 0;
 
@@ -90,7 +90,8 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_
 
 	if (header_only) return info;
 
-	let body: VBodyResource|undefined;
+	let body: VBodyResource | undefined;
+	let thumb: VThumbResource | undefined;
 	const headers: VHeader[] = [];
 	const meta: VResource[] = [];
 
@@ -101,9 +102,13 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_
 		view.pad(8);
 	}
 	else {
-		const body_offset = header_length + getCodec(info.thumb_format).length(info.thumb_width, info.thumb_height);
-		const data = view.ref(body_offset);
-		body = await VBodyResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_BODY, 0x0, body_offset), data, info, lazy_decode);
+		const thumb_size = getCodec(info.thumb_format).length(info.thumb_width, info.thumb_height);
+		const thumb_data = view.ref(header_length, thumb_size);
+		thumb = await VThumbResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_THUMB, 0x0, header_length), thumb_data, info);
+
+		const body_offset = header_length + thumb_size;
+		const body_data = view.ref(body_offset);
+		body = await VBodyResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_BODY, 0x0, body_offset), body_data, info);
 	}
 
 	// Parse resource headers
@@ -132,13 +137,8 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_
 		let length: number | undefined;
 		let start = header.start;
 
-		// Ignore thumb data
-		if (header.tag === VHeaderTags.TAG_LEGACY_THUMB) {
-			continue;
-		}
-
 		// All modern resources have a uint32 at the body start to declare the content size
-		if (has_data && header.tag !== VHeaderTags.TAG_LEGACY_BODY) {
+		if (has_data && !isLegacy(header)) {
 			length = view.view.getUint32(start, true);
 			start += 4;
 		}
@@ -149,7 +149,12 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_
 
 		if (header.tag === VHeaderTags.TAG_LEGACY_BODY) {
 			if (!data) throw Error('Vtf.decode: Body resource has no data! (0x2 flag set)');
-			body = await VBodyResource.decode(header, data, info, lazy_decode);
+			body = await VBodyResource.decode(header, data, info);
+			continue;
+		}
+
+		if (header.tag === VHeaderTags.TAG_LEGACY_THUMB) {
+			thumb = VThumbResource.decode(header, data, info);
 			continue;
 		}
 
@@ -161,6 +166,7 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false, lazy_
 		throw Error('Vtf.decode: Vtf does not contain a body resource!');
 
 	const options: VConstructorOptions = info;
+	options.thumb = thumb;
 	options.meta = meta;
 
 	return new Vtf(body.images, options);

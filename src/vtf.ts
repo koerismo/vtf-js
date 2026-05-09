@@ -1,7 +1,8 @@
 import type { VDataProvider } from './core/providers.js';
 import { VCompressionMethods, VFormats } from './core/enums.js';
-import { VBaseResource, VResource } from './core/resources.js';
+import { VBaseResource, VResource, VThumbResource } from './core/resources.js';
 import { getThumbMip } from './core/utils.js';
+import { getCodec } from './core/image.js';
 
 /** Options for use with the {@link Vtf} constructor. */
 export interface VConstructorOptions {
@@ -9,6 +10,7 @@ export interface VConstructorOptions {
 	format?: VFormats;
 	flags?: number;
 	meta?: VBaseResource[];
+	thumb?: VThumbResource;
 
 	reflectivity?: Float32Array;
 	first_frame?: number;
@@ -26,6 +28,7 @@ export interface VConstructorOptions {
  */
 export class Vtf {
 	public data: VDataProvider;
+	public thumb?: VThumbResource;
 	public version: number;
 	public format: VFormats;
 	public flags: number;
@@ -44,22 +47,25 @@ export class Vtf {
 		this.format = options?.format ?? VFormats.RGBA8888;
 		this.flags = options?.flags ?? 0x0;
 		this.meta = options?.meta ?? [];
+		this.thumb = options?.thumb;
 
+		const dataSize = this.data.getSize();
+		const dataMipCount = this.data.getMipmapCount();
 
 		if (options?.reflectivity) {
 			this.reflectivity = options.reflectivity;
-		}
-		else {
-			const smallest_mip_index = getThumbMip(...this.data.getSize(0,0,0,0), 1);
-			if (smallest_mip_index < this.data.mipmapCount()) {
-				const smallest_mip = this.data.getImage(smallest_mip_index, 0, 0, 0).convert(Float32Array);
-				this.reflectivity = smallest_mip.data.slice(0,3);
-			}
-			else {
+		} else {
+			const pixelMipIdx = getThumbMip(...dataSize, 1);
+			if (pixelMipIdx < dataMipCount) {
+				const smallest_mip = this.data
+					.getImage(pixelMipIdx, 0, 0, 0)
+					.coerce(Float32Array);
+				this.reflectivity = smallest_mip.data.slice(0, 3);
+			} else {
 				this.reflectivity = new Float32Array(3).fill(0);
 			}
 		}
-		
+
 		this.first_frame = options?.first_frame ?? 0;
 		this.bump_scale = options?.bump_scale ?? 1.0;
 		this.compression_level = options?.compression_level ?? 0;
@@ -77,10 +83,10 @@ export class Vtf {
 	 * @param header_only (default: `false`) If true, a VFileHeader will be returned instead, which only contains the header contents.
 	 * @param lazy_decode (default: `true`) If false, all data in the Vtf will be decoded in this function call. Otherwise, images will only be decoded when requested.
 	 */
-	static decode(data: ArrayBuffer): Promise<Vtf>;
-	static decode(data: ArrayBuffer, header_only: false, lazy_decode?: boolean): Promise<Vtf>;
-	static decode(data: ArrayBuffer, header_only: true, lazy_decode?: boolean): Promise<VFileHeader>;
-	static decode(data: ArrayBuffer, header_only: boolean=false, lazy_decode: boolean=true): Promise<Vtf|VFileHeader> {
+	static decode(data: ArrayBuffer, header_only?: false): Promise<Vtf>;
+	static decode(data: ArrayBuffer, header_only: true): Promise<VFileHeader>;
+	static decode(data: ArrayBuffer, header_only: boolean): Promise<Vtf | VFileHeader>;
+	static decode(data: ArrayBuffer, header_only: boolean=false): Promise<Vtf | VFileHeader> {
 		throw Error('Vtf.decode: Implementation override not present!');
 	}
 }
@@ -111,14 +117,27 @@ export class VFileHeader {
 		const header = new VFileHeader();
 		header.version = vtf.version;
 		[header.width, header.height] = vtf.data.getSize();
+
 		header.flags = vtf.flags;
-		header.frames = vtf.data.frameCount();
+		header.flags |= getCodec(vtf.format, false)?.alpha ?? 0;
+
+		header.frames = vtf.data.getFrameCount();
 		header.first_frame = vtf.first_frame;
 		header.reflectivity = vtf.reflectivity;
 		header.bump_scale = vtf.bump_scale;
 		header.format = vtf.format;
-		header.mipmaps = vtf.data.mipmapCount();
-		header.slices = vtf.data.sliceCount();
+		header.mipmaps = vtf.data.getMipmapCount();
+
+		header.thumb_format = VFormats.DXT1;
+		if (vtf.thumb) {
+			header.thumb_width = vtf.thumb.image.width;
+			header.thumb_height = vtf.thumb.image.height;
+		} else {
+			header.thumb_width = 0x0;
+			header.thumb_height = 0x0;
+		}
+
+		header.slices = vtf.data.getSliceCount();
 		header.compression_method = vtf.compression_method;
 		header.compression_level = vtf.compression_level;
 		return header;

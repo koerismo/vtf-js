@@ -57,7 +57,9 @@ import { Vtf, VFormats, VFilters, VFrameCollection } from 'vtf-js';
 
 // ...
 
-const frames = new VFrameCollection([image], { mipmaps: 3, filter: VFilters.NICE });
+const frames = new VFrameCollection([image], { mips: 3, filter: VFilters.NICE });
+frames.generateMips();
+
 const vtf = new Vtf(frames, { version: 4, format: VFormats.DXT5 });
 const out = vtf.encode();
 ```

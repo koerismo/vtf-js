@@ -1,6 +1,6 @@
 import { CompressImage, DecompressImage, DxtFlags } from 'libsquish-js';
 import { registerCodec, VImageData, VEncodedImageData, getCodec } from '../core/image.js';
-import { VFormats } from '../core/enums.js';
+import { VFormats, VFlags } from '../core/enums.js';
 import { ceil4 } from '../core/utils.js';
 
 function padImage(img: VImageData<Uint8Array>): VImageData<Uint8Array> {
@@ -31,12 +31,14 @@ function cropImage(img: VImageData<Uint8Array>): VImageData<Uint8Array> {
 }
 
 registerCodec(VFormats.DXT1, {
+	alpha: VFlags.None,
+
 	length(width, height) {
 		return ceil4(width) * ceil4(height) * 0.5;
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		const padded = padImage(image.convert(Uint8Array));
+		const padded = padImage(image.coerce(Uint8Array));
 		const input = { data: padded.data, width: ceil4(padded.width), height: ceil4(padded.height) };
 		const encoded = CompressImage(input, DxtFlags.kDxt1);
 		return new VEncodedImageData(encoded, image.width, image.height, VFormats.DXT1);
@@ -50,15 +52,20 @@ registerCodec(VFormats.DXT1, {
 	},
 });
 
-registerCodec(VFormats.DXT1_ONEBITALPHA, getCodec(VFormats.DXT1));
+registerCodec(VFormats.DXT1_ONEBITALPHA, {
+	...getCodec(VFormats.DXT1),
+	alpha: VFlags.OneBitAlpha,
+});
 
 registerCodec(VFormats.DXT3, {
+	alpha: VFlags.EightBitAlpha,
+
 	length(width, height) {
 		return ceil4(width) * ceil4(height);
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		const padded = padImage(image.convert(Uint8Array));
+		const padded = padImage(image.coerce(Uint8Array));
 		const input = { data: padded.data, width: ceil4(padded.width), height: ceil4(padded.height) };
 		const encoded = CompressImage(input, DxtFlags.kDxt3);
 		return new VEncodedImageData(encoded, image.width, image.height, VFormats.DXT3);
@@ -73,12 +80,14 @@ registerCodec(VFormats.DXT3, {
 });
 
 registerCodec(VFormats.DXT5, {
+	alpha: VFlags.EightBitAlpha,
+
 	length(width, height) {
 		return ceil4(width) * ceil4(height);
 	},
 
 	encode(image: VImageData): VEncodedImageData {
-		const padded = padImage(image.convert(Uint8Array));
+		const padded = padImage(image.coerce(Uint8Array));
 		const input = { data: padded.data, width: ceil4(padded.width), height: ceil4(padded.height) };
 		const encoded = CompressImage(input, DxtFlags.kDxt5);
 		return new VEncodedImageData(encoded, image.width, image.height, VFormats.DXT5);

@@ -1,26 +1,26 @@
-import { Vtf, VDataCollection, VImageData, VFormats } from '../dist/index.js';
+import { Vtf, VImageData, VFormats, VFrameCollection } from '../dist/index.js';
 import '../dist/addons/compress/node.js';
 
-import { deepStrictEqual, strictEqual } from 'node:assert/strict';
+import { deepStrictEqual } from 'node:assert/strict';
 
 const image_big = new VImageData(new Uint8Array(4 * 4 * 4).fill(255), 4, 4);
 const image_small = new VImageData(new Uint8Array(1 * 1 * 4).fill(255), 1, 1);
 
 describe('Vtf', () => {
 	it('Constructs reflectivity without source', () => {
-		const data = new VDataCollection([[[[image_big]]]]);
+		const data = new VFrameCollection([image_big]);
 		const vtf = new Vtf(data);
 		deepStrictEqual(vtf.reflectivity, new Float32Array(3).fill(0.0));
 	});
 
 	it('Constructs reflectivity with source', () => {
-		const data = new VDataCollection([[[[image_small]]]]);
+		const data = new VFrameCollection([image_small]);
 		const vtf = new Vtf(data);
 		deepStrictEqual(vtf.reflectivity, new Float32Array(3).fill(1.0));
 	});
 
 	it('Constructs reflectivity with option', () => {
-		const data = new VDataCollection([[[[image_small]]]]);
+		const data = new VFrameCollection([image_small]);
 		const vtf = new Vtf(data, { reflectivity: new Float32Array(3).fill(0.5) });
 		deepStrictEqual(vtf.reflectivity, new Float32Array(3).fill(0.5));
 	});
@@ -34,16 +34,17 @@ describe('Vtf', () => {
 
 	for (const [version, compression_level] of versions) {
 		it(`Encodes and decodes reliably: v${version} (compression ${compression_level})`, async () => {
-			const vtf = new Vtf(new VDataCollection([[[[image]]]]), {
+			const vtf = new Vtf(new VFrameCollection([image]), {
 				version,
 				compression_level,
 				format: VFormats.RGBA8888
 			});
 
 			const encoded = await vtf.encode();
-			const decoded = await Vtf.decode(encoded, false, false);
+			const decoded = await Vtf.decode(encoded, false);
 			const found = decoded.data.getImage(0, 0, 0, 0);
 			deepStrictEqual(image, found, `Image match failed on v${version} (compression ${compression_level})`);
 		});
 	}
+
 });

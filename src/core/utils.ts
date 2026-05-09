@@ -1,5 +1,6 @@
 import { VFileHeader } from '../vtf.js';
 import { VCompressionMethods, VFlags } from './enums.js';
+import { VHeader, VHeaderTags, VResource, VResourceTypes } from './resources.js';
 
 /** Returns the size of a given mipmap if mipmap 0 is of size `width`,`height` */
 export function getMipSize(mipmap: number, width: number, height: number): [number, number] {
@@ -25,6 +26,11 @@ export function getFaceCount(info: VFileHeader): 1|6|7 {
 export function getThumbMip(width: number, height: number, target=16): number {
 	const size = Math.max(width, height);
 	return Math.ceil(Math.log2(size)) - Math.log2(target);
+}
+
+export function isLegacy(res: VResource | VHeader) {
+	if (res.tag === VHeaderTags.TAG_LEGACY_BODY || res.tag === VHeaderTags.TAG_LEGACY_THUMB) return true;
+	return !!(VResourceTypes[res.tag]?.isLegacy);
 }
 
 /** Clamps the value `x` between `a` and `b` */
@@ -68,8 +74,8 @@ export let compress: CompressFunction = async (data, method, level) => {
 		throw Error('vtf-js: Default compression backend only supports compression level `-1`. Import a `vtf-js/addons/compress/*` module or call `setCompressionMethod` to better support encoding Strata-compressed Vtfs!');
 	if (method !== VCompressionMethods.Deflate)
 		throw Error(`vtf-js: Default compression backend only supports Deflate compression!`);
-	
-	const inStream = new Blob([data]).stream();
+
+	const inStream = new Blob([data as Uint8Array<ArrayBuffer>]).stream();
 	const compStream = new CompressionStream('deflate');
 	const outStream = inStream.pipeThrough(compStream);
 	const n = new Response(outStream);
@@ -78,11 +84,35 @@ export let compress: CompressFunction = async (data, method, level) => {
 
 /** Decompresses the specified Uint8Array with the given options and returns the result. `level` is not currently used, but is included in the signature for future compatibility. */
 export let decompress: DecompressFunction = async (data, method, _level) => {
-	if (method !== VCompressionMethods.Deflate)
-		throw Error(`vtf-js: Default decompression backend only supports Deflate decompression!`);
-	const inStream = new Blob([data]).stream();
-	const decompStream = new DecompressionStream('deflate');
+	let methodStr: string;
+	switch (method) {
+		case VCompressionMethods.Deflate: { methodStr = 'deflate'; break }
+		case VCompressionMethods.ZSTD: { methodStr = 'zstd'; break }
+		default:
+			throw Error(`vtf-js: Unrecognized compression method ${method}!`);
+	}
+
+	const inStream = new Blob([data as Uint8Array<ArrayBuffer>]).stream();
+	const decompStream = new DecompressionStream(methodStr as CompressionFormat);
 	const outStream = inStream.pipeThrough(decompStream);
 	const n = new Response(outStream);
 	return new Uint8Array(await n.arrayBuffer());
+}
+
+export function srgbToLinear(v: number): number {
+	if (v < 0.04045) {
+		return v / 12.92;
+	} else {
+		v = Math.pow((v + 0.055) / 1.055, 2.4);
+		return Math.min(1, Math.max(0, v));
+	}
+}
+
+export function linearToSrgb(v: number): number {
+	if (v < 0.0031308) {
+		return v * 12.92;
+	} else {
+		v = (1.055 * Math.pow(v, 1.0 / 2.4) - 0.055)
+		return Math.min(1, Math.max(0, v));
+	}
 }

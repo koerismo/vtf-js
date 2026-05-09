@@ -1,4 +1,4 @@
-import { VImageData, VPixelArray } from './image.js';
+import { getPixelArrayMax, VImageData, VPixelArray } from './image.js';
 
 function sinc(x: number) {
 	if (x === 0) return 1.0;
@@ -18,10 +18,6 @@ function make_bicubic(b: number, c: number) {
 	const q2 = (  b*6  + c*30	) / 6;
 	const q3 = ( -b    - c*6	) / 6;
 
-	// console.log(`if (x < 1) return ${p0} + ${p2} * (x*x) + ${p3} * (x*x*x);
-	// if (x < 2) return ${q0} + ${q1} * x + ${q2} * (x*x) + ${q3} * (x*x*x);
-	// return 0;`);
-
 	return (x: number) => {
 		if (x < 1) return p0 + p2 * (x*x) + p3 * (x*x*x);
 		if (x < 2) return q0 + q1 * x + q2 * (x*x) + q3 * (x*x*x);
@@ -35,27 +31,51 @@ function make_bicubic(b: number, c: number) {
 // 	return 0;
 // }
 
+function filter_vtex_nice(x: number): number {
+	if (x >= 3)	return 0;
+	return sinc(x) * sinc(x / 3) * (x > 1 ? 1.8 : 1);
+}
+
+function filter_spp_nice(x: number): number {
+	if (x >= 3) return 0;
+	const NICE_SHARPEN = 1.25;
+
+	const v = sinc(x) * sinc(x / 3.0);
+	return v < 0 ? v * NICE_SHARPEN : v;
+}
 
 // Some of the below was adapted from the resize-rs project.
 // https://github.com/PistonDevelopers/resize/blob/master/src/lib.rs
 
+const CatRomDefaultFilter: VFilter = { radius: 2, kernel: make_bicubic(0.0, 0.5) };
 
-/** @see {@link Filter} */
+/**
+ * Built-in filters for image rescaling.
+ * @see {@link VFilter}
+ */
 export const VFilters = {
+	/** Default filter, used by {@link VImageScaler} if not explicitly specified. Alias to {@link VFilters.CatRom} */
+	Default:	CatRomDefaultFilter,
 	/** Point filtering - Always picks the nearest pixel when resampling. */
-	Point:		<VFilter>{ radius: 0, kernel: () => 1.0 },
+	Point:		<VFilter>{ radius: 0, kernel: () => 1 },
 	/** Triangle/bilinear filtering - Blends the four pixels surrounding a given point. */
 	Triangle:	<VFilter>{ radius: 1, kernel: x => Math.max(0, 1 - x) },
 	/** Box filtering - Evenly blends in the four closest pixels. */
-	Box:		<VFilter>{ radius: 1, kernel: x => x < 0.5 ? 1.0 : 0.0 },
+	Box:		<VFilter>{ radius: 1, kernel: x => x < 0.5 ? 1 : 0 },
+	/** Mitchell–Netravali bicubic filtering. */
 	Mitchell:	<VFilter>{ radius: 2, kernel: make_bicubic(1/3, 1/3) },
-	CatRom:		<VFilter>{ radius: 2, kernel: make_bicubic(0.0, 0.5) },
-	/** Lanczos-3 filtering - A sinc filter that acts identically to Valve's NICE filter. */
-	Lanczos3:	<VFilter>{ radius: 3, kernel: x => x < 3.0 ? sinc(x) * sinc(x / 3.0) : 0.0 },
+	/** Catmull-Rom bicubic filtering. */
+	CatRom:		CatRomDefaultFilter,
+	/** Lanczos-3 filtering. */
+	Lanczos3:	<VFilter>{ radius: 3, kernel: x => x < 3 ? sinc(x) * sinc(x / 3) : 0 },
+	/** Valve NICE filtering. Equivalent to Lanczos-3, but with a sharpening factor added to match VTEX output. */
+	NICE:		<VFilter>{ radius: 3, kernel: filter_vtex_nice },
+	/** Modified Valve NICE filtering. Equivalent to Lanczos-3, but with a less-intense sharpening factor added to match sourcepp output. */
+	NICER:		<VFilter>{ radius: 3, kernel: filter_spp_nice },
 } as const;
 
 
-/** Defines a filter that can be used to resize images. */
+/** Defines a filter that can be used to rescale images. */
 export interface VFilter {
 	kernel: (distance: number) => number;
 	radius: number;
@@ -67,15 +87,15 @@ interface CoeffsLine {
 }
 
 export class VImageScaler {
-	coeffs_w: CoeffsLine[];
-	coeffs_h: CoeffsLine[];
+	protected coeffs_w: CoeffsLine[];
+	protected coeffs_h: CoeffsLine[];
 
 	constructor(
 		public readonly src_width: number,
 		public readonly src_height: number,
 		public readonly dest_width: number,
 		public readonly dest_height: number,
-		public readonly filter: VFilter) {
+		public readonly filter: VFilter=VFilters.Default) {
 			const coeff_cache: Record<string, Float32Array> = {};
 			this.coeffs_w = this.calc_coeffs(src_width, dest_width, this.filter, coeff_cache);
 			if (src_width === src_height && dest_width === dest_height) {
@@ -89,22 +109,21 @@ export class VImageScaler {
 	protected calc_coeffs(size1: number, size2: number, filter: VFilter, cache: Record<string, Float32Array>): CoeffsLine[] {
 		const inv_ratio = size1 / size2;
 		const filter_scale = Math.max(1, inv_ratio);
-		const filter_radius = filter_scale * filter.radius;
+		const filter_radius = Math.ceil(filter_scale * filter.radius);
 		const filter_kernel = filter.kernel;
 		const coeffs: CoeffsLine[] = new Array(size2);
 
 		for (let x2=0; x2<size2; x2++) {
 			// The (float) center of the filter in the src image
-			// The rest of this code assumes the pixels' "center" is the left side
-			const center_f = (x2 + 0.5) * inv_ratio - 0.5;
-			
-			// The pixel indices where the window starts/stops in the src image
-			const start = Math.max(0, Math.floor(center_f - filter_radius));
-			const end = Math.max(start+1, Math.min(size1, Math.ceil(center_f + filter_radius)));
-			const length = end - start;
-			if (length <= 0) throw `Got length of ${length} with filter of radius ${filter.radius} at position ${center_f}`;
+			// The rest of this code assumes the pixels' "center" is the left edge
+			const center_px = (x2 + 0.5) * inv_ratio - 0.5;
 
-			const offset_from_center = center_f - start;
+			// The pixel indices where the window starts/stops in the src image
+			const start = Math.max(0,                         Math.ceil(center_px - filter_radius) );
+			const end =   Math.max(start, Math.min(size1 - 1,  Math.floor(center_px + filter_radius) ));
+			const length = end - start + 1;
+
+			const offset_from_center = center_px - start;
 			const cache_key = filter_scale + ',' + length.toString(36) + ',' + offset_from_center;
 
 			// Reuse the same coeffs whenever possible for perf!!
@@ -132,6 +151,10 @@ export class VImageScaler {
 		return coeffs;
 	}
 
+	/**
+	 * Resizes the provided source image and copies it into the provided destination image.
+	 * This method assumes a linear color space.
+	 */
 	resize<T extends VPixelArray>(src: VImageData<T>, dst: VImageData<T>): VImageData<T> {
 		if (src.width !== this.src_width || src.height !== this.src_height)
 			throw Error(`VImageScaler.resize input does not match expected dimensions! (expected ${this.src_width}x${this.src_height} but got ${src.width}x${src.height})`);
@@ -142,6 +165,14 @@ export class VImageScaler {
 
 		// Used for accumulating since Uint8Arrays always round down (which means a totally black image)
 		let tmp_r = 0.0, tmp_g = 0.0, tmp_b = 0.0, tmp_a = 0.0;
+
+		// If clamping is enabled, use a clamp function.
+		// Otherwise, make a no-op which should get optimized out.
+		const valueMax = getPixelArrayMax(dst.data);
+
+		const c = valueMax !== 1
+			? ((n: number) => Math.round(n >= valueMax ? valueMax : n <= 0 ? 0 : n))
+			: ((n: number) => n);
 
 		const tmp0 = src.data;
 		const tmp1 = new (src.getDataConstructor())(this.dest_width * this.src_height * 4);
@@ -166,14 +197,13 @@ export class VImageScaler {
 					tmp_a += tmp0[coeff_i+3] * coeff;
 				}
 
-				tmp1[i] = tmp_r;
-				tmp1[i+1] = tmp_g;
-				tmp1[i+2] = tmp_b;
-				tmp1[i+3] = tmp_a;
+				tmp1[i] = c(tmp_r);
+				tmp1[i+1] = c(tmp_g);
+				tmp1[i+2] = c(tmp_b);
+				tmp1[i+3] = c(tmp_a);
 			}
 		}
 
-		// const tmp2 = new pixel_array(this.dest_width * this.src_height);
 		const tmp2 = dst.data;
 
 		// Resize from (w2, h1) to (w2, h2)
@@ -196,10 +226,10 @@ export class VImageScaler {
 					tmp_a += tmp1[coeff_i+3] * coeff;
 				}
 
-				tmp2[i] = tmp_r;
-				tmp2[i+1] = tmp_g;
-				tmp2[i+2] = tmp_b;
-				tmp2[i+3] = tmp_a;
+				tmp2[i] = c(tmp_r);
+				tmp2[i+1] = c(tmp_g);
+				tmp2[i+2] = c(tmp_b);
+				tmp2[i+3] = c(tmp_a);
 			}
 		}
 

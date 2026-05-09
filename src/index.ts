@@ -4,7 +4,15 @@ import './core/encode.js';
 import './core/decode.js';
 
 // Image data
-export { VImageData, VEncodedImageData, type VPixelArray, type VPixelArrayConstructor, registerCodec, getCodec } from './core/image.js';
+export {
+	VImageData,
+	VEncodedImageData,
+	type VImageEither,
+	type VPixelArray,
+	type VPixelArrayConstructor,
+	registerCodec,
+	getCodec,
+} from './core/image.js';
 export { DataBuffer } from './core/buffer.js';
 
 // Resizing filters
@@ -22,13 +30,10 @@ export { VFormats, VFlags, VCompressionMethods } from './core/enums.js';
 export {
 	VDataProvider,
 	VDataCollection,
-	VMipmapProvider,
 	VFrameCollection,
 	VFaceCollection,
-	VSliceCollection } from './core/providers.js';
+	VSliceCollection,
+} from './core/providers.js';
 
 export default Vtf;
-export {
-	Vtf,
-	VFileHeader,
-}
+export { Vtf, VFileHeader };
