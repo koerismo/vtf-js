@@ -6,7 +6,7 @@ import { ceil4 } from '../core/utils.js';
 function padImage(img: VImageData<Uint8Array>): VImageData<Uint8Array> {
 	const width = ceil4(img.width);
 	const height = ceil4(img.height);
-	const src_u32 = new Uint32Array(img.data.buffer);
+	const src_u32 = new Uint32Array(img.data.buffer, img.data.byteOffset);
 	const out_u32 = new Uint32Array(width * height);
 	for (let y=0; y<height; y++) {
 		if (y >= img.height) continue;
@@ -20,7 +20,7 @@ function padImage(img: VImageData<Uint8Array>): VImageData<Uint8Array> {
 
 function cropImage(img: VImageData<Uint8Array>): VImageData<Uint8Array> {
 	const width = ceil4(img.width);
-	const src_u32 = new Uint32Array(img.data.buffer);
+	const src_u32 = new Uint32Array(img.data.buffer, img.data.byteOffset);
 	const out_u32 = new Uint32Array(img.width * img.height);
 	for (let y=0; y<img.height; y++) {
 		for (let x=0; x<img.width; x++) {

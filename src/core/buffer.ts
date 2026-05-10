@@ -36,6 +36,13 @@ export class DataBuffer extends Uint8Array {
 		return buf;
 	}
 
+	/** Creates a Uint8Array that references this array's buffer instead of copying. */
+	ref_u8(length: number): Uint8Array {
+		const start = this.pointer;
+		this.pointer += length;
+		return new Uint8Array(this.buffer, start + this.byteOffset, length);
+	}
+
 	/** Moves the pointer to the specified position. */
 	seek(position: number): void {
 		this.pointer = position;

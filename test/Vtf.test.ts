@@ -1,10 +1,30 @@
 import { Vtf, VImageData, VFormats, VFrameCollection } from '../dist/index.js';
 import '../dist/addons/compress/node.js';
 
-import { deepStrictEqual } from 'node:assert/strict';
+import { deepStrictEqual, fail } from 'node:assert/strict';
 
 const image_big = new VImageData(new Uint8Array(4 * 4 * 4).fill(255), 4, 4);
 const image_small = new VImageData(new Uint8Array(1 * 1 * 4).fill(255), 1, 1);
+
+export function deepArrayEqual<T>(a: ArrayLike<T>, b: ArrayLike<T>, msg?: string) {
+if (a.length !== b.length) {
+		return fail(`Length ${a.length} !== ${b.length}!\n${msg || ''}`);
+	} else {
+		for (let i=0; i<a.length; i++) {
+			if (a[i] === b[i]) continue;
+			return fail(`Element ${i}: ${a[i]} !== ${b[i]}!\n${msg || ''}`);
+		}
+	}
+}
+
+export function fillArrayPseudoRand(arr: Uint8Array, seed: number = 0) {
+	let s = seed;
+	for (let i=0; i<arr.length; i++) {
+		// This doesn't need to be good RNG, all it needs to do is have a variety of values.
+		s = (s * 12.34 + 180) % 256;
+		arr[i] = ~~(s + 0.5);
+	}
+}
 
 describe('Vtf', () => {
 	it('Constructs reflectivity without source', () => {
@@ -29,7 +49,8 @@ describe('Vtf', () => {
 	const versions = [[1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [6, 5]];
 	const width = 1024, height = 1024;
 	const data = new Uint8Array(width * height * 4);
-	for (let i=0; i<data.length; i++) data[i] = Math.random() * 255; 
+
+	fillArrayPseudoRand(data);
 	const image = new VImageData(data, width, height);
 
 	for (const [version, compression_level] of versions) {
@@ -41,9 +62,9 @@ describe('Vtf', () => {
 			});
 
 			const encoded = await vtf.encode();
-			const decoded = await Vtf.decode(encoded, false);
+			const decoded = await Vtf.decode(encoded, { noClone: false });
 			const found = decoded.data.getImage(0, 0, 0, 0);
-			deepStrictEqual(image, found, `Image match failed on v${version} (compression ${compression_level})`);
+			deepArrayEqual(image.data, found.data, `Image match failed on v${version} (compression ${compression_level})`);
 		});
 	}
 

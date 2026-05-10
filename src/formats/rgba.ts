@@ -60,7 +60,7 @@ function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, 
 		},
 
 		decode(source) {
-			const view = new DataView(source.data.buffer);
+			const view = new DataView(source.data.buffer, source.data.byteOffset);
 			const length = source.width * source.height;
 			const out = new ARR(length * 4);
 

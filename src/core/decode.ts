@@ -1,4 +1,4 @@
-import { Vtf, VFileHeader, VConstructorOptions } from '../vtf.js';
+import { Vtf, VFileHeader, type VtfConstructorOptions, type VtfDecodeOptions } from '../vtf.js';
 import { DataBuffer } from './buffer.js';
 import { VCompressionMethods, VFormats, NO_DATA } from './enums.js';
 import { getHeaderLength, getFaceCount, isLegacy } from './utils.js';
@@ -43,7 +43,7 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boo
 }
 
 // @ts-expect-error Overloads break for some reason?
-Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false): Promise<Vtf | VFileHeader> {
+Vtf.decode = async function(data: ArrayBuffer, decodeOptions?: VtfDecodeOptions = {}): Promise<Vtf | VFileHeader> {
 	const info = new VFileHeader();
 	info.compression_level = 0;
 
@@ -88,7 +88,7 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false): Prom
 	// v7.2 +
 	info.slices         = info.version > 1 ? view.read_u16() : 1;
 
-	if (header_only) return info;
+	if (decodeOptions.headerOnly) return info;
 
 	let body: VBodyResource | undefined;
 	let thumb: VThumbResource | undefined;
@@ -108,7 +108,7 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false): Prom
 
 		const body_offset = header_length + thumb_size;
 		const body_data = view.ref(body_offset);
-		body = await VBodyResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_BODY, 0x0, body_offset), body_data, info);
+		body = await VBodyResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_BODY, 0x0, body_offset), body_data, info, decodeOptions);
 	}
 
 	// Parse resource headers
@@ -149,7 +149,7 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false): Prom
 
 		if (header.tag === VHeaderTags.TAG_LEGACY_BODY) {
 			if (!data) throw Error('Vtf.decode: Body resource has no data! (0x2 flag set)');
-			body = await VBodyResource.decode(header, data, info);
+			body = await VBodyResource.decode(header, data, info, decodeOptions);
 			continue;
 		}
 
@@ -165,7 +165,7 @@ Vtf.decode = async function(data: ArrayBuffer, header_only: boolean=false): Prom
 	if (!body)
 		throw Error('Vtf.decode: Vtf does not contain a body resource!');
 
-	const options: VConstructorOptions = info;
+	const options: VtfConstructorOptions = info;
 	options.thumb = thumb;
 	options.meta = meta;
 

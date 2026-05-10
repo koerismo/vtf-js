@@ -43,7 +43,7 @@ registerCodec(VFormats.RGB565, {
 		const src = image.data;
 		const pixels = image.width * image.height;
 		const target = new Uint8Array(pixels * 4);
-		const view = new DataView(src.buffer);
+		const view = new DataView(src.buffer, src.byteOffset);
 
 		for ( let i=0; i<pixels; i++ ) {
 			const d = i*4;
@@ -80,7 +80,7 @@ registerCodec(VFormats.BGR565, {
 		const src = image.data;
 		const pixels = image.width * image.height;
 		const target = new Uint8Array(pixels * 4);
-		const view = new DataView(src.buffer);
+		const view = new DataView(src.buffer, src.byteOffset);
 
 		for ( let i=0; i<pixels; i++ ) {
 			const d = i*4;

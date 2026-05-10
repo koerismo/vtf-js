@@ -1,6 +1,6 @@
 import { VEncodedImageData, getCodec, type VImageEither } from './image.js';
 import { DataBuffer } from './buffer.js';
-import { VFileHeader } from '../vtf.js';
+import { VFileHeader, VtfDecodeOptions } from '../vtf.js';
 import { NO_DATA, VFormats } from './enums.js';
 import { VDataCollection, VDataProvider } from './providers.js';
 import { getFaceCount, getMipSize, compress, decompress } from './utils.js';
@@ -72,7 +72,7 @@ export class VBaseResource implements VResource {
 		public raw?: DataBuffer) {
 	}
 
-	static decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader): Awaitable<VBaseResource | VErrorResource> {
+	static decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader, options: VtfDecodeOptions): Awaitable<VBaseResource | VErrorResource> {
 		return new VBaseResource(header.tag, header.flags, view);
 	}
 
@@ -106,7 +106,7 @@ export class VBodyResource extends VBaseResource {
 		super(VHeaderTags.TAG_LEGACY_BODY, flags);
 	}
 
-	static async decode(header: VHeader, view: DataBuffer, info: VFileHeader): Promise<VBodyResource> {
+	static async decode(header: VHeader, view: DataBuffer, info: VFileHeader, options: VtfDecodeOptions): Promise<VBodyResource> {
 		const face_count = getFaceCount(info);
 		const codec = getCodec(info.format);
 		const collection = new VDataCollection({
@@ -128,7 +128,7 @@ export class VBodyResource extends VBaseResource {
 					let subview: DataBuffer;
 					if (info.compression_level !== 0) {
 						const compressed_length = info.compressed_lengths![x][y][z];
-						const slice_data = view.read_u8(compressed_length);
+						const slice_data = view.ref_u8(compressed_length);
 						subview = new DataBuffer(await decompress(slice_data, info.compression_method, info.compression_level));
 					}
 					else {
@@ -137,7 +137,10 @@ export class VBodyResource extends VBaseResource {
 					}
 
 					for ( let w=0; w<info.slices; w++ ) {
-						const data = subview.read_u8(uncompressed_length);
+						const data = options.noClone
+							? subview.ref_u8(uncompressed_length)
+							: subview.read_u8(uncompressed_length);
+
 						const image = new VEncodedImageData(data, width, height, info.format);
 						collection.setImage(image, x, y, z, w);
 					}

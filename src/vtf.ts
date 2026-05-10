@@ -5,7 +5,7 @@ import { getThumbMip } from './core/utils.js';
 import { getCodec } from './core/image.js';
 
 /** Options for use with the {@link Vtf} constructor. */
-export interface VConstructorOptions {
+export interface VtfConstructorOptions {
 	version?: number;
 	format?: VFormats;
 	flags?: number;
@@ -18,6 +18,13 @@ export interface VConstructorOptions {
 	compression_level?: number;
 	compression_method?: VCompressionMethods;
 }
+
+export type VtfDecodeOptions<HeaderOnly extends boolean = boolean> = {
+	/** If true, skips decoding any of the Vtf body. @default false */
+	headerOnly?: HeaderOnly;
+	/** If true, data will reference the original buffer and only be cloned when necessary. @default false */
+	noClone?: boolean;
+};
 
 /**
  * A decoded Vtf.
@@ -40,7 +47,7 @@ export class Vtf {
 	public compression_level: number;
 	public compression_method: VCompressionMethods;
 
-	constructor(data: VDataProvider, options?: VConstructorOptions) {
+	constructor(data: VDataProvider, options?: VtfConstructorOptions) {
 		this.data = data;
 
 		this.version = options?.version ?? 4;
@@ -83,10 +90,10 @@ export class Vtf {
 	 * @param header_only (default: `false`) If true, a VFileHeader will be returned instead, which only contains the header contents.
 	 * @param lazy_decode (default: `true`) If false, all data in the Vtf will be decoded in this function call. Otherwise, images will only be decoded when requested.
 	 */
-	static decode(data: ArrayBuffer, header_only?: false): Promise<Vtf>;
-	static decode(data: ArrayBuffer, header_only: true): Promise<VFileHeader>;
-	static decode(data: ArrayBuffer, header_only: boolean): Promise<Vtf | VFileHeader>;
-	static decode(data: ArrayBuffer, header_only: boolean=false): Promise<Vtf | VFileHeader> {
+	static decode(data: ArrayBuffer, options?: VtfDecodeOptions<false>): Promise<Vtf>;
+	static decode(data: ArrayBuffer, options: VtfDecodeOptions<true>): Promise<VFileHeader>;
+	static decode(data: ArrayBuffer, options: VtfDecodeOptions): Promise<Vtf | VFileHeader>;
+	static decode(data: ArrayBuffer, options?: VtfDecodeOptions): Promise<Vtf | VFileHeader> {
 		throw Error('Vtf.decode: Implementation override not present!');
 	}
 }
