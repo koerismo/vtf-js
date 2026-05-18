@@ -43,7 +43,7 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boo
 }
 
 // @ts-expect-error Overloads break for some reason?
-Vtf.decode = async function(data: ArrayBuffer, decodeOptions?: VtfDecodeOptions = {}): Promise<Vtf | VFileHeader> {
+Vtf.decode = async function(data: ArrayBufferLike, decodeOptions?: VtfDecodeOptions = {}): Promise<Vtf | VFileHeader> {
 	const info = new VFileHeader();
 	info.compression_level = 0;
 

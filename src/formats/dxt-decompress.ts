@@ -110,7 +110,7 @@ function decompressDxt5Alpha(block: Uint8Array, out_rgba: Uint8Array) {
 	}
 }
 
-const HAS_ALPHA_BLOCK = DxtFlags.DXT3 | DxtFlags.DXT5;
+const HAS_ALPHA_BLOCK = DxtFlags.DXT3 | DxtFlags.DXT5 | DxtFlags.BC5;
 
 export function decompressBlock(block: Uint8Array, flags: number, out_rgba: Uint8Array) {
 	const colorData = (flags & HAS_ALPHA_BLOCK) ? block.subarray(8) : block;
@@ -119,7 +119,7 @@ export function decompressBlock(block: Uint8Array, flags: number, out_rgba: Uint
 	if (flags & DxtFlags.DXT5)
 		decompressDxt5Alpha(block, out_rgba);
 	else if (flags & DxtFlags.DXT3)
-		decompressDxt3Alpha(block, out_rgba);	
+		decompressDxt3Alpha(block, out_rgba);
 	return;
 }
 
@@ -127,7 +127,8 @@ export function decompressImage(image: VEncodedImageData, flags: number) {
 	const data = image.data;
 	const out = new Uint8Array(image.width * image.height * 4);
 
-	const blockSize = (flags & HAS_ALPHA_BLOCK) ? 16 : 8;
+	const blockHasAlpha = (flags & HAS_ALPHA_BLOCK);
+	const blockSize = blockHasAlpha ? 16 : 8;
 	const blockDest = new Uint8Array(64);
 
 	let blockIdx = 0;
@@ -135,7 +136,7 @@ export function decompressImage(image: VEncodedImageData, flags: number) {
 		for (let x=0; x<image.width; x+=4) {
 			
 			// Decompress block
-			const blockSrc = data.subarray(blockIdx, blockIdx+blockSize);
+			const blockSrc = data.subarray(blockIdx, blockIdx + blockSize);
 			decompressBlock(blockSrc, flags, blockDest);
 
 			// Copy decompressed block to image

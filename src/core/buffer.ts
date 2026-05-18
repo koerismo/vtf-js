@@ -13,7 +13,7 @@ export class DataBuffer extends Uint8Array {
 	constructor(length: number);
 	constructor(array: ArrayLike<number> | ArrayBufferLike);
 	constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number);
-	constructor(buffer: number|ArrayLike<number>|ArrayBufferLike, byteOffset?: number, length?: number) {
+	constructor(buffer: number | ArrayLike<number> | ArrayBufferLike, byteOffset?: number, length?: number) {
 
 		// @ts-expect-error When initializing a Uint8Array from another array, byteOffset and length
 		// are disregarded for some reason. This is just a quick hack to make it work as expected.

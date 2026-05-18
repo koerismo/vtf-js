@@ -15,12 +15,18 @@ export type VPixelArray<T extends ArrayBufferLike = ArrayBufferLike> =
 export type VImageEither<D extends VPixelArray = VPixelArray> = VImageData<D> | VEncodedImageData;
 
 /** A generic constructor for VPixelArray types. */
-export interface VPixelArrayConstructor<T extends VPixelArray = VPixelArray> {
+export interface VPixelArrayConstructor<
+	T extends VPixelArray = VPixelArray<ArrayBuffer>,
+> {
+	readonly BYTES_PER_ELEMENT: number;
 	new (): T;
 	new (length: number): T;
 	new (array: ArrayLike<number> | Iterable<number>): T;
-	new (buffer: ArrayBufferLike, byteOffset?: number, length?: number): T;
-	readonly BYTES_PER_ELEMENT: number;
+	new <B extends ArrayBufferLike>(
+		buffer: B,
+		byteOffset?: number,
+		length?: number,
+	): T & VPixelArray<B>;
 }
 
 /** An object that defines an image encoder/decoder for a given format. */

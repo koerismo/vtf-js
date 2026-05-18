@@ -33,7 +33,7 @@ function write_axc(info: VFileHeader) {
 	return axc.buffer;
 }
 
-Vtf.prototype.encode = async function(this: Vtf): Promise <ArrayBuffer> {
+Vtf.prototype.encode = async function(this: Vtf): Promise<ArrayBuffer> {
 	// Each chunk is a section of the file. e.g. [header, axc, body1, body2, body3]
 	const info = VFileHeader.fromVtf(this);
 
@@ -95,7 +95,7 @@ Vtf.prototype.encode = async function(this: Vtf): Promise <ArrayBuffer> {
 
 	// Begin collecting chunks and accumulating filesize
 	let filesize = header.byteLength;
-	const chunks: { resource: VResource, data: ArrayBuffer|undefined }[] = new Array(2);
+	const chunks: { resource: VResource, data: ArrayBuffer | undefined }[] = new Array(2);
 	chunks[0] = { resource: body_resource, data: body_data };   filesize += body_data.byteLength;
 	chunks[1] = { resource: thumb_resource, data: thumb_data }; filesize += thumb_data.byteLength;
 

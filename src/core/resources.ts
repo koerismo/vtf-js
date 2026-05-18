@@ -72,7 +72,7 @@ export class VBaseResource implements VResource {
 		public raw?: DataBuffer) {
 	}
 
-	static decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader, options: VtfDecodeOptions): Awaitable<VBaseResource | VErrorResource> {
+	static decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader, options: VtfDecodeOptions): Awaitable<VBaseResource | VErrorResource> {
 		return new VBaseResource(header.tag, header.flags, view);
 	}
 

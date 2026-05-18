@@ -75,6 +75,10 @@ export let compress: CompressFunction = async (data, method, level) => {
 	if (method !== VCompressionMethods.Deflate)
 		throw Error(`vtf-js: Default compression backend only supports Deflate compression!`);
 
+	// Blob requires a non-shared buffer. Copy it beforehand...
+	if (data.buffer instanceof SharedArrayBuffer)
+		data = new Uint8Array(data);
+
 	const inStream = new Blob([data as Uint8Array<ArrayBuffer>]).stream();
 	const compStream = new CompressionStream('deflate');
 	const outStream = inStream.pipeThrough(compStream);
@@ -91,6 +95,10 @@ export let decompress: DecompressFunction = async (data, method, _level) => {
 		default:
 			throw Error(`vtf-js: Unrecognized compression method ${method}!`);
 	}
+
+	// Blob requires a non-shared buffer. Copy it beforehand...
+	if (data.buffer instanceof SharedArrayBuffer)
+		data = new Uint8Array(data);
 
 	const inStream = new Blob([data as Uint8Array<ArrayBuffer>]).stream();
 	const decompStream = new DecompressionStream(methodStr as CompressionFormat);
