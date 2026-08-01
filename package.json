@@ -35,20 +35,20 @@
 		"url": "https://github.com/koerismo/vtf-js/issues"
 	},
 	"devDependencies": {
-		"@eslint/js": "^9.39.4",
+		"@eslint/js": "^10.0.1",
 		"@types/mocha": "^10.0.10",
-		"@types/node": "^25.3.5",
-		"@typescript-eslint/eslint-plugin": "^8.56.1",
-		"@typescript-eslint/parser": "^8.56.1",
-		"eslint": "^9.39.4",
-		"globals": "^16.5.0",
-		"mocha": "^11.7.5",
-		"sharp": "^0.34.5",
-		"typescript": "^5.9.3",
-		"typescript-eslint": "^8.56.1"
+		"@types/node": "^26.1.2",
+		"@typescript-eslint/eslint-plugin": "^8.65.0",
+		"@typescript-eslint/parser": "^8.65.0",
+		"eslint": "^10.8.0",
+		"globals": "^17.8.0",
+		"mocha": "^11.7.6",
+		"sharp": "^0.35.3",
+		"typescript": "^6.0.3",
+		"typescript-eslint": "^8.65.0"
 	},
 	"dependencies": {
-		"fflate": "^0.8.2",
+		"fflate": "^0.8.3",
 		"libsquish-js": "^1.0.2"
 	}
 }

@@ -33,7 +33,7 @@ function write_axc(info: VFileHeader) {
 	return axc.buffer;
 }
 
-Vtf.prototype.encode = async function(this: Vtf): Promise<ArrayBuffer> {
+export default async function encode(this: Vtf): Promise<ArrayBuffer> {
 	// Each chunk is a section of the file. e.g. [header, axc, body1, body2, body3]
 	const info = VFileHeader.fromVtf(this);
 
@@ -43,7 +43,7 @@ Vtf.prototype.encode = async function(this: Vtf): Promise<ArrayBuffer> {
 	const header_length = getHeaderLength(this.version, resource_count);
 	const header = new DataBuffer(header_length);
 
-	header.write_str('VTF\0', 4);
+	header.write_str('VTF\0');
 	header.write_u32(7);
 	header.write_u32(this.version);
 	header.write_u32(header_length);
@@ -56,9 +56,9 @@ Vtf.prototype.encode = async function(this: Vtf): Promise<ArrayBuffer> {
 	header.write_u32(info.flags);
 	header.write_u16(info.frames);
 	header.write_u16(info.first_frame);
-	header.pad(4);
-	header.write_f32(info.reflectivity);
-	header.pad(4);
+	header.inc(4);
+	header.write_f32array(info.reflectivity);
+	header.inc(4);
 	header.write_f32(info.bump_scale);
 	header.write_u32(info.format);
 	header.write_u8(info.mipmaps);
@@ -82,16 +82,16 @@ Vtf.prototype.encode = async function(this: Vtf): Promise<ArrayBuffer> {
 	// v7.1-7.2: Use non-chunked format:
 	if (this.version < 3) {
 		const file = new DataBuffer(header.byteLength + thumb_data.byteLength + body_data.byteLength);
-		file.write_u8(header);
-		file.write_u8(new Uint8Array(thumb_data));
-		file.write_u8(new Uint8Array(body_data));
+		file.write_u8array(header);
+		file.write_u8array(new Uint8Array(thumb_data));
+		file.write_u8array(new Uint8Array(body_data));
 		return file.buffer;
 	}
 
 	// v7.3 +
-	header.pad(3);
+	header.inc(3);
 	header.write_u32(resource_count);
-	header.pad(8);
+	header.inc(8);
 
 	// Begin collecting chunks and accumulating filesize
 	let filesize = header.byteLength;
@@ -124,15 +124,15 @@ Vtf.prototype.encode = async function(this: Vtf): Promise<ArrayBuffer> {
 
 	for (const { resource, data } of chunks) {
 		write_header(header, resource, file.pointer);
-		const no_data = !!(resource.flags & NO_DATA);
-		if ((data === undefined) !== no_data) throw Error(`NO_DATA flag does not match data provided! (NO_DATA=${no_data})`);
-		if (!data) continue;
+		const no_body_flag = !!(resource.flags & NO_DATA);
+		if (no_body_flag) continue;
+		if (!data) throw Error(`Vtf.encode: Resource returned falsy without 0x2 flag set!`);
 		if (!isLegacy(resource)) file.write_u32(data.byteLength);
-		file.write_u8(new Uint8Array(data));
+		file.write_u8array(new Uint8Array(data));
 	}
 
 	file.seek(0x0);
-	file.write_u8(header);
+	file.write_u8array(header);
 
 	return file.buffer;
 }

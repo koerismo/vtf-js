@@ -1,7 +1,5 @@
 // Vtf class
 import { Vtf, VFileHeader } from './vtf.js';
-import './core/encode.js';
-import './core/decode.js';
 
 // Image data
 export {

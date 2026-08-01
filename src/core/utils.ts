@@ -2,6 +2,12 @@ import { VFileHeader } from '../vtf.js';
 import { VCompressionMethods, VFlags } from './enums.js';
 import { VHeader, VHeaderTags, VResource, VResourceTypes } from './resources.js';
 
+export const LITTLE_ENDIAN = true;
+export const BIG_ENDIAN = false;
+export const SYSTEM_ENDIAN =
+	new Uint8Array(new Uint16Array([0x00_01]).buffer)[0] === 0x01;
+
+
 /** Returns the size of a given mipmap if mipmap 0 is of size `width`,`height` */
 export function getMipSize(mipmap: number, width: number, height: number): [number, number] {
 	const div = 2 ** mipmap;

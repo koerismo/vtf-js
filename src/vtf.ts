@@ -4,26 +4,29 @@ import { VBaseResource, VResource, VThumbResource } from './core/resources.js';
 import { getThumbMip } from './core/utils.js';
 import { getCodec } from './core/image.js';
 
+import encode from './core/encode.js';
+import decode from './core/decode.js';
+
 /** Options for use with the {@link Vtf} constructor. */
 export interface VtfConstructorOptions {
-	version?: number;
-	format?: VFormats;
-	flags?: number;
-	meta?: VBaseResource[];
-	thumb?: VThumbResource;
+	version: number;
+	format: VFormats;
+	flags: number;
+	meta: VBaseResource[];
+	thumb: VThumbResource;
 
-	reflectivity?: Float32Array;
-	first_frame?: number;
-	bump_scale?: number;
-	compression_level?: number;
-	compression_method?: VCompressionMethods;
+	reflectivity: Float32Array;
+	first_frame: number;
+	bump_scale: number;
+	compression_level: number;
+	compression_method: VCompressionMethods;
 }
 
 export type VtfDecodeOptions<HeaderOnly extends boolean = boolean> = {
 	/** If true, skips decoding any of the Vtf body. @default false */
-	headerOnly?: HeaderOnly;
+	headerOnly: HeaderOnly;
 	/** If true, data will reference the original buffer and only be cloned when necessary. @default false */
-	noClone?: boolean;
+	noClone: boolean;
 };
 
 /**
@@ -47,7 +50,7 @@ export class Vtf {
 	public compression_level: number;
 	public compression_method: VCompressionMethods;
 
-	constructor(data: VDataProvider, options?: VtfConstructorOptions) {
+	constructor(data: VDataProvider, options?: Partial<VtfConstructorOptions>) {
 		this.data = data;
 
 		this.version = options?.version ?? 4;
@@ -81,7 +84,7 @@ export class Vtf {
 
 	/** Encodes this Vtf object into an ArrayBuffer. */
 	encode(): Promise<ArrayBuffer> {
-		throw Error('Vtf.encode: Implementation override not present!');
+		return encode.call(this);
 	}
 
 	/**
@@ -90,11 +93,11 @@ export class Vtf {
 	 * @param header_only (default: `false`) If true, a VFileHeader will be returned instead, which only contains the header contents.
 	 * @param lazy_decode (default: `true`) If false, all data in the Vtf will be decoded in this function call. Otherwise, images will only be decoded when requested.
 	 */
-	static decode(data: ArrayBufferLike, options?: VtfDecodeOptions<false>): Promise<Vtf>;
-	static decode(data: ArrayBufferLike, options: VtfDecodeOptions<true>): Promise<VFileHeader>;
-	static decode(data: ArrayBufferLike, options: VtfDecodeOptions): Promise<Vtf | VFileHeader>;
-	static decode(data: ArrayBufferLike, options?: VtfDecodeOptions): Promise<Vtf | VFileHeader> {
-		throw Error('Vtf.decode: Implementation override not present!');
+	static decode(data: ArrayBufferLike, options?: Partial<VtfDecodeOptions<false>>): Promise<Vtf>;
+	static decode(data: ArrayBufferLike, options: Partial<VtfDecodeOptions<true>>): Promise<VFileHeader>;
+	static decode(data: ArrayBufferLike, options: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader>;
+	static decode(data: ArrayBufferLike, options?: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader> {
+		return decode.call(this, data, options!);
 	}
 }
 

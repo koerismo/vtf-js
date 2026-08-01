@@ -1,12 +1,14 @@
 {
 	"compilerOptions": {
-		"module": "ESNext",
+		"module": "NodeNext",
 		"target": "ESNext",
-		"moduleResolution": "bundler",
+		"moduleResolution": "nodenext",
+		"types": ["node"],
 		"strictNullChecks": true,
 		"strictFunctionTypes": true,
 		"alwaysStrict": true,
 		"strict": true,
+		"sourceMap": true,
 		"declaration": true,
 		"rootDir": "src",
 		"outDir": "dist",

@@ -95,8 +95,9 @@ export class VImageScaler {
 		public readonly src_height: number,
 		public readonly dest_width: number,
 		public readonly dest_height: number,
-		public readonly filter: VFilter=VFilters.Default) {
-			const coeff_cache: Record<string, Float32Array> = {};
+		public readonly filter: VFilter = VFilters.Default,
+		coeff_cache: Record<string, Float32Array> = {},
+		) {
 			this.coeffs_w = this.calc_coeffs(src_width, dest_width, this.filter, coeff_cache);
 			if (src_width === src_height && dest_width === dest_height) {
 				this.coeffs_h = this.coeffs_w;
@@ -119,7 +120,7 @@ export class VImageScaler {
 			const center_px = (x2 + 0.5) * inv_ratio - 0.5;
 
 			// The pixel indices where the window starts/stops in the src image
-			const start = Math.max(0,                         Math.ceil(center_px - filter_radius) );
+			const start = Math.max(0,                          Math.ceil(center_px - filter_radius) );
 			const end =   Math.max(start, Math.min(size1 - 1,  Math.floor(center_px + filter_radius) ));
 			const length = end - start + 1;
 
@@ -157,14 +158,14 @@ export class VImageScaler {
 	 */
 	resize<T extends VPixelArray>(src: VImageData<T>, dst: VImageData<T>): VImageData<T> {
 		if (src.width !== this.src_width || src.height !== this.src_height)
-			throw Error(`VImageScaler.resize input does not match expected dimensions! (expected ${this.src_width}x${this.src_height} but got ${src.width}x${src.height})`);
+			throw Error(`VImageScaler.resize: input does not match expected dimensions! (expected ${this.src_width}x${this.src_height} but got ${src.width}x${src.height})`);
 		if (dst.width !== this.dest_width || dst.height !== this.dest_height)
-			throw Error(`VImageScaler.resize output does not match expected dimensions! (expected ${this.dest_width}x${this.dest_height} but got ${dst.width}x${dst.height})`);
+			throw Error(`VImageScaler.resize: output does not match expected dimensions! (expected ${this.dest_width}x${this.dest_height} but got ${dst.width}x${dst.height})`);
 		if (dst.data.length !== this.dest_width * this.dest_height * 4)
-			throw Error(`VImageScaler.resize output data length should be ${this.dest_width * this.dest_height * 4}, got ${dst.data.length} instead!`);
+			throw Error(`VImageScaler.resize: output data length should be ${this.dest_width * this.dest_height * 4}, got ${dst.data.length} instead!`);
 
 		// Used for accumulating since Uint8Arrays always round down (which means a totally black image)
-		let tmp_r = 0.0, tmp_g = 0.0, tmp_b = 0.0, tmp_a = 0.0;
+		let tmp_r: number, tmp_g: number, tmp_b: number, tmp_a: number;
 
 		// If clamping is enabled, use a clamp function.
 		// Otherwise, make a no-op which should get optimized out.
