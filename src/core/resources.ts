@@ -293,8 +293,8 @@ export class VSheetResource extends VBaseResource {
 	}
 
 	encode(info: VFileHeader): ArrayBuffer {
-		const coordsPerFrame = this.version === 0 ? 1 : 4;
-		
+		const coordsPerFrame = this.version === 1 ? 4 : 1;
+
 		let buffer_length = 4;
 		for (let i=0; i<this.sequences.length; i++) {
 			buffer_length +=
