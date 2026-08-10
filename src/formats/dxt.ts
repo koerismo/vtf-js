@@ -1,6 +1,5 @@
 import { VFormats, VFlags } from '../core/enums.js';
 import { VEncodedImageData, VImageData, getCodec, registerCodec } from '../core/image.js';
-// import { CompressImage, DecompressImage, DxtFlags } from 'libsquish-js';
 import { decompressImage } from './dxt-decompress.js';
 import { ceil4 } from '../core/utils.js';
 
@@ -10,9 +9,6 @@ export const enum DxtFlags {
 	DXT1 = 0x1,
 	DXT3 = 0x2,
 	DXT5 = 0x4,
-
-	BC4 = 0x8,
-	BC5 = 0x10,
 
 	OneBitAlpha = 0x100,
 	WeightByAlpha = 0x200,
@@ -73,33 +69,5 @@ registerCodec(VFormats.DXT5, {
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
 		return decompressImage(image, DxtFlags.DXT5);
-	},
-});
-
-registerCodec(VFormats.ATI1N, {
-	alpha: VFlags.None,
-
-	length: BLOCK_8,
-
-	encode(image: VImageData): VEncodedImageData {
-		throw ERROR_NOT_SUPPORTED;
-	},
-
-	decode(image: VEncodedImageData): VImageData {
-		return decompressImage(image, DxtFlags.BC4);
-	},
-});
-
-registerCodec(VFormats.ATI2N, {
-	alpha: VFlags.None,
-
-	length: BLOCK_16,
-
-	encode(image: VImageData): VEncodedImageData {
-		throw ERROR_NOT_SUPPORTED;
-	},
-
-	decode(image: VEncodedImageData): VImageData {
-		return decompressImage(image, DxtFlags.BC5);
 	},
 });
