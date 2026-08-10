@@ -388,19 +388,32 @@ export class VLodControlResource extends VBaseResource {
 }
 
 /** Defines flags which can be used to modify the behavior of Hotspot regions. */
-export const enum HotSpotRectFlags {
-	AllowRotation   = 0x1,
-	AllowReflection = 0x2,
-	AltGroup        = 0x4,
-}
+export const HotSpotRectFlags = {
+	AllowRotation: 0x1,
+	AllowReflection: 0x2,
+	AltGroup: 0x4,
+	TileX: 0x8,
+	TileY: 0x10,
+} as const;
 
 /** Defines a Hotspot rect in pixel space. */
-export interface HotspotRect {
-	flags: number;
-	min_x: number;
-	min_y: number;
-	max_x: number;
-	max_y: number;
+export class HotspotRect {
+	constructor(
+		public flags: number,
+		public min_x: number,
+		public min_y: number,
+		public max_x: number,
+		public max_y: number,
+	) {}
+
+	get width(): number { return this.max_x - this.min_x; }
+	get height(): number { return this.max_y - this.min_y; }
+
+	canRotate() { return !!(this.flags & HotSpotRectFlags.AllowRotation); }
+	canReflect() { return !!(this.flags & HotSpotRectFlags.AllowReflection); }
+	isAltGroup() { return !!(this.flags & HotSpotRectFlags.AltGroup); }
+	canTileX() { return !!(this.flags & HotSpotRectFlags.TileX); }
+	canTileY() { return !!(this.flags & HotSpotRectFlags.TileY); }
 }
 
 /** The Hotspot data resource. See {@link https://wiki.stratasource.org/modding/overview/vtf-hotspot-resource this page} for more information. */
@@ -430,13 +443,13 @@ export class VHotspotResource extends VBaseResource {
 
 		const rects = Array<HotspotRect>(rectCount);
 		for (let i=0; i<rectCount; i++) {
-			rects[i] = {
-				flags: view.read_u8(),
-				min_x: view.read_u16(),
-				min_y: view.read_u16(),
-				max_x: view.read_u16(),
-				max_y: view.read_u16(),
-			};
+			rects[i] = new HotspotRect(
+				view.read_u8(),
+				view.read_u16(),
+				view.read_u16(),
+				view.read_u16(),
+				view.read_u16(),
+			);
 		}
 
 		return new VHotspotResource(header.flags, version, flags, rects);
