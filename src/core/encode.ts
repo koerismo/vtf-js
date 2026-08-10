@@ -48,7 +48,7 @@ export default async function encode(this: Vtf): Promise<ArrayBuffer> {
 	header.write_u32(this.version);
 	header.write_u32(header_length);
 
-	const [width, height] = this.data.getSize();
+	const [width, height] = this.body.getSize();
 
 	// Other properties
 	header.write_u16(width);
@@ -71,12 +71,12 @@ export default async function encode(this: Vtf): Promise<ArrayBuffer> {
 	// Prepare body/thumb resources
 	const thumb_resource = this.thumb ?? new VThumbResource(0x0);
 	const thumb_data = thumb_resource.encode(info);
-	const body_resource = new VBodyResource(0x0, this.data);
+	const body_resource = new VBodyResource(0x0, this.body);
 	const body_data = await body_resource.encode(info);
 
 	// v7.2 +
 	if (this.version > 1) {
-		header.write_u16(this.data.getSliceCount());
+		header.write_u16(this.body.getSliceCount());
 	}
 
 	// v7.1-7.2: Use non-chunked format:

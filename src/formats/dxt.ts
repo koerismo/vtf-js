@@ -11,9 +11,20 @@ export const enum DxtFlags {
 	DXT3 = 0x2,
 	DXT5 = 0x4,
 
+	BC4 = 0x8,
+	BC5 = 0x10,
+
 	OneBitAlpha = 0x100,
 	WeightByAlpha = 0x200,
 	MetricPerceptual = 0x400,
+}
+
+const BLOCK_8 = (width: number, height: number) => {
+	return ceil4(width) * ceil4(height) * 0.5;
+}
+
+const BLOCK_16 = (width: number, height: number) => {
+	return ceil4(width) * ceil4(height);
 }
 
 // https://www.khronos.org/opengl/wiki/S3_Texture_Compression
@@ -21,9 +32,7 @@ export const enum DxtFlags {
 registerCodec(VFormats.DXT1, {
 	alpha: VFlags.None,
 
-	length(width, height) {
-		return ceil4(width) * ceil4(height) * 0.5;
-	},
+	length: BLOCK_8,
 
 	encode(image: VImageData): VEncodedImageData {
 		throw ERROR_NOT_SUPPORTED;
@@ -42,9 +51,7 @@ registerCodec(VFormats.DXT1_ONEBITALPHA, {
 registerCodec(VFormats.DXT3, {
 	alpha: VFlags.EightBitAlpha,
 
-	length(width, height) {
-		return ceil4(width) * ceil4(height);
-	},
+	length: BLOCK_16,
 
 	encode(image: VImageData): VEncodedImageData {
 		throw ERROR_NOT_SUPPORTED;
@@ -58,9 +65,7 @@ registerCodec(VFormats.DXT3, {
 registerCodec(VFormats.DXT5, {
 	alpha: VFlags.EightBitAlpha,
 
-	length(width, height) {
-		return ceil4(width) * ceil4(height);
-	},
+	length: BLOCK_16,
 
 	encode(image: VImageData): VEncodedImageData {
 		throw ERROR_NOT_SUPPORTED;
@@ -68,5 +73,33 @@ registerCodec(VFormats.DXT5, {
 
 	decode(image: VEncodedImageData): VImageData<Uint8Array> {
 		return decompressImage(image, DxtFlags.DXT5);
+	},
+});
+
+registerCodec(VFormats.ATI1N, {
+	alpha: VFlags.None,
+
+	length: BLOCK_8,
+
+	encode(image: VImageData): VEncodedImageData {
+		throw ERROR_NOT_SUPPORTED;
+	},
+
+	decode(image: VEncodedImageData): VImageData {
+		return decompressImage(image, DxtFlags.BC4);
+	},
+});
+
+registerCodec(VFormats.ATI2N, {
+	alpha: VFlags.None,
+
+	length: BLOCK_16,
+
+	encode(image: VImageData): VEncodedImageData {
+		throw ERROR_NOT_SUPPORTED;
+	},
+
+	decode(image: VEncodedImageData): VImageData {
+		return decompressImage(image, DxtFlags.BC5);
 	},
 });

@@ -11,10 +11,10 @@
 	"main": "dist/index.js",
 	"exports": {
 		".": "./dist/index.js",
-		"./*": "./*",
 		"./utils": "./dist/core/utils.js",
 		"./resources": "./dist/core/resources.js",
-		"./addons/*": "./dist/addons/*.js"
+		"./addons/*": "./dist/addons/*.js",
+		"./*": "./*"
 	},
 	"scripts": {
 		"test": "mocha --extension=js,ts",
@@ -43,6 +43,7 @@
 		"eslint": "^10.8.0",
 		"globals": "^17.8.0",
 		"mocha": "^11.7.6",
+		"prettier": "^3.9.6",
 		"sharp": "^0.35.3",
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.65.0"

@@ -169,6 +169,10 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 	getDataConstructor(): VPixelArrayConstructor<D> {
 		return <VPixelArrayConstructor<D>> this.data.constructor;
 	}
+
+	getIdx(x: number, y: number) {
+		return (y * this.width + x) * 4
+	}
 }
 
 /** Format-encoded image data. */

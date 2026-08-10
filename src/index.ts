@@ -26,11 +26,9 @@ export { VFormats, VFlags, VCompressionMethods } from './core/enums.js';
 
 // Data collections
 export {
-	VDataProvider,
-	VDataCollection,
-	VFrameCollection,
-	VFaceCollection,
-	VSliceCollection,
+	VCollection,
+	type VCollectionSize,
+	type VCollectionOptions,
 } from './core/providers.js';
 
 export default Vtf;

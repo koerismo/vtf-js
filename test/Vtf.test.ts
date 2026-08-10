@@ -1,4 +1,4 @@
-import { Vtf, VImageData, VFormats, VFrameCollection } from '../dist/index.js';
+import { Vtf, VImageData, VFormats, VCollection } from '../dist/index.js';
 import '../dist/addons/compress/node.js';
 
 import { deepStrictEqual, fail } from 'node:assert/strict';
@@ -28,19 +28,19 @@ export function fillArrayPseudoRand(arr: Uint8Array, seed: number = 0) {
 
 describe('Vtf', () => {
 	it('Constructs reflectivity without source', () => {
-		const data = new VFrameCollection([image_big]);
+		const data = VCollection.fromFrames([image_big]);
 		const vtf = new Vtf(data);
 		deepStrictEqual(vtf.reflectivity, new Float32Array(3).fill(0.0));
 	});
 
 	it('Constructs reflectivity with source', () => {
-		const data = new VFrameCollection([image_small]);
+		const data = VCollection.fromFrames([image_small]);
 		const vtf = new Vtf(data);
 		deepStrictEqual(vtf.reflectivity, new Float32Array(3).fill(1.0));
 	});
 
 	it('Constructs reflectivity with option', () => {
-		const data = new VFrameCollection([image_small]);
+		const data = VCollection.fromFrames([image_small]);
 		const vtf = new Vtf(data, { reflectivity: new Float32Array(3).fill(0.5) });
 		deepStrictEqual(vtf.reflectivity, new Float32Array(3).fill(0.5));
 	});
@@ -55,15 +55,27 @@ describe('Vtf', () => {
 
 	for (const [version, compression_level] of versions) {
 		it(`Encodes and decodes reliably: v${version} (compression ${compression_level})`, async () => {
-			const vtf = new Vtf(new VFrameCollection([image]), {
+			const vtf = new Vtf(VCollection.fromFrames([image]), {
 				version,
 				compression_level,
 				format: VFormats.RGBA8888
 			});
 
 			const encoded = await vtf.encode();
-			const decoded = await Vtf.decode(encoded, { noClone: false });
-			const found = decoded.data.getImage(0, 0, 0, 0);
+
+			// const formatMemoryUsage = (data: number) => `${Math.round(data / 1024 / 1024 * 100) / 100} MB`;
+
+			// gc!();
+			// gc!();
+			// gc!();
+
+			// const mem1 = process.memoryUsage();
+			const decoded = await Vtf.decode(encoded, { noClone: true });
+			// const mem2 = process.memoryUsage();
+			
+			const found = decoded.body.getImage(0, 0, 0, 0);
+			// console.log('Using', formatMemoryUsage(mem1.rss), '--->', formatMemoryUsage(mem2.rss), `(${formatMemoryUsage(mem2.rss - mem1.rss)})`)
+
 			deepArrayEqual(image.data, found.data, `Image match failed on v${version} (compression ${compression_level})`);
 		});
 	}

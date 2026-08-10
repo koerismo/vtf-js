@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"module": "NodeNext",
+		"target": "ESNext",
+		"moduleResolution": "nodenext",
+		"types": ["node", "mocha"],
+		"strictNullChecks": true,
+		"strictFunctionTypes": true,
+		"alwaysStrict": true,
+		"strict": true,
+		"noEmit": true
+	},
+	"include": [ "./" ]
+}

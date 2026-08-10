@@ -1,8 +1,8 @@
-import { VEncodedImageData, VPixelArray, getCodec, type VImageEither } from './image.js';
+import { VEncodedImageData, getCodec, type VImageEither } from './image.js';
 import { DataBuffer } from './buffer.js';
 import { VFileHeader, VtfDecodeOptions } from '../vtf.js';
 import { NO_DATA, VFormats } from './enums.js';
-import { VDataCollection, VDataProvider } from './providers.js';
+import { VCollection } from './providers.js';
 import { getFaceCount, getMipSize, compress, decompress } from './utils.js';
 
 /** A map of header tags and their corresponding decoders. Using {@link registerResourceType} to register new tags is recommended! */
@@ -101,7 +101,7 @@ export class VBodyResource extends VBaseResource {
 
 	constructor(
 			flags: number,
-			public images: VDataProvider
+			public images: VCollection
 		) {
 		super(VHeaderTags.TAG_LEGACY_BODY, flags);
 	}
@@ -109,7 +109,7 @@ export class VBodyResource extends VBaseResource {
 	static async decode(header: VHeader, view: DataBuffer, info: VFileHeader, options: VtfDecodeOptions): Promise<VBodyResource> {
 		const face_count = getFaceCount(info);
 		const codec = getCodec(info.format);
-		const collection = new VDataCollection({
+		const collection = new VCollection({
 			width: info.width,
 			height: info.height,
 			mips: info.mipmaps,
@@ -168,7 +168,7 @@ export class VBodyResource extends VBaseResource {
 					const subview = new DataBuffer(uncompressed_length * info.slices);
 
 					for ( let w=0; w < info.slices; w++ ) { // slices
-						const slice = this.images.getImage(x, y, z, w, true);
+						const slice = this.images.getRawImage(x, y, z, w);
 
 						// If slice is encoded, .encode() will no-op if the format matches. Otherwise, it is re-encoded.
 						// If slice isn't encoded, it will be encoded into the desired format.
