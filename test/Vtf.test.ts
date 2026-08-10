@@ -62,20 +62,9 @@ describe('Vtf', () => {
 			});
 
 			const encoded = await vtf.encode();
-
-			// const formatMemoryUsage = (data: number) => `${Math.round(data / 1024 / 1024 * 100) / 100} MB`;
-
-			// gc!();
-			// gc!();
-			// gc!();
-
-			// const mem1 = process.memoryUsage();
 			const decoded = await Vtf.decode(encoded, { noClone: true });
-			// const mem2 = process.memoryUsage();
 			
 			const found = decoded.body.getImage(0, 0, 0, 0);
-			// console.log('Using', formatMemoryUsage(mem1.rss), '--->', formatMemoryUsage(mem2.rss), `(${formatMemoryUsage(mem2.rss - mem1.rss)})`)
-
 			deepArrayEqual(image.data, found.data, `Image match failed on v${version} (compression ${compression_level})`);
 		});
 	}
