@@ -119,9 +119,9 @@ export class DataBuffer extends Uint8Array {
 
 	/** Do a fast-copy and return true if possible. Otherwise, return false. */
 	protected _try_write_le(value: ArrayBufferView, little: boolean): boolean {
-		return little === SYSTEM_ENDIAN
-			? (this.write_u8array(new Uint8Array(value.buffer, value.byteOffset, value.byteLength)), true)
-			: false;
+		if (little !== SYSTEM_ENDIAN) return false;
+		this.write_u8array(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
+		return true;
 	}
 
 	write_u8array(value: Uint8Array): void {
