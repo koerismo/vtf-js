@@ -22,11 +22,6 @@ export interface VCollectionSize {
 	slices: number;
 }
 
-export interface VCollectionOptions extends VCollectionSize {
-	resizeFilter: VFilter;
-	// resizeClamp: boolean;
-}
-
 
 /** A class for storing collections of mipmaps, frames, faces, and slices. */
 export class VCollection {
@@ -40,10 +35,7 @@ export class VCollection {
 	protected width: number = 0;
 	protected height: number = 0;
 
-	public resizeFilter: VFilter = VFilters.Default;
-	// public resizeClamp: boolean = false;
-
-	static fromFrames(frameList: VImageEither[], options?: Partial<VCollectionOptions>) {
+	static fromFrames(frameList: VImageEither[], options?: Partial<Omit<VCollectionSize, 'frames'>>) {
 		if (!frameList.length)
 			throw Error(
 				'VDataCollection.fromFrames: Requires at least one item in the provided array!',
@@ -56,7 +48,7 @@ export class VCollection {
 		return col;
 	}
 
-	static fromFaces(faceList: VImageEither[], options?: Partial<VCollectionOptions>) {
+	static fromFaces(faceList: VImageEither[], options?: Partial<Omit<VCollectionSize, 'faces'>>) {
 		if (!faceList.length)
 			throw Error(
 				'VDataCollection.fromFaces: Requires at least one item in the provided array!',
@@ -70,11 +62,9 @@ export class VCollection {
 	}
 
 	constructor(width: number, height: number);
-	constructor(options: VSliceSize & Partial<VCollectionOptions>);
-	constructor(options: number | (VSliceSize & Partial<VCollectionOptions>), height?: number) {
+	constructor(options: VSliceSize & Partial<VCollectionSize>);
+	constructor(options: number | (VSliceSize & Partial<VCollectionSize>), height?: number) {
 		if (typeof options === 'object') {
-			if (options.resizeFilter) this.resizeFilter = options.resizeFilter;
-			// if (options.resizeClamp) this.resizeClamp = options.resizeClamp;
 			this.width = options.width;
 			this.height = options.height;
 			this.resize(options);
@@ -192,6 +182,7 @@ export class VCollection {
 	/**
 	 * Gets the specified image from the collection and decodes it if necessary.
 	 * If an image is decoded, it will replace the original in this collection automatically.
+	 * @see {@link VCollection.getRawImage()}
 	 */
 	getImage(mip: number, frame: number, face: number, slice: number): VImageData {
 		let image = this.getRawImage(mip, frame, face, slice);
@@ -199,6 +190,10 @@ export class VCollection {
 		return image;
 	}
 
+	/**
+	 * Gets the specified image from the collection without any decoding.
+	 * @see {@link VCollection.getImage()}
+	 */
 	getRawImage(mip: number, frame: number, face: number, slice: number): VImageEither {
 		if (!this.isInBounds(mip, frame, face, slice))
 			throw Error(`VCollection.getRawImage: Attempted to get image out-of-bounds!`);
@@ -219,11 +214,11 @@ export class VCollection {
 
 	/**
 	 * Generates mipmaps for all frames/faces/slices.
-	 * @param overwrite If true, all mips will be generated from the top-level image.
-	 * @param filter The filter override to use.
+	 * @param [filter=VFilters.Default] The filter to use. Defaults to {@link VFilters.Default}
+	 * @param [allFromTop=true] If false, mipmaps will cascade without overwriting existing ones.
 	 * @returns Whether the operation succeeded.
 	 */
-	generateMips(allFromTop: boolean = false, filter: VFilter = this.resizeFilter): boolean {
+	generateMips(filter: VFilter = VFilters.Default, allFromTop: boolean = true): boolean {
 		if (!this.hasValidBounds()) return false;
 
 		const sharedCoeffCache: Record<string, Float32Array> = {};

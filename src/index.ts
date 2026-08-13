@@ -25,11 +25,7 @@ import './formats/dxt.js';
 export { VFormats, VFlags, VCompressionMethods } from './core/enums.js';
 
 // Data collections
-export {
-	VCollection,
-	type VCollectionSize,
-	type VCollectionOptions,
-} from './core/providers.js';
+export { VCollection, type VCollectionSize } from './core/providers.js';
 
 export default Vtf;
 export { Vtf, VFileHeader };

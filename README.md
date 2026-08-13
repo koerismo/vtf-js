@@ -53,18 +53,19 @@ import 'vtf-js/addons/compress/fflate';
 
 ### Create from image data
 ```ts
-import { Vtf, VFormats, VFilters, VCollection } from 'vtf-js';
+import { Vtf, VFormats, VFilters, VCollection, VImageData } from 'vtf-js';
 
 // See "Additional Setup" section for info about this import.
 import 'vtf-js/addons/squish';
 
-// ...
+const image = new VImageData(/* ... */);
 
-const frames = VCollection.fromFrames([image], { mips: 3, resizeFilter: VFilters.NICE });
-frames.generateMips();
+// Use -1 to infer the mipmap count from the image size.
+const frames = VCollection.fromFrames([image], { mips: -1 });
+frames.generateMips(VFilters.NICE);
 
 const vtf = new Vtf(frames, { version: 4, format: VFormats.DXT5 });
-const out = vtf.encode();
+const out = await vtf.encode();
 ```
 
 ### Read image into an object
