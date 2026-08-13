@@ -1,29 +1,32 @@
-import type { VDataProvider } from './core/providers.js';
+import type { VCollection } from './core/providers.js';
 import { VCompressionMethods, VFormats } from './core/enums.js';
 import { VBaseResource, VResource, VThumbResource } from './core/resources.js';
 import { getThumbMip } from './core/utils.js';
 import { getCodec } from './core/image.js';
 
+import encode from './core/encode.js';
+import decode from './core/decode.js';
+
 /** Options for use with the {@link Vtf} constructor. */
 export interface VtfConstructorOptions {
-	version?: number;
-	format?: VFormats;
-	flags?: number;
-	meta?: VBaseResource[];
-	thumb?: VThumbResource;
+	version: number;
+	format: VFormats;
+	flags: number;
+	meta: VBaseResource[];
+	thumb: VThumbResource;
 
-	reflectivity?: Float32Array;
-	first_frame?: number;
-	bump_scale?: number;
-	compression_level?: number;
-	compression_method?: VCompressionMethods;
+	reflectivity: Float32Array;
+	first_frame: number;
+	bump_scale: number;
+	compression_level: number;
+	compression_method: VCompressionMethods;
 }
 
 export type VtfDecodeOptions<HeaderOnly extends boolean = boolean> = {
 	/** If true, skips decoding any of the Vtf body. @default false */
-	headerOnly?: HeaderOnly;
+	headerOnly: HeaderOnly;
 	/** If true, data will reference the original buffer and only be cloned when necessary. @default false */
-	noClone?: boolean;
+	noClone: boolean;
 };
 
 /**
@@ -34,7 +37,7 @@ export type VtfDecodeOptions<HeaderOnly extends boolean = boolean> = {
  * ```
  */
 export class Vtf {
-	public data: VDataProvider;
+	public body: VCollection;
 	public thumb?: VThumbResource;
 	public version: number;
 	public format: VFormats;
@@ -47,8 +50,8 @@ export class Vtf {
 	public compression_level: number;
 	public compression_method: VCompressionMethods;
 
-	constructor(data: VDataProvider, options?: VtfConstructorOptions) {
-		this.data = data;
+	constructor(data: VCollection, options?: Partial<VtfConstructorOptions>) {
+		this.body = data;
 
 		this.version = options?.version ?? 4;
 		this.format = options?.format ?? VFormats.RGBA8888;
@@ -56,15 +59,15 @@ export class Vtf {
 		this.meta = options?.meta ?? [];
 		this.thumb = options?.thumb;
 
-		const dataSize = this.data.getSize();
-		const dataMipCount = this.data.getMipmapCount();
+		const dataSize = this.body.getSize();
+		const dataMipCount = this.body.getMipmapCount();
 
 		if (options?.reflectivity) {
 			this.reflectivity = options.reflectivity;
 		} else {
 			const pixelMipIdx = getThumbMip(...dataSize, 1);
 			if (pixelMipIdx < dataMipCount) {
-				const smallest_mip = this.data
+				const smallest_mip = this.body
 					.getImage(pixelMipIdx, 0, 0, 0)
 					.coerce(Float32Array);
 				this.reflectivity = smallest_mip.data.slice(0, 3);
@@ -81,7 +84,7 @@ export class Vtf {
 
 	/** Encodes this Vtf object into an ArrayBuffer. */
 	encode(): Promise<ArrayBuffer> {
-		throw Error('Vtf.encode: Implementation override not present!');
+		return encode.call(this);
 	}
 
 	/**
@@ -90,11 +93,11 @@ export class Vtf {
 	 * @param header_only (default: `false`) If true, a VFileHeader will be returned instead, which only contains the header contents.
 	 * @param lazy_decode (default: `true`) If false, all data in the Vtf will be decoded in this function call. Otherwise, images will only be decoded when requested.
 	 */
-	static decode(data: ArrayBuffer, options?: VtfDecodeOptions<false>): Promise<Vtf>;
-	static decode(data: ArrayBuffer, options: VtfDecodeOptions<true>): Promise<VFileHeader>;
-	static decode(data: ArrayBuffer, options: VtfDecodeOptions): Promise<Vtf | VFileHeader>;
-	static decode(data: ArrayBuffer, options?: VtfDecodeOptions): Promise<Vtf | VFileHeader> {
-		throw Error('Vtf.decode: Implementation override not present!');
+	static decode(data: ArrayBufferLike, options?: Partial<VtfDecodeOptions<false>>): Promise<Vtf>;
+	static decode(data: ArrayBufferLike, options: Partial<VtfDecodeOptions<true>>): Promise<VFileHeader>;
+	static decode(data: ArrayBufferLike, options: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader>;
+	static decode(data: ArrayBufferLike, options?: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader> {
+		return decode.call(this, data, options!);
 	}
 }
 
@@ -123,17 +126,17 @@ export class VFileHeader {
 	static fromVtf(vtf: Vtf): VFileHeader {
 		const header = new VFileHeader();
 		header.version = vtf.version;
-		[header.width, header.height] = vtf.data.getSize();
+		[header.width, header.height] = vtf.body.getSize();
 
 		header.flags = vtf.flags;
 		header.flags |= getCodec(vtf.format, false)?.alpha ?? 0;
 
-		header.frames = vtf.data.getFrameCount();
+		header.frames = vtf.body.getFrameCount();
 		header.first_frame = vtf.first_frame;
 		header.reflectivity = vtf.reflectivity;
 		header.bump_scale = vtf.bump_scale;
 		header.format = vtf.format;
-		header.mipmaps = vtf.data.getMipmapCount();
+		header.mipmaps = vtf.body.getMipmapCount();
 
 		header.thumb_format = VFormats.DXT1;
 		if (vtf.thumb) {
@@ -144,7 +147,7 @@ export class VFileHeader {
 			header.thumb_height = 0x0;
 		}
 
-		header.slices = vtf.data.getSliceCount();
+		header.slices = vtf.body.getSliceCount();
 		header.compression_method = vtf.compression_method;
 		header.compression_level = vtf.compression_level;
 		return header;

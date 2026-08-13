@@ -2,7 +2,7 @@
 *A javascript IO library for the Valve Texture Format.*
 
 ## Overview
-`vtf-js` is a canvas-independent library for reading and authoring Vtfs. The library supports encoding and decoding VTF versions 7.1 - 7.6, including Strata-format compressed Vtfs. Mipmap generation is automated by default, however interfaces for manually specifying image data for each mipmap are also available (see `VDataCollection`).
+`vtf-js` is a platform-independent library for reading and authoring Vtfs. The library supports encoding and decoding VTF versions 7.1 - 7.6, including Strata-format compressed Vtfs. Mipmap generation is automated by default, however interfaces for manually specifying image data for each mipmap are also available (see `VDataCollection`).
 
 The following formats are supported by default.
 
@@ -53,11 +53,14 @@ import 'vtf-js/addons/compress/fflate';
 
 ### Create from image data
 ```ts
-import { Vtf, VFormats, VFilters, VFrameCollection } from 'vtf-js';
+import { Vtf, VFormats, VFilters, VCollection } from 'vtf-js';
+
+// See "Additional Setup" section for info about this import.
+import 'vtf-js/addons/squish';
 
 // ...
 
-const frames = new VFrameCollection([image], { mips: 3, filter: VFilters.NICE });
+const frames = VCollection.fromFrames([image], { mips: 3, resizeFilter: VFilters.NICE });
 frames.generateMips();
 
 const vtf = new Vtf(frames, { version: 4, format: VFormats.DXT5 });
@@ -70,8 +73,8 @@ import { Vtf } from 'vtf-js';
 
 // ...
 
-const vtf = await Vtf.decode(inbuffer);
-const slice = vtf.data.getImage(
+const vtf = await Vtf.decode(inputBuffer);
+const slice = vtf.body.getImage(
 	0,  // Mipmap
 	0,  // Frame
 	0,  // Face

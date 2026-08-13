@@ -2,7 +2,7 @@ import { VEncodedImageData, getCodec, type VImageEither } from './image.js';
 import { DataBuffer } from './buffer.js';
 import { VFileHeader, VtfDecodeOptions } from '../vtf.js';
 import { NO_DATA, VFormats } from './enums.js';
-import { VDataCollection, VDataProvider } from './providers.js';
+import { VCollection } from './providers.js';
 import { getFaceCount, getMipSize, compress, decompress } from './utils.js';
 
 /** A map of header tags and their corresponding decoders. Using {@link registerResourceType} to register new tags is recommended! */
@@ -49,7 +49,7 @@ export interface VResourceStatic {
 	/** If true, this resource should be considered a "legacy" resource with no predefined length. Defaults to false. */
 	readonly isLegacy?: boolean;
 	/** Decodes this resource from its raw data. */
-	decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader): Awaitable<VResource>;
+	decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader, options: VtfDecodeOptions): Awaitable<VResource>;
 }
 
 /** Defines a generic resource entry. All resources are required to implement this interface! */
@@ -72,7 +72,7 @@ export class VBaseResource implements VResource {
 		public raw?: DataBuffer) {
 	}
 
-	static decode(header: VHeader, view: DataBuffer|undefined, info: VFileHeader, options: VtfDecodeOptions): Awaitable<VBaseResource | VErrorResource> {
+	static decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader, options: VtfDecodeOptions): Awaitable<VBaseResource | VErrorResource> {
 		return new VBaseResource(header.tag, header.flags, view);
 	}
 
@@ -101,7 +101,7 @@ export class VBodyResource extends VBaseResource {
 
 	constructor(
 			flags: number,
-			public images: VDataProvider
+			public images: VCollection
 		) {
 		super(VHeaderTags.TAG_LEGACY_BODY, flags);
 	}
@@ -109,7 +109,7 @@ export class VBodyResource extends VBaseResource {
 	static async decode(header: VHeader, view: DataBuffer, info: VFileHeader, options: VtfDecodeOptions): Promise<VBodyResource> {
 		const face_count = getFaceCount(info);
 		const codec = getCodec(info.format);
-		const collection = new VDataCollection({
+		const collection = new VCollection({
 			width: info.width,
 			height: info.height,
 			mips: info.mipmaps,
@@ -128,19 +128,15 @@ export class VBodyResource extends VBaseResource {
 					let subview: DataBuffer;
 					if (info.compression_level !== 0) {
 						const compressed_length = info.compressed_lengths![x][y][z];
-						const slice_data = view.ref_u8(compressed_length);
+						const slice_data = view.read_u8array(compressed_length, false);
 						subview = new DataBuffer(await decompress(slice_data, info.compression_method, info.compression_level));
-					}
-					else {
-						subview = view.ref(view.pointer, uncompressed_length * info.slices);
-						view.pointer += subview.length;
+					} else {
+						const collated_length = uncompressed_length * info.slices;
+						subview = view.ref(view.inc(collated_length), collated_length);
 					}
 
 					for ( let w=0; w<info.slices; w++ ) {
-						const data = options.noClone
-							? subview.ref_u8(uncompressed_length)
-							: subview.read_u8(uncompressed_length);
-
+						const data = subview.read_u8array(uncompressed_length, !options.noClone);
 						const image = new VEncodedImageData(data, width, height, info.format);
 						collection.setImage(image, x, y, z, w);
 					}
@@ -172,12 +168,12 @@ export class VBodyResource extends VBaseResource {
 					const subview = new DataBuffer(uncompressed_length * info.slices);
 
 					for ( let w=0; w < info.slices; w++ ) { // slices
-						const slice = this.images.getImage(x, y, z, w, true);
+						const slice = this.images.getRawImage(x, y, z, w);
 
 						// If slice is encoded, .encode() will no-op if the format matches. Otherwise, it is re-encoded.
 						// If slice isn't encoded, it will be encoded into the desired format.
 						const sliceData = slice.encode(info.format).data;
-						subview.write_u8(sliceData);
+						subview.write_u8array(sliceData);
 					}
 
 					// Compress
@@ -195,7 +191,7 @@ export class VBodyResource extends VBaseResource {
 
 		const view = new DataBuffer(packed_length);
 		for (let i=0; i<packed_slices.length; i++) {
-			view.write_u8(packed_slices[i]);
+			view.write_u8array(packed_slices[i]);
 		}
 		return view.buffer;
 	}
@@ -212,16 +208,16 @@ export class VThumbResource extends VBaseResource {
 		) {
 		super(VHeaderTags.TAG_LEGACY_THUMB, flags);
 		this.image = image ?? new VEncodedImageData(new Uint8Array(0), 0, 0, VFormats.DXT1);
-		flags = (flags ^ (flags & NO_DATA)) | (this.hasImage() ? 0 : NO_DATA);
+		this.flags = (flags ^ (flags & NO_DATA)) | (this.hasImage() ? 0 : NO_DATA);
 	}
 
-	static decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader): VThumbResource {
+	static decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader, options: VtfDecodeOptions): VThumbResource {
 		const codec = getCodec(info.thumb_format);
 		if (!view) {
 			if (info.thumb_width === 0 || info.thumb_height === 0) return new VThumbResource(header.flags);
 			throw Error('VThumbnailResource: Attempted to decode non-empty thumbnail without any data!');
 		}
-		const data = view.read_u8(codec.length(info.thumb_width, info.thumb_height));
+		const data = view.read_u8array(codec.length(info.thumb_width, info.thumb_height), !options.noClone);
 		const image = new VEncodedImageData(data, info.thumb_width, info.thumb_height, info.thumb_format);
 		return new VThumbResource(header.flags, image);
 	}
@@ -245,6 +241,7 @@ export interface SheetFrame {
 }
 
 export interface SheetSequence {
+	id: number;
 	clamp: boolean;
 	duration: number;
 	frames: SheetFrame[];
@@ -257,51 +254,59 @@ export class VSheetResource extends VBaseResource {
 
 	constructor(
 		flags: number,
+		public version: number,
 		public sequences: SheetSequence[]) {
 		super(VHeaderTags.TAG_SHEET, flags);
 	}
 
 	static decode(header: VHeader, view: DataBuffer, info: VFileHeader): VSheetResource {
-		const coord_count = info.version === 0 ? 1 : 4;
-		
-		const sequence_count = view.read_u32();
-		const sequences = new Array<SheetSequence>(sequence_count);
-		for (let i=0; i<sequence_count; i++) {
-			view.pad(4); // const id = view.read_u32();
+		const version = view.read_u32();
+		if (version < 0 || version > 1)
+			throw Error(`VSheetResource: Invalid sheet resource version! (${version})`);
+
+		const coordsPerFrame = version === 1 ? 4 : 1;
+		const sequenceCount = view.read_u32();
+		const sequences = new Array<SheetSequence>(sequenceCount);
+
+		for (let i=0; i<sequenceCount; i++) {
+			const id = view.read_u32();
 			const clamp = !!view.read_u32();
-			const frame_count = view.read_u32();
+			const frameCount = view.read_u32();
 			const duration = view.read_f32();
 
-			const frames = new Array<SheetFrame>(frame_count);
-			for (let j=0; j<frame_count; j++) {
+			const frames = new Array<SheetFrame>(frameCount);
+			for (let j=0; j<frameCount; j++) {
 				const duration = view.read_f32();
 
-				const coords = new Array<Float32Array>(coord_count);
-				for (let k=0; k<coord_count; k++) {
-					coords[k] = view.read_f32(4);
+				const coords = new Array<Float32Array>(coordsPerFrame);
+				for (let k=0; k<coordsPerFrame; k++) {
+					coords[k] = view.read_f32array(4, true);
 				}
 
 				frames[j] = { duration, coords };
 			}
 
-			sequences[i] = { clamp, duration, frames };
+			sequences[i] = { id, clamp, duration, frames };
 		}
 
-		return new VSheetResource(header.flags, sequences);
+		return new VSheetResource(header.flags, version, sequences);
 	}
 
 	encode(info: VFileHeader): ArrayBuffer {
-		const coord_count = info.version === 0 ? 1 : 4;
-		
+		const coordsPerFrame = this.version === 1 ? 4 : 1;
+
 		let buffer_length = 4;
 		for (let i=0; i<this.sequences.length; i++) {
-			buffer_length += 16 + this.sequences[i].frames.length * (4 + 4 * 4 * coord_count);
+			buffer_length +=
+				16 + this.sequences[i].frames.length * (4 + 16 * coordsPerFrame);
 		}
+
 		const view = new DataBuffer(buffer_length);
+		view.write_u32(this.version);
 
 		for (let i=0; i<this.sequences.length; i++) {
 			const sequence = this.sequences[i];
-			view.write_u32(i);
+			view.write_u32(sequence.id);
 			view.write_u32(sequence.clamp ? 0xff : 0x00);
 			view.write_u32(sequence.frames.length);
 			view.write_f32(sequence.duration);
@@ -310,10 +315,12 @@ export class VSheetResource extends VBaseResource {
 				const frame = sequence.frames[j];
 				view.write_f32(frame.duration);
 
-				if (coord_count !== frame.coords.length) throw Error(`vtf-js: Expected ${coord_count} coordinate sets, but got ${frame.coords.length}!`);
-				for (let k=0; k<coord_count; k++) {
-					if (frame.coords[k].length !== 4) throw Error('vtf-js: SheetFrame coords must be of length 4!');
-					view.write_f32(frame.coords[k]);
+				if (coordsPerFrame !== frame.coords.length)
+					throw Error(`VSheetResource: Expected ${coordsPerFrame} coordinate sets, but got ${frame.coords.length}!`);
+				for (let k=0; k<coordsPerFrame; k++) {
+					if (frame.coords[k].length !== 4)
+						throw Error('VSheetResource: SheetFrame coords must be of length 4!');
+					view.write_f32array(frame.coords[k]);
 				}
 			}
 		}
@@ -360,7 +367,7 @@ export class VLodControlResource extends VBaseResource {
 	}
 
 	static decode(header: VHeader, view?: DataBuffer): VLodControlResource {
-		if (!view) throw Error(`No data provided for LOD control resource!`);
+		if (!view) throw Error(`VLodControlResource.decode: No body data present for resource!`);
 		return new VLodControlResource(
 			header.flags,
 			view[0],
@@ -381,19 +388,32 @@ export class VLodControlResource extends VBaseResource {
 }
 
 /** Defines flags which can be used to modify the behavior of Hotspot regions. */
-export const enum HotSpotRectFlags {
-	AllowRotation   = 0x1,
-	AllowReflection = 0x2,
-	AltGroup        = 0x4,
-}
+export const HotSpotRectFlags = {
+	AllowRotation: 0x1,
+	AllowReflection: 0x2,
+	AltGroup: 0x4,
+	TileX: 0x8,
+	TileY: 0x10,
+} as const;
 
 /** Defines a Hotspot rect in pixel space. */
-export interface HotspotRect {
-	flags: number;
-	min_x: number;
-	min_y: number;
-	max_x: number;
-	max_y: number;
+export class HotspotRect {
+	constructor(
+		public flags: number,
+		public min_x: number,
+		public min_y: number,
+		public max_x: number,
+		public max_y: number,
+	) {}
+
+	get width(): number { return this.max_x - this.min_x; }
+	get height(): number { return this.max_y - this.min_y; }
+
+	canRotate() { return !!(this.flags & HotSpotRectFlags.AllowRotation); }
+	canReflect() { return !!(this.flags & HotSpotRectFlags.AllowReflection); }
+	isAltGroup() { return !!(this.flags & HotSpotRectFlags.AltGroup); }
+	canTileX() { return !!(this.flags & HotSpotRectFlags.TileX); }
+	canTileY() { return !!(this.flags & HotSpotRectFlags.TileY); }
 }
 
 /** The Hotspot data resource. See {@link https://wiki.stratasource.org/modding/overview/vtf-hotspot-resource this page} for more information. */
@@ -416,20 +436,20 @@ export class VHotspotResource extends VBaseResource {
 			return new VHotspotResource(header.flags, 0, 0, []);
 
 		const version = view.read_u8();
-		if (version !== 0x1) throw Error(`Failed to parse VHotspotResource: Invalid version! (Expected 1, got ${version})`);
+		if (version !== 0x1) throw Error(`VSheetResource.decode: Invalid version! (Expected 1, got ${version})`);
 
 		const flags     = view.read_u8();
 		const rectCount = view.read_u16();
 
 		const rects = Array<HotspotRect>(rectCount);
 		for (let i=0; i<rectCount; i++) {
-			rects[i] = {
-				flags: view.read_u8(),
-				min_x: view.read_u16(),
-				min_y: view.read_u16(),
-				max_x: view.read_u16(),
-				max_y: view.read_u16(),
-			};
+			rects[i] = new HotspotRect(
+				view.read_u8(),
+				view.read_u16(),
+				view.read_u16(),
+				view.read_u16(),
+				view.read_u16(),
+			);
 		}
 
 		return new VHotspotResource(header.flags, version, flags, rects);
@@ -437,7 +457,7 @@ export class VHotspotResource extends VBaseResource {
 
 	encode(info: VFileHeader): ArrayBuffer {
 		if (this.version !== 0x1)
-			throw Error(`Failed to write VHotspotResource: Invalid version! (Expected 1, got ${this.version})`);
+			throw Error(`VHotspotResource.encode: Invalid version! (Expected 1, got ${this.version})`);
 
 		const length = 4 + this.rects.length * 9;
 		const view = new DataBuffer(length);

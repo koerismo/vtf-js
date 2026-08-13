@@ -3,16 +3,12 @@
 		"module": "NodeNext",
 		"target": "ESNext",
 		"moduleResolution": "nodenext",
-		"types": ["node"],
+		"types": ["node", "mocha"],
 		"strictNullChecks": true,
 		"strictFunctionTypes": true,
 		"alwaysStrict": true,
 		"strict": true,
-		"sourceMap": true,
-		"declaration": true,
-		"rootDir": "src",
-		"outDir": "dist",
-		"stripInternal": true
+		"noEmit": true
 	},
-	"include": [ "src/" ]
+	"include": [ "./" ]
 }

@@ -119,7 +119,7 @@ export function decompressBlock(block: Uint8Array, flags: number, out_rgba: Uint
 	if (flags & DxtFlags.DXT5)
 		decompressDxt5Alpha(block, out_rgba);
 	else if (flags & DxtFlags.DXT3)
-		decompressDxt3Alpha(block, out_rgba);	
+		decompressDxt3Alpha(block, out_rgba);
 	return;
 }
 
@@ -135,7 +135,7 @@ export function decompressImage(image: VEncodedImageData, flags: number) {
 		for (let x=0; x<image.width; x+=4) {
 			
 			// Decompress block
-			const blockSrc = data.subarray(blockIdx, blockIdx+blockSize);
+			const blockSrc = data.subarray(blockIdx, blockIdx + blockSize);
 			decompressBlock(blockSrc, flags, blockDest);
 
 			// Copy decompressed block to image

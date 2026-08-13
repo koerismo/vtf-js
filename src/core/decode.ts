@@ -42,10 +42,23 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boo
 	return true;
 }
 
-// @ts-expect-error Overloads break for some reason?
-Vtf.decode = async function(data: ArrayBuffer, decodeOptions?: VtfDecodeOptions = {}): Promise<Vtf | VFileHeader> {
+function parse_decode_options(options?: Partial<VtfDecodeOptions>) {
+	options ??= {};
+	options.headerOnly ??= false;
+	options.noClone ??= false;
+	return options as VtfDecodeOptions;
+}
+
+
+
+export default async function decode(data: ArrayBufferLike, options?: Partial<VtfDecodeOptions<false>>): Promise<Vtf>;
+export default async function decode(data: ArrayBufferLike, options: Partial<VtfDecodeOptions<true>>): Promise<VFileHeader>;
+export default async function decode(data: ArrayBufferLike, options: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader>;
+export default async function decode(data: ArrayBufferLike, _options?: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader> {
+	const options = parse_decode_options(_options);
 	const info = new VFileHeader();
 	info.compression_level = 0;
+	
 
 	const view = new DataBuffer(data);
 
@@ -71,9 +84,9 @@ Vtf.decode = async function(data: ArrayBuffer, decodeOptions?: VtfDecodeOptions 
 	info.frames         = view.read_u16();
 	info.first_frame    = view.read_u16();
 
-	view.pad(4);
-	info.reflectivity   = view.read_f32(3);
-	view.pad(4);
+	view.inc(4);
+	info.reflectivity   = view.read_f32array(3, !options.noClone);
+	view.inc(4);
 
 	info.bump_scale     = view.read_f32();
 	info.format         = read_format(view.read_u32());
@@ -88,7 +101,7 @@ Vtf.decode = async function(data: ArrayBuffer, decodeOptions?: VtfDecodeOptions 
 	// v7.2 +
 	info.slices         = info.version > 1 ? view.read_u16() : 1;
 
-	if (decodeOptions.headerOnly) return info;
+	if (options.headerOnly) return info;
 
 	let body: VBodyResource | undefined;
 	let thumb: VThumbResource | undefined;
@@ -97,23 +110,23 @@ Vtf.decode = async function(data: ArrayBuffer, decodeOptions?: VtfDecodeOptions 
 
 	let resource_count = 0;
 	if (info.version >= 3) {
-		view.pad(3);
+		view.inc(3);
 		resource_count = view.read_u32();
-		view.pad(8);
+		view.inc(8);
 	}
 	else {
 		const thumb_size = getCodec(info.thumb_format).length(info.thumb_width, info.thumb_height);
 		const thumb_data = view.ref(header_length, thumb_size);
-		thumb = await VThumbResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_THUMB, 0x0, header_length), thumb_data, info);
+		thumb = await VThumbResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_THUMB, 0x0, header_length), thumb_data, info, options);
 
 		const body_offset = header_length + thumb_size;
 		const body_data = view.ref(body_offset);
-		body = await VBodyResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_BODY, 0x0, body_offset), body_data, info, decodeOptions);
+		body = await VBodyResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_BODY, 0x0, body_offset), body_data, info, options);
 	}
 
 	// Parse resource headers
 	for ( let i=0; i<resource_count; i++ ) {
-		const fourcc = view.read_u32(undefined, false);
+		const fourcc = view.read_u32(false);
 		const offset = view.read_u32();
 		const header = new VHeader(
 			fourcc >> 8,
@@ -149,25 +162,25 @@ Vtf.decode = async function(data: ArrayBuffer, decodeOptions?: VtfDecodeOptions 
 
 		if (header.tag === VHeaderTags.TAG_LEGACY_BODY) {
 			if (!data) throw Error('Vtf.decode: Body resource has no data! (0x2 flag set)');
-			body = await VBodyResource.decode(header, data, info, decodeOptions);
+			body = await VBodyResource.decode(header, data, info, options);
 			continue;
 		}
 
 		if (header.tag === VHeaderTags.TAG_LEGACY_THUMB) {
-			thumb = VThumbResource.decode(header, data, info);
+			thumb = VThumbResource.decode(header, data, info, options);
 			continue;
 		}
 
 		const type = VResourceTypes[header.tag] ?? VBaseResource;
-		meta.push(await type.decode(header, data, info));
+		meta.push(await type.decode(header, data, info, options));
 	}
 
 	if (!body)
 		throw Error('Vtf.decode: Vtf does not contain a body resource!');
 
-	const options: VtfConstructorOptions = info;
-	options.thumb = thumb;
-	options.meta = meta;
+	const createOptions: Partial<VtfConstructorOptions> = info;
+	createOptions.thumb = thumb;
+	createOptions.meta = meta;
 
-	return new Vtf(body.images, options);
+	return new Vtf(body.images, createOptions);
 }

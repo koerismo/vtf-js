@@ -1,6 +1,5 @@
 import { VFormats, VFlags } from '../core/enums.js';
 import { VEncodedImageData, VImageData, getCodec, registerCodec } from '../core/image.js';
-// import { CompressImage, DecompressImage, DxtFlags } from 'libsquish-js';
 import { decompressImage } from './dxt-decompress.js';
 import { ceil4 } from '../core/utils.js';
 
@@ -16,14 +15,20 @@ export const enum DxtFlags {
 	MetricPerceptual = 0x400,
 }
 
+const BLOCK_8 = (width: number, height: number) => {
+	return ceil4(width) * ceil4(height) * 0.5;
+}
+
+const BLOCK_16 = (width: number, height: number) => {
+	return ceil4(width) * ceil4(height);
+}
+
 // https://www.khronos.org/opengl/wiki/S3_Texture_Compression
 
 registerCodec(VFormats.DXT1, {
 	alpha: VFlags.None,
 
-	length(width, height) {
-		return ceil4(width) * ceil4(height) * 0.5;
-	},
+	length: BLOCK_8,
 
 	encode(image: VImageData): VEncodedImageData {
 		throw ERROR_NOT_SUPPORTED;
@@ -42,9 +47,7 @@ registerCodec(VFormats.DXT1_ONEBITALPHA, {
 registerCodec(VFormats.DXT3, {
 	alpha: VFlags.EightBitAlpha,
 
-	length(width, height) {
-		return ceil4(width) * ceil4(height);
-	},
+	length: BLOCK_16,
 
 	encode(image: VImageData): VEncodedImageData {
 		throw ERROR_NOT_SUPPORTED;
@@ -58,9 +61,7 @@ registerCodec(VFormats.DXT3, {
 registerCodec(VFormats.DXT5, {
 	alpha: VFlags.EightBitAlpha,
 
-	length(width, height) {
-		return ceil4(width) * ceil4(height);
-	},
+	length: BLOCK_16,
 
 	encode(image: VImageData): VEncodedImageData {
 		throw ERROR_NOT_SUPPORTED;
