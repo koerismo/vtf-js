@@ -112,6 +112,10 @@ export class DataBuffer extends Uint8Array {
 		this.view.setUint32(this.inc(4), value, little);
 	}
 
+	write_i32(value: number, little=this.little): void {
+		this.view.setInt32(this.inc(4), value, little);
+	}
+
 	write_f32(value: number, little=this.little): void {
 		this.view.setFloat32(this.inc(4), value, little);
 	}
@@ -133,6 +137,15 @@ export class DataBuffer extends Uint8Array {
 			const start = this.inc(value.length * 2);
 			for (let i = 0, idx = start; i < value.length; i++, idx += 2) {
 				this.view.setUint16(idx, value[i], little);
+			}
+		}
+	}
+
+	write_u32array(value: Uint32Array, little=this.little): void {
+		if (!this._try_write_le(value, little)) {
+			const start = this.inc(value.length * 4);
+			for (let i = 0, idx = start; i < value.length; i++, idx += 4) {
+				this.view.setUint32(idx, value[i], little);
 			}
 		}
 	}
