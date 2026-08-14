@@ -95,7 +95,7 @@ export default async function encode(this: Vtf): Promise<ArrayBuffer> {
 
 	// Begin collecting chunks and accumulating filesize
 	let filesize = header.byteLength;
-	const chunks: { resource: VResource, data: ArrayBuffer | undefined }[] = new Array(2);
+	const chunks = new Array<{ resource: VResource, data: ArrayBuffer | undefined }>(2);
 	chunks[0] = { resource: body_resource, data: body_data };   filesize += body_data.byteLength;
 	chunks[1] = { resource: thumb_resource, data: thumb_data }; filesize += thumb_data.byteLength;
 

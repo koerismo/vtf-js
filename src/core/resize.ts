@@ -120,7 +120,7 @@ export class VImageScaler {
 		const filter_scale = Math.max(1, inv_ratio);
 		const filter_radius = Math.ceil(filter_scale * filter.radius);
 		const filter_kernel = filter.kernel;
-		const coeffs: CoeffsLine[] = new Array(size2);
+		const coeffs = new Array<CoeffsLine>(size2);
 
 		for (let x2 = 0; x2 < size2; x2++) {
 			// The (float) center of the filter in the src image

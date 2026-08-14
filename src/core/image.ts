@@ -109,7 +109,7 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		if (this.data instanceof type)
 			return this.copy() as unknown as VImageData<T>;
 			
-		const out = new type(this.data.length) as T;
+		const out = new type(this.data.length);
 		const is_input_int  = !isArrayFloat(this.data);
 		const is_output_int = !isArrayFloat(out);
 
@@ -151,7 +151,7 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 	}
 
 	/** Dummy function - returns self. */
-	decode(): VImageData {
+	decode(): this {
 		return this;
 	}
 

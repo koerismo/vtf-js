@@ -84,7 +84,7 @@ function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, 
 			return new VImageData(out, source.width, source.height);
 		},
 
-	} as VCodec;
+	};
 }
 
 registerCodec(VFormats.RGBA8888, createGenericRGBA(VFormats.RGBA8888, 'Uint8', 0, 1, 2, 3));

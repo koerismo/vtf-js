@@ -71,7 +71,7 @@ export class Vtf {
 	 * Retrieves the first resource that matches the given tag, or undefined.
 	 * If the resource is encoded, it will be decoded in-place and returned.
 	 */
-	async getResource<T extends keyof VResourceTypeMap>(tag: T): Promise<VResourceTypeMap[T] | undefined>;
+	async getResource<T extends keyof VResourceTypeMap>(tag: T): Promise<InstanceType<VResourceTypeMap[T]> | undefined>;
 	async getResource(tag: number): Promise<VResource | undefined>;
 	async getResource(tag: number): Promise<VResourceMapped | VResource | undefined> {
 		const idx = this.meta.findIndex((x) => x.tag === tag);

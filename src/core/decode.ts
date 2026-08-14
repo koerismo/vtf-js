@@ -28,11 +28,11 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boo
 		info.compression_method = VCompressionMethods.Deflate;
 	}
 
-	const mips: number[][][] = info.compressed_lengths = new Array(info.mipmaps);
+	const mips = info.compressed_lengths = new Array<number[][]>(info.mipmaps);
 	for ( let x=info.mipmaps-1; x>=0; x-- ) {
-		const frames: number[][] = mips[x] = new Array(info.frames);
+		const frames = mips[x] = new Array<number[]>(info.frames);
 		for ( let y=0; y<info.frames; y++ ) {
-			const faces: number[] = frames[y] = new Array(face_count);
+			const faces = frames[y] = new Array<number>(face_count);
 			for ( let z=0; z<face_count; z++ ) {
 				faces[z] = view.read_u32();
 			}
@@ -68,7 +68,7 @@ export default async function decode(data: ArrayBufferLike, _options?: Partial<V
 
 	// File format version
 	const seven         = view.read_u32();
-	info.version        = <(0|1|2|3|4|5|6)>view.read_u32();
+	info.version        = view.read_u32();
 	if (seven !== 7 || info.version < 0 || info.version > 6)
 		throw Error(`Vtf.decode: Encountered invalid format version! (${seven}.${info.version})`)
 
@@ -117,7 +117,7 @@ export default async function decode(data: ArrayBufferLike, _options?: Partial<V
 	else {
 		const thumb_size = getCodec(info.thumb_format).length(info.thumb_width, info.thumb_height);
 		const thumb_data = view.ref(header_length, thumb_size);
-		thumb = await VThumbResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_THUMB, 0x0, header_length), thumb_data, info, options);
+		thumb = VThumbResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_THUMB, 0x0, header_length), thumb_data, info, options);
 
 		const body_offset = header_length + thumb_size;
 		const body_data = view.ref(body_offset);

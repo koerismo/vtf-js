@@ -11,8 +11,8 @@ function wrap(m: (data: Uint8Array, arg: any, cb: (error: Error|null, result: an
 	return (data: Uint8Array, arg: any): Promise<Uint8Array> => {
 		return new Promise((resolve, reject) => {
 			m(data, arg, (error: Error | null, result: Uint8Array) => {
-				if (error) return reject(error);
-				resolve(new Uint8Array(result.buffer));
+				if (error) reject(error);
+				else resolve(new Uint8Array(result.buffer));
 			});
 		});
 	}

@@ -50,10 +50,7 @@ export function getThumbMip(
 }
 
 export function isLegacy(res: VResource | VHeader): boolean {
-	if (
-		res.tag === VHeaderTags.TAG_LEGACY_BODY ||
-		res.tag === VHeaderTags.TAG_LEGACY_THUMB
-	)
+	if (res.tag === VHeaderTags.TAG_LEGACY_BODY || res.tag === VHeaderTags.TAG_LEGACY_THUMB)
 		return true;
 	return !!VResourceTypes[res.tag]?.isLegacy;
 }

@@ -10,17 +10,17 @@ import { DataBuffer } from './buffer.js';
 
 
 /** A collection of common resource header tags as BE 24-bit integers. */
-export enum VHeaderTags {
-	TAG_LEGACY_BODY  = 0x30_00_00,
-	TAG_LEGACY_THUMB = 0x01_00_00,
-	TAG_CRC          = 0x43_52_43,
-	TAG_KVD          = 0x48_56_44,
-	TAG_LOD          = 0x4C_4F_44,
-	TAG_SHEET        = 0x10_00_00,
-	TAG_TS0          = 0x54_54_30,
-	TAG_AXC          = 0x41_58_43,
-	TAG_HOTSPOT      = 0x2B_00_00, // +\0\0
-}
+export const VHeaderTags = {
+	TAG_LEGACY_BODY: 0x30_00_00,
+	TAG_LEGACY_THUMB: 0x01_00_00,
+	TAG_CRC: 0x43_52_43,
+	TAG_KVD: 0x48_56_44,
+	TAG_LOD: 0x4c_4f_44,
+	TAG_SHEET: 0x10_00_00,
+	TAG_TS0: 0x54_54_30,
+	TAG_AXC: 0x41_58_43,
+	TAG_HOTSPOT: 0x2b_00_00, // +\0\0
+} as const satisfies Record<string, number>;
 
 /** Implements a resource header. This serves as a container to provide to {@link VResourceStatic} when decoding. */
 export class VHeader {
@@ -159,13 +159,13 @@ export class VBodyResource extends VBaseResource {
 		const packed_slices: Uint8Array[] = [];
 		let packed_length = 0;
 
-		const cl_mipmaps: number[][][] = info.compressed_lengths = new Array(info.mipmaps);
+		const cl_mipmaps = info.compressed_lengths = new Array<number[][]>(info.mipmaps);
 		for ( let x=info.mipmaps-1; x >= 0; x-- ) { // mipmaps
 			
-			const cl_frames: number[][] = cl_mipmaps[x] = new Array(info.frames);
+			const cl_frames = cl_mipmaps[x] = new Array<number[]>(info.frames);
 			for ( let y=0; y < info.frames; y++ ) { // frames
 				
-				const cl_faces: number[] = cl_frames[y] = new Array(face_count);
+				const cl_faces = cl_frames[y] = new Array<number>(face_count);
 				for ( let z=0; z < face_count; z++ ) { // faces
 
 					const [width, height] = getMipSize(x, info.width, info.height);
