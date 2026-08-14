@@ -1,7 +1,7 @@
 import { Vtf, VImageData, VFormats, VCollection } from '../dist/index.js';
 import '../dist/addons/compress/node.js';
 
-import { deepStrictEqual, fail } from 'node:assert/strict';
+import { deepStrictEqual, fail, strictEqual } from 'node:assert/strict';
 
 const image_big = new VImageData(new Uint8Array(4 * 4 * 4).fill(255), 4, 4);
 const image_small = new VImageData(new Uint8Array(1 * 1 * 4).fill(255), 1, 1);
@@ -30,12 +30,14 @@ describe('Vtf', () => {
 	it('Constructs reflectivity without source', () => {
 		const data = VCollection.fromFrames([image_big]);
 		const vtf = new Vtf(data);
+		strictEqual(vtf.computeReflectivity(), false);
 		deepStrictEqual(vtf.reflectivity, new Float32Array(3).fill(0.0));
 	});
 
 	it('Constructs reflectivity with source', () => {
 		const data = VCollection.fromFrames([image_small]);
 		const vtf = new Vtf(data);
+		strictEqual(vtf.computeReflectivity(), true);
 		deepStrictEqual(vtf.reflectivity, new Float32Array(3).fill(1.0));
 	});
 

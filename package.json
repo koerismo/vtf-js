@@ -18,6 +18,7 @@
 	},
 	"scripts": {
 		"test": "mocha --extension=js,ts",
+		"check": "eslint -c eslint.config.js",
 		"build": "tsc",
 		"watch": "tsc --watch"
 	},

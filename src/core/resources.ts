@@ -1,17 +1,13 @@
 import { VEncodedImageData, getCodec, type VImageEither } from './image.js';
-import { DataBuffer } from './buffer.js';
+import { getFaceCount, getMipSize, compress, decompress } from './utils.js';
 import { VFileHeader, VtfDecodeOptions } from '../vtf.js';
 import { NO_DATA, VFormats } from './enums.js';
-import { VCollection } from './providers.js';
-import { getFaceCount, getMipSize, compress, decompress } from './utils.js';
+import { VCollection } from './collection.js';
+import { DataBuffer } from './buffer.js';
 
-/** A map of header tags and their corresponding decoders. Using {@link registerResourceType} to register new tags is recommended! */
-export const VResourceTypes: {[key: number]: VResourceStatic} = {};
 
-/** Registers a resource to be used when the specified tag is encountered. */
-export function registerResourceType(resource: VResourceStatic, tag: number) {
-	VResourceTypes[tag] = resource;
-}
+// #region Headers
+
 
 /** A collection of common resource header tags as BE 24-bit integers. */
 export enum VHeaderTags {
@@ -41,8 +37,8 @@ export class VHeader {
 }
 
 
-type Awaitable<T> = T | Promise<T>;
-
+export type Awaitable<T> = T | Promise<T>;
+export type ValueOf<T> = T[keyof T];
 
 /** Defines a resource decoder. */
 export interface VResourceStatic {
@@ -64,7 +60,7 @@ export interface VResource {
 
 /** Implements a generic resource entry. This can be subclassed to quickly implement {@link VResource}. */
 export class VBaseResource implements VResource {
-	static readonly legacy: boolean = false;
+	static readonly isLegacy: boolean = false;
 
 	constructor(
 		public readonly tag: number,
@@ -72,7 +68,7 @@ export class VBaseResource implements VResource {
 		public raw?: DataBuffer) {
 	}
 
-	static decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader, options: VtfDecodeOptions): Awaitable<VBaseResource | VErrorResource> {
+	static decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader, options: VtfDecodeOptions): Awaitable<VBaseResource> {
 		return new VBaseResource(header.tag, header.flags, view);
 	}
 
@@ -82,22 +78,31 @@ export class VBaseResource implements VResource {
 }
 
 /**
- * @internal Represents a resource which failed to be parsed by its respective handler.
- * @todo TODO: This is not implemented yet!
+ * A resource which has not yet been decoded. See {@link VEncodedResource.decode()}.
  */
-export class VErrorResource extends VBaseResource {
+export class VEncodedResource extends VBaseResource {
 	constructor(
-			tag: number,
-			flags: number,
-			public error: string | Error
-		) {
-		super(tag, flags);
+		protected readonly header: VHeader,
+		protected readonly view: DataBuffer | undefined,
+		protected readonly info: VFileHeader,
+		protected readonly options: VtfDecodeOptions,
+	) {
+		super(header.tag, header.flags, view);
+	}
+
+	isKnown() {
+		return this.tag in VResourceTypes;
+	}
+
+	decode(): Awaitable<VResource> {
+		return getResourceByType(this.tag)
+			.decode(this.header, this.view, this.info, this.options);
 	}
 }
 
 /** @internal The hi-res image data resource. This is managed internally! */
 export class VBodyResource extends VBaseResource {
-	static readonly legacy = true;
+	static readonly isLegacy = true;
 
 	constructor(
 			flags: number,
@@ -199,7 +204,7 @@ export class VBodyResource extends VBaseResource {
 
 /** The low-res image data resource. */
 export class VThumbResource extends VBaseResource {
-	static readonly legacy = true;
+	static readonly isLegacy = true;
 	public image: VImageEither;
 
 	constructor(
@@ -248,10 +253,6 @@ export interface SheetSequence {
 }
 
 export class VSheetResource extends VBaseResource {
-	static {
-		registerResourceType(VSheetResource, VHeaderTags.TAG_SHEET);
-	}
-
 	constructor(
 		flags: number,
 		public version: number,
@@ -330,10 +331,6 @@ export class VSheetResource extends VBaseResource {
 }
 
 export class VExtendedSettingsResource extends VBaseResource {
-	static {
-		registerResourceType(VExtendedSettingsResource, VHeaderTags.TAG_TS0);
-	}
-
 	constructor(
 		flags: number,
 		public textureFlags: number) {
@@ -353,10 +350,6 @@ export class VExtendedSettingsResource extends VBaseResource {
 }
 
 export class VLodControlResource extends VBaseResource {
-	static {
-		// registerResourceType(VLodControlResource, VHeaderTags.TAG_LOD);
-	}
-
 	constructor(
 		flags: number,
 		public resolutionClampX: number,
@@ -416,12 +409,8 @@ export class HotspotRect {
 	canTileY() { return !!(this.flags & HotSpotRectFlags.TileY); }
 }
 
-/** The Hotspot data resource. See {@link https://wiki.stratasource.org/modding/overview/vtf-hotspot-resource this page} for more information. */
+/** The Hotspot data resource. See {@link https://wiki.stratasource.org/modding/formats/vtf-hotspot-resource this page} for more information. */
 export class VHotspotResource extends VBaseResource {
-	static {
-		registerResourceType(VHotspotResource, VHeaderTags.TAG_HOTSPOT);
-	}
-
 	constructor(
 			flags: number,
 			public version: number,
@@ -477,4 +466,55 @@ export class VHotspotResource extends VBaseResource {
 
 		return view.buffer;
 	}
+}
+
+
+// #region Resource Types
+
+export type VResourceMapped = VResourceTypeMap[keyof VResourceTypeMap];
+
+export interface VResourceTypeMap {
+	[VHeaderTags.TAG_SHEET]: typeof VSheetResource;
+	[VHeaderTags.TAG_TS0]: typeof VExtendedSettingsResource;
+	[VHeaderTags.TAG_LOD]: typeof VLodControlResource;
+	[VHeaderTags.TAG_HOTSPOT]: typeof VHotspotResource;
+}
+
+/**
+ * A map of header tags and their corresponding decoders.
+ * Using {@link registerResourceType} to register new tags is recommended!
+ */
+export const VResourceTypes: Record<number, VResourceStatic> = {
+	[VHeaderTags.TAG_SHEET]: VSheetResource,
+	[VHeaderTags.TAG_TS0]: VExtendedSettingsResource,
+	[VHeaderTags.TAG_LOD]: VLodControlResource,
+	[VHeaderTags.TAG_HOTSPOT]: VHotspotResource,
+} satisfies VResourceTypeMap;
+
+
+/** Registers a resource to be used when the specified tag is encountered. */
+export function registerResourceType<T extends keyof VResourceTypeMap>(resource: VResourceTypeMap[T], tag: T): void;
+/**
+ * @deprecated
+ * Resource not defined in typings!
+ * 
+ * ## Add this resource by re-declaring `VResourceTypeMap` to get intellisense!
+ * 
+ * @example
+ * ```ts
+ * declare module "vtf-js/resources" {
+ *     interface VResourceTypeMap {
+ *         [VHeaderTags.TAG_KVD]: typeof CustomKeyValuesResource;
+ *     }
+ * }
+ * ```
+ */
+export function registerResourceType(resource: VResourceStatic, tag: number): void;
+export function registerResourceType(resource: VResourceStatic, tag: number) {
+	VResourceTypes[tag] = resource;
+}
+
+/** Gets the resource associated with the given tag, or {@link VBaseResource} if none is associated. */
+export function getResourceByType(tag: number): VResourceStatic {
+	return VResourceTypes[tag] ?? VBaseResource;
 }

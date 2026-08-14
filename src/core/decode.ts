@@ -2,7 +2,7 @@ import { Vtf, VFileHeader, type VtfConstructorOptions, type VtfDecodeOptions } f
 import { DataBuffer } from './buffer.js';
 import { VCompressionMethods, VFormats, NO_DATA } from './enums.js';
 import { getHeaderLength, getFaceCount, isLegacy } from './utils.js';
-import { VBaseResource, VHeader, VResourceTypes, VBodyResource, VHeaderTags, type VResource, VThumbResource } from './resources.js';
+import { VHeader, VBodyResource, VHeaderTags, type VResource, VThumbResource, VEncodedResource, getResourceByType } from './resources.js';
 import { getCodec } from './image.js';
 
 function read_format(id: number) {
@@ -50,10 +50,10 @@ function parse_decode_options(options?: Partial<VtfDecodeOptions>) {
 }
 
 
-
 export default async function decode(data: ArrayBufferLike, options?: Partial<VtfDecodeOptions<false>>): Promise<Vtf>;
 export default async function decode(data: ArrayBufferLike, options: Partial<VtfDecodeOptions<true>>): Promise<VFileHeader>;
 export default async function decode(data: ArrayBufferLike, options: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader>;
+export default async function decode(data: ArrayBufferLike, options?: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader>;
 export default async function decode(data: ArrayBufferLike, _options?: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader> {
 	const options = parse_decode_options(_options);
 	const info = new VFileHeader();
@@ -171,8 +171,11 @@ export default async function decode(data: ArrayBufferLike, _options?: Partial<V
 			continue;
 		}
 
-		const type = VResourceTypes[header.tag] ?? VBaseResource;
-		meta.push(await type.decode(header, data, info, options));
+		if (options.onDemand) {
+			meta.push(new VEncodedResource(header, data, info, options));
+		} else {
+			meta.push(await getResourceByType(header.tag).decode(header, data, info, options));
+		}
 	}
 
 	if (!body)

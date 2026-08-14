@@ -2,10 +2,6 @@ import { VImageData, type VImageEither } from './image.js';
 import { VFilter, VFilters, VImageScaler } from './resize.js';
 import { getMipSize, getThumbMip } from './utils.js';
 
-// TODO:
-// add generateThumb() etc.
-// make shared "default" filter preset
-
 export interface VSliceSize {
 	width: number;
 	height: number;

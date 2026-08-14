@@ -1,7 +1,6 @@
-import type { VCollection } from './core/providers.js';
+import type { VCollection } from './core/collection.js';
 import { VCompressionMethods, VFormats } from './core/enums.js';
-import { VBaseResource, VResource, VThumbResource } from './core/resources.js';
-import { getThumbMip } from './core/utils.js';
+import { VBaseResource, VEncodedResource, VResource, VResourceMapped, VResourceTypeMap, VThumbResource } from './core/resources.js';
 import { getCodec } from './core/image.js';
 
 import encode from './core/encode.js';
@@ -25,6 +24,8 @@ export interface VtfConstructorOptions {
 export type VtfDecodeOptions<HeaderOnly extends boolean = boolean> = {
 	/** If true, skips decoding any of the Vtf body. @default false */
 	headerOnly: HeaderOnly;
+	/** If true, metadata resources will remain encoded until their data is explicitly requested. @default false */
+	onDemand: boolean;
 	/** If true, data will reference the original buffer and only be cloned when necessary. @default false */
 	noClone: boolean;
 };
@@ -58,28 +59,47 @@ export class Vtf {
 		this.flags = options?.flags ?? 0x0;
 		this.meta = options?.meta ?? [];
 		this.thumb = options?.thumb;
-
-		const dataSize = this.body.getSize();
-		const dataMipCount = this.body.getMipmapCount();
-
-		if (options?.reflectivity) {
-			this.reflectivity = options.reflectivity;
-		} else {
-			const pixelMipIdx = getThumbMip(...dataSize, 1);
-			if (pixelMipIdx < dataMipCount) {
-				const smallest_mip = this.body
-					.getImage(pixelMipIdx, 0, 0, 0)
-					.coerce(Float32Array);
-				this.reflectivity = smallest_mip.data.slice(0, 3);
-			} else {
-				this.reflectivity = new Float32Array(3).fill(0);
-			}
-		}
+		this.reflectivity = options?.reflectivity ?? new Float32Array(3);
 
 		this.first_frame = options?.first_frame ?? 0;
 		this.bump_scale = options?.bump_scale ?? 1.0;
 		this.compression_level = options?.compression_level ?? 0;
 		this.compression_method = options?.compression_method ?? VCompressionMethods.Deflate;
+	}
+
+	/**
+	 * Retrieves the first resource that matches the given tag, or undefined.
+	 * If the resource is encoded, it will be decoded in-place and returned.
+	 */
+	async getResource<T extends keyof VResourceTypeMap>(tag: T): Promise<VResourceTypeMap[T] | undefined>;
+	async getResource(tag: number): Promise<VResource | undefined>;
+	async getResource(tag: number): Promise<VResourceMapped | VResource | undefined> {
+		const idx = this.meta.findIndex((x) => x.tag === tag);
+		if (idx === -1) return;
+
+		let resource = this.meta[idx];
+		if (resource instanceof VEncodedResource)
+			resource = this.meta[idx] = await resource.decode();
+
+		return resource;
+	}
+
+	/** Sets this Vtf's reflectivity from the smallest mipmap. If no mipmap exists, no action is taken and `false` is returned. */
+	computeReflectivity(frame: number = 0, face: number = 0, slice: number = 0): boolean {
+		const thumb = this.body.getRawThumbMip(1, frame, face, slice);
+		if (!thumb) return false;
+
+		this.reflectivity = thumb.decode().coerce(Float32Array).data.slice(0, 3);
+		return true;
+	}
+
+	/** Sets this Vtf's thumbnail from the matching mipmap. If no mipmap exists, no action is taken and `false` is returned. */
+	computeThumb(frame: number = 0, face: number = 0, slice: number = 0): boolean {
+		const thumb = this.body.getRawThumbMip(16, frame, face, slice);
+		if (!thumb) return false;
+
+		this.thumb = new VThumbResource(0x0, thumb);
+		return true;
 	}
 
 	/** Encodes this Vtf object into an ArrayBuffer. */
@@ -90,14 +110,14 @@ export class Vtf {
 	/**
 	 * Parses the provided ArrayBuffer into a new Vtf object.
 	 * @param data The Vtf file data.
-	 * @param header_only (default: `false`) If true, a VFileHeader will be returned instead, which only contains the header contents.
-	 * @param lazy_decode (default: `true`) If false, all data in the Vtf will be decoded in this function call. Otherwise, images will only be decoded when requested.
+	 * @param options Decoding-specific options. See {@link VtfDecodeOptions}.
 	 */
 	static decode(data: ArrayBufferLike, options?: Partial<VtfDecodeOptions<false>>): Promise<Vtf>;
 	static decode(data: ArrayBufferLike, options: Partial<VtfDecodeOptions<true>>): Promise<VFileHeader>;
 	static decode(data: ArrayBufferLike, options: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader>;
+	static decode(data: ArrayBufferLike, options?: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader>;
 	static decode(data: ArrayBufferLike, options?: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader> {
-		return decode.call(this, data, options!);
+		return decode.call(this, data, options);
 	}
 }
 
