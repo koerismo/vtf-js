@@ -22,7 +22,7 @@ jobs:
         run: pnpm run build
 
       - name: Publish
-        run: pnpm publish --access public
+        run: pnpm publish --access public --no-git-checks
 
   publish_jsr:
     runs-on: ubuntu-latest
