@@ -90,7 +90,7 @@ export class VEncodedResource extends VBaseResource {
 		super(header.tag, header.flags, view);
 	}
 
-	isKnown() {
+	isKnown(): boolean {
 		return this.tag in VResourceTypes;
 	}
 
@@ -402,11 +402,11 @@ export class HotspotRect {
 	get width(): number { return this.max_x - this.min_x; }
 	get height(): number { return this.max_y - this.min_y; }
 
-	canRotate() { return !!(this.flags & HotSpotRectFlags.AllowRotation); }
-	canReflect() { return !!(this.flags & HotSpotRectFlags.AllowReflection); }
-	isAltGroup() { return !!(this.flags & HotSpotRectFlags.AltGroup); }
-	canTileX() { return !!(this.flags & HotSpotRectFlags.TileX); }
-	canTileY() { return !!(this.flags & HotSpotRectFlags.TileY); }
+	canRotate(): boolean { return !!(this.flags & HotSpotRectFlags.AllowRotation); }
+	canReflect(): boolean { return !!(this.flags & HotSpotRectFlags.AllowReflection); }
+	isAltGroup(): boolean { return !!(this.flags & HotSpotRectFlags.AltGroup); }
+	canTileX(): boolean { return !!(this.flags & HotSpotRectFlags.TileX); }
+	canTileY(): boolean { return !!(this.flags & HotSpotRectFlags.TileY); }
 }
 
 /** The Hotspot data resource. See {@link https://wiki.stratasource.org/modding/formats/vtf-hotspot-resource this page} for more information. */

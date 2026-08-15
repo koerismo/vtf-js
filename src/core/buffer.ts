@@ -9,7 +9,7 @@ export class DataBuffer extends Uint8Array {
 	protected _internal_ptr = 0;
 	protected little = true;
 
-	get pointer() {
+	get pointer(): number {
 		return this._internal_ptr;
 	}
 

@@ -31,7 +31,7 @@ export class VCollection {
 	protected width: number = 0;
 	protected height: number = 0;
 
-	static fromFrames(frameList: VImageEither[], options?: Partial<Omit<VCollectionSize, 'frames'>>) {
+	static fromFrames(frameList: VImageEither[], options?: Partial<Omit<VCollectionSize, 'frames'>>): VCollection {
 		if (!frameList.length)
 			throw Error(
 				'VDataCollection.fromFrames: Requires at least one item in the provided array!',
@@ -44,7 +44,7 @@ export class VCollection {
 		return col;
 	}
 
-	static fromFaces(faceList: VImageEither[], options?: Partial<Omit<VCollectionSize, 'faces'>>) {
+	static fromFaces(faceList: VImageEither[], options?: Partial<Omit<VCollectionSize, 'faces'>>): VCollection {
 		if (!faceList.length)
 			throw Error(
 				'VDataCollection.fromFaces: Requires at least one item in the provided array!',
@@ -90,8 +90,8 @@ export class VCollection {
 	}
 
 	/** Returns whether this collection has valid dimensions. */
-	hasValidBounds() {
-		return (
+	hasValidBounds(): boolean {
+		return !!(
 			this.mipmapCount &&
 			this.frameCount &&
 			this.faceCount &&

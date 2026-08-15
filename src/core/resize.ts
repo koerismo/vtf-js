@@ -1,6 +1,6 @@
 import { getPixelArrayMax, VImageData, VPixelArray } from './image.js';
 
-function sinc(x: number) {
+function sinc(x: number): number {
 	if (x === 0) return 1.0;
 	const a = Math.PI * x;
 	return Math.sin(a) / a;

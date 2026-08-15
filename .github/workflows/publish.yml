@@ -34,4 +34,4 @@ jobs:
       - name: Install
         run: npm install
       - name: Publish package
-        run: npx jsr publish
+        run: npx jsr publish --allow-slow-types

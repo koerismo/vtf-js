@@ -170,7 +170,7 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		return <VPixelArrayConstructor<D>> this.data.constructor;
 	}
 
-	getIdx(x: number, y: number) {
+	getIdx(x: number, y: number): number {
 		return (y * this.width + x) * 4
 	}
 }
