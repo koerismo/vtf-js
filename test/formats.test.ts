@@ -1,5 +1,7 @@
 import { VCodecs } from '../dist/core/image.js';
 import { VImageData, VFormats } from '../dist/index.js';
+import { getEnumKey } from '../dist/core/enums.js';
+
 import assert from 'node:assert/strict';
 import '../dist/addons/squish.js';
 
@@ -55,12 +57,13 @@ const F32_THRESHOLD = 1e-8;
 
 describe('Format IO Difftest', () => {
 	for (const format of formats) {
+		const formatName = getEnumKey(VFormats,format);
 		if (VCodecs[format] == null) {
-			console.warn('Skipping unsupported format', VFormats[format]);
+			console.warn('Skipping unsupported format', formatName);
 			continue;
 		}
 
-		it(`Format ${VFormats[format]}`, () => {
+		it(`Format ${formatName}`, () => {
 
 			const big = makeTestImage(256, 256);
 			const small = makeTestImage(8, 8);
@@ -76,9 +79,10 @@ describe('Format IO Difftest', () => {
 				assert(diffImages(weird, weird_out, cA, cB, max_diff), `Channel diff ${cA}-${cB} failed on image! [weird]`);
 			};
 
-			if (!checkImageSizes(big, big_out)) throw Error(`[big] Format ${VFormats[format]} failed size check!`);
-			if (!checkImageSizes(small, small_out)) throw Error(`[small] Format ${VFormats[format]} failed size check!`);
-			if (!checkImageSizes(weird, weird_out)) throw Error(`[weird] Format ${VFormats[format]} failed size check!`);
+			
+			if (!checkImageSizes(big, big_out)) throw Error(`[big] Format ${formatName} failed size check!`);
+			if (!checkImageSizes(small, small_out)) throw Error(`[small] Format ${formatName} failed size check!`);
+			if (!checkImageSizes(weird, weird_out)) throw Error(`[weird] Format ${formatName} failed size check!`);
 
 			switch (format) {
 				case VFormats.A8:
