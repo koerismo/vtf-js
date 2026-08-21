@@ -409,7 +409,10 @@ export class HotspotRect {
 	canTileY(): boolean { return !!(this.flags & HotSpotRectFlags.TileY); }
 }
 
-/** The Hotspot data resource. See {@link https://wiki.stratasource.org/modding/formats/vtf-hotspot-resource this page} for more information. */
+/**
+ * The Hotspot data resource. 
+ * See {@link https://wiki.stratasource.org/modding/formats/vtf-hotspot-resource this page} for more information.
+ */
 export class VHotspotResource extends VBaseResource {
 	constructor(
 			flags: number,

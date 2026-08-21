@@ -1,5 +1,10 @@
 // Vtf class
-import { Vtf, VFileHeader } from './vtf.js';
+import { Vtf } from './vtf.js';
+
+export { VFileHeader, type VtfConstructorOptions } from './vtf.js';
+export default Vtf;
+export { Vtf };
+
 
 // Image data
 export {
@@ -26,6 +31,3 @@ export { VFormats, VFlags, VCompressionMethods } from './core/enums.js';
 
 // Data collections
 export { VCollection, type VCollectionSize } from './core/collection.js';
-
-export default Vtf;
-export { Vtf, VFileHeader };

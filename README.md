@@ -2,7 +2,7 @@
 *A javascript IO library for the Valve Texture Format.*
 
 ## Overview
-`vtf-js` is a platform-independent library for reading and authoring Vtfs. The library supports encoding and decoding VTF versions 7.1 - 7.6, including Strata-format compressed Vtfs. Mipmap generation is automated by default, however interfaces for manually specifying image data for each mipmap are also available (see `VDataCollection`).
+`vtf-js` is a platform-independent library for reading and authoring Vtfs. The library supports encoding and decoding VTF versions 7.1 - 7.6, including Strata compressed Vtfs. This library provides full control over a file's resources and image data by default (see `VCollection`), however most aspects of the conversion process can be automated with the provided methods.
 
 The following formats are supported by default.
 
@@ -65,6 +65,9 @@ const frames = VCollection.fromFrames([image], { mips: -1 });
 frames.generateMips(VFilters.NICE);
 
 const vtf = new Vtf(frames, { version: 4, format: VFormats.DXT5 });
+vtf.computeReflectivity();
+vtf.computeThumb();
+
 const out = await vtf.encode();
 ```
 

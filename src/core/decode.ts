@@ -5,11 +5,6 @@ import { getHeaderLength, getFaceCount, isLegacy } from './utils.js';
 import { VHeader, VBodyResource, VHeaderTags, type VResource, VThumbResource, VEncodedResource, getResourceByType } from './resources.js';
 import { getCodec } from './image.js';
 
-function read_format(id: number) {
-	if (VFormats[id] == undefined) throw Error(`read_format: Encountered invalid format (id=${id}) in header!`);
-	return id;
-}
-
 function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boolean {
 	const face_count = getFaceCount(info);
 
@@ -21,7 +16,7 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boo
 
 	const view = buffer.ref(header.start + 0x4);
 	info.compression_level = view.read_i16();
-	info.compression_method = view.read_i16();
+	info.compression_method = view.read_i16() as VCompressionMethods;
 
 	// Legacy AXC v1 support - default to Deflate
 	if (!info.compression_method) {
@@ -89,7 +84,7 @@ export default async function decode(data: ArrayBufferLike, _options?: Partial<V
 	view.inc(4);
 
 	info.bump_scale     = view.read_f32();
-	info.format         = read_format(view.read_u32());
+	info.format         = view.read_u32() as VFormats;
 	info.mipmaps        = view.read_u8();
 
 	// Thumbnail

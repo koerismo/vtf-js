@@ -1,4 +1,4 @@
-import { VFormats, type VFlags } from './enums.js';
+import { VFormats, VFlags, getEnumKey } from './enums.js';
 import { VImageScaler, type VFilter } from './resize.js';
 import { clamp } from './utils.js';
 
@@ -31,7 +31,7 @@ export interface VPixelArrayConstructor<
 
 /** An object that defines an image encoder/decoder for a given format. */
 export interface VCodec {
-	alpha: VFlags.None | VFlags.OneBitAlpha | VFlags.EightBitAlpha;
+	alpha: typeof VFlags['None' | 'OneBitAlpha' | 'EightBitAlpha'];
 	length(width: number, height: number): number;
 	encode(data: VImageData): VEncodedImageData;
 	decode(data: VEncodedImageData): VImageData;
@@ -52,7 +52,7 @@ export function getPixelArrayMax(arr: VPixelArray): number {
 }
 
 /** All currently-registered image codecs. */
-export const VCodecs: {[key in VFormats]?: VCodec} = {};
+export const VCodecs: Partial<Record<VFormats, VCodec>> = {};
 
 /** Register an image encoder/decoder for the specified format. */
 export function registerCodec(format: VFormats, codec: VCodec) {
@@ -63,7 +63,7 @@ export function getCodec(format: VFormats, strict?: true): VCodec;
 export function getCodec(format: VFormats, strict: boolean): VCodec | undefined;
 export function getCodec(format: VFormats, strict: boolean=true): VCodec | undefined {
 	const codec = VCodecs[format];
-	if (!codec && strict) throw Error(`getCodec: Could not get codec for format ${VFormats[format]}!`);
+	if (!codec && strict) throw Error(`getCodec: Could not get codec for format ${getEnumKey(VFormats, format) ?? 'UNKNOWN'} (id=${format})!`);
 	return codec;
 }
 
@@ -146,7 +146,7 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		const codec = getCodec(format);
 		const length = codec.length(this.width, this.height);
 		const out = codec.encode(this);
-		if (out.data.length !== length) throw Error(`VImageData.encode: Encoded ${VFormats[format]} image failed length validation! (expected ${length} but got ${out.data.length})`);
+		if (out.data.length !== length) throw Error(`VImageData.encode: Encoded ${getEnumKey(VFormats, format)} image failed length validation! (expected ${length} but got ${out.data.length})`);
 		return out;
 	}
 
@@ -195,7 +195,7 @@ export class VEncodedImageData {
 	decode(): VImageData {
 		const length = this.width * this.height * 4;
 		const out = getCodec(this.format).decode(this);
-		if (out.data.length !== length) throw Error(`VEncodedImageData.decode: Decoded ${VFormats[this.format]} image failed length validation! (expected ${length} but got ${out.data.length})`);
+		if (out.data.length !== length) throw Error(`VEncodedImageData.decode: Decoded ${getEnumKey(VFormats, this.format)} image failed length validation! (expected ${length} but got ${out.data.length})`);
 		return out;
 	}
 
