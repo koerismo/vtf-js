@@ -180,9 +180,11 @@ export class VCollection {
 	 * If an image is decoded, it will replace the original in this collection automatically.
 	 * @see {@link VCollection.getRawImage()}
 	 */
-	getImage(mip: number, frame: number, face: number, slice: number): VImageData {
-		let image = this.getRawImage(mip, frame, face, slice);
-		if (image.isEncoded) image = this.vdata[mip][frame][face][slice] = image.decode();
+	getImage(mip: number, frame: number, face: number, slice: number, throwIfEmpty?: true): VImageData;
+	getImage(mip: number, frame: number, face: number, slice: number, throwIfEmpty: boolean): VImageData | undefined;
+	getImage(mip: number, frame: number, face: number, slice: number, throwIfEmpty: boolean = true): VImageData | undefined {
+		let image = this.getRawImage(mip, frame, face, slice, throwIfEmpty);
+		if (image && image.isEncoded) image = this.vdata[mip][frame][face][slice] = image.decode();
 		return image;
 	}
 
@@ -190,12 +192,14 @@ export class VCollection {
 	 * Gets the specified image from the collection without any decoding.
 	 * @see {@link VCollection.getImage()}
 	 */
-	getRawImage(mip: number, frame: number, face: number, slice: number): VImageEither {
+	getRawImage(mip: number, frame: number, face: number, slice: number, throwIfEmpty?: true): VImageEither;
+	getRawImage(mip: number, frame: number, face: number, slice: number, throwIfEmpty: boolean): VImageEither | undefined;
+	getRawImage(mip: number, frame: number, face: number, slice: number, throwIfEmpty: boolean = true): VImageEither | undefined {
 		if (!this.isInBounds(mip, frame, face, slice))
 			throw Error(`VCollection.getRawImage: Attempted to get image out-of-bounds!`);
 
 		const image = this.vdata[mip][frame][face][slice];
-		if (!image)
+		if (throwIfEmpty && !image)
 			throw Error(
 				`VCollection.getRawImage: Image at (mip=${mip}, frame=${frame}, face=${face}, slice=${slice}) does not exist in collection!`,
 			);
