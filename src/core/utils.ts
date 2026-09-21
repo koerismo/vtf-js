@@ -112,7 +112,7 @@ export let compress: CompressFunction = async (data, method, level) => {
 		);
 
 	// Blob requires a non-shared buffer. Copy it beforehand...
-	if (data.buffer instanceof SharedArrayBuffer) data = new Uint8Array(data);
+	if (!(data.buffer instanceof ArrayBuffer)) data = new Uint8Array(data);
 
 	const inStream = new Blob([data as Uint8Array<ArrayBuffer>]).stream();
 	const compStream = new CompressionStream('deflate');
@@ -138,7 +138,7 @@ export let decompress: DecompressFunction = async (data, method, _level) => {
 	}
 
 	// Blob requires a non-shared buffer. Copy it beforehand...
-	if (data.buffer instanceof SharedArrayBuffer) data = new Uint8Array(data);
+	if (!(data.buffer instanceof ArrayBuffer)) data = new Uint8Array(data);
 
 	const inStream = new Blob([data as Uint8Array<ArrayBuffer>]).stream();
 	const decompStream = new DecompressionStream(
