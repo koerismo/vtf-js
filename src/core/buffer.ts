@@ -5,7 +5,7 @@ const TD = new TextDecoder();
 
 /** Wraps DataView with utility functions and pointer offsets. */
 export class DataBuffer<T extends ArrayBufferLike = ArrayBufferLike> extends Uint8Array<T> {
-	view: DataView;
+	view: DataView = new DataView(this.buffer, this.byteOffset, this.byteLength);
 	protected _internal_ptr = 0;
 	protected little = true;
 
@@ -19,17 +19,16 @@ export class DataBuffer<T extends ArrayBufferLike = ArrayBufferLike> extends Uin
 		this._internal_ptr = v;
 	}
 
-	private constructor(length: number);
-	private constructor(array: ArrayLike<number>);
-	private constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number);
-	private constructor(
+	/**
+	 * @deprecated
+	 * Use the explicit static DataBuffer.new(), DataBuffer.copy() and DataBuffer.ref() methods for improved typing!
+	 */
+	protected constructor(
 		buffer: number | ArrayLike<number> | ArrayBufferLike,
 		byteOffset?: number,
 		length?: number,
 	) {
-		// @ts-expect-error JUST MAKE IT WORK.
-		super(buffer, byteOffset, length);
-		this.view = new DataView(this.buffer, this.byteOffset, this.byteLength);
+		super(buffer as T, byteOffset, length);
 	}
 
 	static new(length: number): DataBuffer<ArrayBuffer> {
@@ -50,17 +49,20 @@ export class DataBuffer<T extends ArrayBufferLike = ArrayBufferLike> extends Uin
 	 * - length defaults to the array's length from byteOffset.
 	 */
 	static ref<V extends ArrayBufferLike>(
+		array: V | Uint8Array<V> | Uint8ClampedArray<V>,
+	): DataBuffer<V>;
+	static ref<V extends ArrayBufferLike>(
+		buffer: V,
+		byteOffset: number,
+		length?: number,
+	): DataBuffer<V>;
+	static ref<V extends ArrayBufferLike>(
 		array: Uint8Array<V> | Uint8ClampedArray<V> | V,
 		byteOffset?: number,
 		length?: number,
 	): DataBuffer<V> {
 		if (ArrayBuffer.isView(array)) {
-			byteOffset ??= 0;
-			return new this(
-				array.buffer,
-				array.byteOffset + byteOffset,
-				length ?? array.length - byteOffset,
-			);
+			return new this(array.buffer, array.byteOffset, array.length);
 		}
 		return new this(array, byteOffset, length);
 	}
@@ -79,7 +81,7 @@ export class DataBuffer<T extends ArrayBufferLike = ArrayBufferLike> extends Uin
 
 	/** Creates a new DataBuffer within the specified bounds. */
 	ref(start = 0, length: number = this.length - start): DataBuffer<T> {
-		const buf = new DataBuffer<T>(this.buffer, start + this.byteOffset, length);
+		const buf = DataBuffer.ref(this.buffer, start + this.byteOffset, length);
 		buf.little = this.little;
 		return buf;
 	}
