@@ -2,14 +2,25 @@ import { Vtf, VFileHeader, type VtfConstructorOptions, type VtfDecodeOptions } f
 import { DataBuffer } from './buffer.js';
 import { VCompressionMethods, VFormats, NO_DATA } from './enums.js';
 import { getHeaderLength, getFaceCount, isLegacy } from './utils.js';
-import { VHeader, VBodyResource, VHeaderTags, type VResource, VThumbResource, VEncodedResource, getResourceByType } from './resources.js';
+import {
+	VHeader,
+	VBodyResource,
+	VHeaderTags,
+	type VResource,
+	VThumbResource,
+	VEncodedResource,
+	getResourceByType,
+} from './resources.js';
 import { getCodec } from './image.js';
 
 function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boolean {
 	const face_count = getFaceCount(info);
 
 	if (header.flags & NO_DATA) {
-		if (header.start !== 0) throw Error(`decode_axc: Expected inline compression value of 0. Got ${header.start} instead!`);
+		if (header.start !== 0)
+			throw Error(
+				`decode_axc: Expected inline compression value of 0. Got ${header.start} instead!`,
+			);
 		info.compression_level = 0;
 		return false;
 	}
@@ -23,12 +34,12 @@ function decode_axc(header: VHeader, buffer: DataBuffer, info: VFileHeader): boo
 		info.compression_method = VCompressionMethods.Deflate;
 	}
 
-	const mips = info.compressed_lengths = new Array<number[][]>(info.mipmaps);
-	for ( let x=info.mipmaps-1; x>=0; x-- ) {
-		const frames = mips[x] = new Array<number[]>(info.frames);
-		for ( let y=0; y<info.frames; y++ ) {
-			const faces = frames[y] = new Array<number>(face_count);
-			for ( let z=0; z<face_count; z++ ) {
+	const mips = (info.compressed_lengths = new Array<number[][]>(info.mipmaps));
+	for (let x = info.mipmaps - 1; x >= 0; x--) {
+		const frames = (mips[x] = new Array<number[]>(info.frames));
+		for (let y = 0; y < info.frames; y++) {
+			const faces = (frames[y] = new Array<number>(face_count));
+			for (let z = 0; z < face_count; z++) {
 				faces[z] = view.read_u32();
 			}
 		}
@@ -44,28 +55,42 @@ function parse_decode_options(options?: Partial<VtfDecodeOptions>) {
 	return options as VtfDecodeOptions;
 }
 
-
-export default async function decode(data: ArrayBufferLike, options?: Partial<VtfDecodeOptions<false>>): Promise<Vtf>;
-export default async function decode(data: ArrayBufferLike, options: Partial<VtfDecodeOptions<true>>): Promise<VFileHeader>;
-export default async function decode(data: ArrayBufferLike, options: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader>;
-export default async function decode(data: ArrayBufferLike, options?: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader>;
-export default async function decode(data: ArrayBufferLike, _options?: Partial<VtfDecodeOptions>): Promise<Vtf | VFileHeader> {
+export default async function decode(
+	data: ArrayBufferLike,
+	options?: Partial<VtfDecodeOptions<false>>,
+): Promise<Vtf>;
+export default async function decode(
+	data: ArrayBufferLike,
+	options: Partial<VtfDecodeOptions<true>>,
+): Promise<VFileHeader>;
+export default async function decode(
+	data: ArrayBufferLike,
+	options: Partial<VtfDecodeOptions>,
+): Promise<Vtf | VFileHeader>;
+export default async function decode(
+	data: ArrayBufferLike,
+	options?: Partial<VtfDecodeOptions>,
+): Promise<Vtf | VFileHeader>;
+export default async function decode(
+	data: ArrayBufferLike,
+	_options?: Partial<VtfDecodeOptions>,
+): Promise<Vtf | VFileHeader> {
 	const options = parse_decode_options(_options);
 	const info = new VFileHeader();
 	info.compression_level = 0;
-	
 
-	const view = new DataBuffer(data);
+	const view = DataBuffer.ref(data);
 
 	const sign = view.read_str(4);
 	if (sign === 'VTFX') throw Error('Vtf.decode: Console vtfs are not supported!');
-	if (sign !== 'VTF\0') throw Error(`Vtf.decode: Encountered invalid file signature! ("${sign}")`);
+	if (sign !== 'VTF\0')
+		throw Error(`Vtf.decode: Encountered invalid file signature! ("${sign}")`);
 
 	// File format version
-	const seven         = view.read_u32();
-	info.version        = view.read_u32();
+	const seven = view.read_u32();
+	info.version = view.read_u32();
 	if (seven !== 7 || info.version < 0 || info.version > 6)
-		throw Error(`Vtf.decode: Encountered invalid format version! (${seven}.${info.version})`)
+		throw Error(`Vtf.decode: Encountered invalid format version! (${seven}.${info.version})`);
 
 	// Other properties
 	const expected_length = getHeaderLength(info.version);
@@ -73,28 +98,28 @@ export default async function decode(data: ArrayBufferLike, _options?: Partial<V
 	if (header_length < expected_length)
 		throw Error(`Vtf.decode: Encountered invalid header length! (${header_length})`);
 
-	info.width          = view.read_u16();
-	info.height         = view.read_u16();
-	info.flags          = view.read_u32();
-	info.frames         = view.read_u16();
-	info.first_frame    = view.read_u16();
+	info.width = view.read_u16();
+	info.height = view.read_u16();
+	info.flags = view.read_u32();
+	info.frames = view.read_u16();
+	info.first_frame = view.read_u16();
 
 	view.inc(4);
-	info.reflectivity   = view.read_f32array(3, !options.noClone);
+	info.reflectivity = view.read_f32array(3, !options.noClone);
 	view.inc(4);
 
-	info.bump_scale     = view.read_f32();
-	info.format         = view.read_u32() as VFormats;
-	info.mipmaps        = view.read_u8();
+	info.bump_scale = view.read_f32();
+	info.format = view.read_u32() as VFormats;
+	info.mipmaps = view.read_u8();
 
 	// Thumbnail
 	view.pointer += 4;
-	info.thumb_format   = VFormats.DXT1; // read_format(view.read_u32()); // Default cubemap corrupted???
-	info.thumb_width    = view.read_u8();
-	info.thumb_height   = view.read_u8();
+	info.thumb_format = VFormats.DXT1; // read_format(view.read_u32()); // Default cubemap corrupted???
+	info.thumb_width = view.read_u8();
+	info.thumb_height = view.read_u8();
 
 	// v7.2 +
-	info.slices         = info.version > 1 ? view.read_u16() : 1;
+	info.slices = info.version > 1 ? view.read_u16() : 1;
 
 	if (options.headerOnly) return info;
 
@@ -108,26 +133,31 @@ export default async function decode(data: ArrayBufferLike, _options?: Partial<V
 		view.inc(3);
 		resource_count = view.read_u32();
 		view.inc(8);
-	}
-	else {
+	} else {
 		const thumb_size = getCodec(info.thumb_format).length(info.thumb_width, info.thumb_height);
 		const thumb_data = view.ref(header_length, thumb_size);
-		thumb = VThumbResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_THUMB, 0x0, header_length), thumb_data, info, options);
+		thumb = VThumbResource.decode(
+			new VHeader(VHeaderTags.TAG_LEGACY_THUMB, 0x0, header_length),
+			thumb_data,
+			info,
+			options,
+		);
 
 		const body_offset = header_length + thumb_size;
 		const body_data = view.ref(body_offset);
-		body = await VBodyResource.decode(new VHeader(VHeaderTags.TAG_LEGACY_BODY, 0x0, body_offset), body_data, info, options);
+		body = await VBodyResource.decode(
+			new VHeader(VHeaderTags.TAG_LEGACY_BODY, 0x0, body_offset),
+			body_data,
+			info,
+			options,
+		);
 	}
 
 	// Parse resource headers
-	for ( let i=0; i<resource_count; i++ ) {
+	for (let i = 0; i < resource_count; i++) {
 		const fourcc = view.read_u32(false);
 		const offset = view.read_u32();
-		const header = new VHeader(
-			fourcc >> 8,
-			fourcc & 0xff,
-			offset
-		);
+		const header = new VHeader(fourcc >> 8, fourcc & 0xff, offset);
 
 		// TODO: "special" header tags, especially for unofficial features, are BAD.
 		if (header.tag === VHeaderTags.TAG_AXC) {
@@ -139,7 +169,7 @@ export default async function decode(data: ArrayBufferLike, _options?: Partial<V
 	}
 
 	// Parse resource bodies
-	for ( let i=0; i<headers.length; i++ ) {
+	for (let i = 0; i < headers.length; i++) {
 		const header = headers[i];
 		const has_data = header.hasData();
 		let length: number | undefined;
@@ -152,8 +182,7 @@ export default async function decode(data: ArrayBufferLike, _options?: Partial<V
 		}
 
 		let data: DataBuffer | undefined;
-		if (has_data)
-			data = view.ref(start, length);
+		if (has_data) data = view.ref(start, length);
 
 		if (header.tag === VHeaderTags.TAG_LEGACY_BODY) {
 			if (!data) throw Error('Vtf.decode: Body resource has no data! (0x2 flag set)');
@@ -173,8 +202,7 @@ export default async function decode(data: ArrayBufferLike, _options?: Partial<V
 		}
 	}
 
-	if (!body)
-		throw Error('Vtf.decode: Vtf does not contain a body resource!');
+	if (!body) throw Error('Vtf.decode: Vtf does not contain a body resource!');
 
 	const createOptions: Partial<VtfConstructorOptions> = info;
 	createOptions.thumb = thumb;

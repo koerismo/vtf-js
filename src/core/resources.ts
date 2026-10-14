@@ -5,9 +5,7 @@ import { NO_DATA, VFormats } from './enums.js';
 import { VCollection } from './collection.js';
 import { DataBuffer } from './buffer.js';
 
-
 // #region Headers
-
 
 /** A collection of common resource header tags as BE 24-bit integers. */
 export const VHeaderTags = {
@@ -27,7 +25,7 @@ export class VHeader {
 	constructor(
 		public readonly tag: number,
 		public readonly flags: number,
-		public readonly start: number
+		public readonly start: number,
 	) {}
 
 	/** Returns true if the `0x2` flag is unset. */
@@ -35,7 +33,6 @@ export class VHeader {
 		return !(this.flags & NO_DATA);
 	}
 }
-
 
 export type Awaitable<T> = T | Promise<T>;
 export type ValueOf<T> = T[keyof T];
@@ -45,7 +42,12 @@ export interface VResourceStatic {
 	/** If true, this resource should be considered a "legacy" resource with no predefined length. Defaults to false. */
 	readonly isLegacy?: boolean;
 	/** Decodes this resource from its raw data. */
-	decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader, options: VtfDecodeOptions): Awaitable<VResource>;
+	decode(
+		header: VHeader,
+		view: DataBuffer | undefined,
+		info: VFileHeader,
+		options: VtfDecodeOptions,
+	): Awaitable<VResource>;
 }
 
 /** Defines a generic resource entry. All resources are required to implement this interface! */
@@ -55,7 +57,7 @@ export interface VResource {
 	/** The flags of this resource. Accessed by `Vtf` to encode the resource header. */
 	flags: number;
 	/** Encode the body of this resource into an ArrayBuffer. */
-	encode(info: VFileHeader): Awaitable<ArrayBuffer | undefined>;
+	encode(info: VFileHeader): Awaitable<ArrayBufferLike | undefined>;
 }
 
 /** Implements a generic resource entry. This can be subclassed to quickly implement {@link VResource}. */
@@ -65,14 +67,19 @@ export class VBaseResource implements VResource {
 	constructor(
 		public readonly tag: number,
 		public flags: number,
-		public raw?: DataBuffer) {
-	}
+		public raw?: DataBuffer,
+	) {}
 
-	static decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader, options: VtfDecodeOptions): Awaitable<VBaseResource> {
+	static decode(
+		header: VHeader,
+		view: DataBuffer | undefined,
+		info: VFileHeader,
+		options: VtfDecodeOptions,
+	): Awaitable<VBaseResource> {
 		return new VBaseResource(header.tag, header.flags, view);
 	}
 
-	encode(info: VFileHeader): Awaitable<ArrayBuffer | undefined> {
+	encode(info: VFileHeader): Awaitable<ArrayBufferLike | undefined> {
 		return this.raw?.buffer;
 	}
 }
@@ -95,8 +102,7 @@ export class VEncodedResource extends VBaseResource {
 	}
 
 	decode(): Awaitable<VResource> {
-		return getResourceByType(this.tag)
-			.decode(this.header, this.view, this.info, this.options);
+		return getResourceByType(this.tag).decode(this.header, this.view, this.info, this.options);
 	}
 }
 
@@ -105,13 +111,18 @@ export class VBodyResource extends VBaseResource {
 	static readonly isLegacy = true;
 
 	constructor(
-			flags: number,
-			public images: VCollection
-		) {
+		flags: number,
+		public images: VCollection,
+	) {
 		super(VHeaderTags.TAG_LEGACY_BODY, flags);
 	}
 
-	static async decode(header: VHeader, view: DataBuffer, info: VFileHeader, options: VtfDecodeOptions): Promise<VBodyResource> {
+	static async decode(
+		header: VHeader,
+		view: DataBuffer,
+		info: VFileHeader,
+		options: VtfDecodeOptions,
+	): Promise<VBodyResource> {
 		const face_count = getFaceCount(info);
 		const codec = getCodec(info.format);
 		const collection = new VCollection({
@@ -123,9 +134,10 @@ export class VBodyResource extends VBaseResource {
 			slices: info.slices,
 		});
 
-		for ( let x=info.mipmaps-1; x>=0; x-- ) { // Vtfs store mipmaps smallest-to-largest
-			for ( let y=0; y<info.frames; y++ ) {
-				for ( let z=0; z<face_count; z++ ) {
+		for (let x = info.mipmaps - 1; x >= 0; x--) {
+			// Vtfs store mipmaps smallest-to-largest
+			for (let y = 0; y < info.frames; y++) {
+				for (let z = 0; z < face_count; z++) {
 					const [width, height] = getMipSize(x, info.width, info.height);
 					const uncompressed_length = codec.length(width, height);
 
@@ -134,13 +146,19 @@ export class VBodyResource extends VBaseResource {
 					if (info.compression_level !== 0) {
 						const compressed_length = info.compressed_lengths![x][y][z];
 						const slice_data = view.read_u8array(compressed_length, false);
-						subview = new DataBuffer(await decompress(slice_data, info.compression_method, info.compression_level));
+						subview = DataBuffer.ref(
+							await decompress(
+								slice_data,
+								info.compression_method,
+								info.compression_level,
+							),
+						);
 					} else {
 						const collated_length = uncompressed_length * info.slices;
 						subview = view.ref(view.inc(collated_length), collated_length);
 					}
 
-					for ( let w=0; w<info.slices; w++ ) {
+					for (let w = 0; w < info.slices; w++) {
 						const data = subview.read_u8array(uncompressed_length, !options.noClone);
 						const image = new VEncodedImageData(data, width, height, info.format);
 						collection.setImage(image, x, y, z, w);
@@ -152,27 +170,31 @@ export class VBodyResource extends VBaseResource {
 		return new VBodyResource(header.flags, collection);
 	}
 
-	async encode(info: VFileHeader): Promise<ArrayBuffer> {
+	async encode(info: VFileHeader): Promise<ArrayBufferLike> {
 		const face_count = getFaceCount(info);
 		const codec = getCodec(info.format);
 
 		const packed_slices: Uint8Array[] = [];
 		let packed_length = 0;
 
-		const cl_mipmaps = info.compressed_lengths = new Array<number[][]>(info.mipmaps);
-		for ( let x=info.mipmaps-1; x >= 0; x-- ) { // mipmaps
-			
-			const cl_frames = cl_mipmaps[x] = new Array<number[]>(info.frames);
-			for ( let y=0; y < info.frames; y++ ) { // frames
-				
-				const cl_faces = cl_frames[y] = new Array<number>(face_count);
-				for ( let z=0; z < face_count; z++ ) { // faces
+		const cl_mipmaps = (info.compressed_lengths = new Array<number[][]>(info.mipmaps));
+		for (let x = info.mipmaps - 1; x >= 0; x--) {
+			// mipmaps
+
+			const cl_frames = (cl_mipmaps[x] = new Array<number[]>(info.frames));
+			for (let y = 0; y < info.frames; y++) {
+				// frames
+
+				const cl_faces = (cl_frames[y] = new Array<number>(face_count));
+				for (let z = 0; z < face_count; z++) {
+					// faces
 
 					const [width, height] = getMipSize(x, info.width, info.height);
 					const uncompressed_length = codec.length(width, height);
-					const subview = new DataBuffer(uncompressed_length * info.slices);
+					const subview = DataBuffer.new(uncompressed_length * info.slices);
 
-					for ( let w=0; w < info.slices; w++ ) { // slices
+					for (let w = 0; w < info.slices; w++) {
+						// slices
 						const slice = this.images.getRawImage(x, y, z, w);
 
 						// If slice is encoded, .encode() will no-op if the format matches. Otherwise, it is re-encoded.
@@ -184,7 +206,11 @@ export class VBodyResource extends VBaseResource {
 					// Compress
 					let data: Uint8Array = subview;
 					if (info.compression_level !== 0) {
-						data = await compress(data, info.compression_method, info.compression_level);
+						data = await compress(
+							data,
+							info.compression_method,
+							info.compression_level,
+						);
 					}
 
 					cl_faces[z] = data.length;
@@ -194,8 +220,8 @@ export class VBodyResource extends VBaseResource {
 			}
 		}
 
-		const view = new DataBuffer(packed_length);
-		for (let i=0; i<packed_slices.length; i++) {
+		const view = DataBuffer.new(packed_length);
+		for (let i = 0; i < packed_slices.length; i++) {
 			view.write_u8array(packed_slices[i]);
 		}
 		return view.buffer;
@@ -207,23 +233,37 @@ export class VThumbResource extends VBaseResource {
 	static readonly isLegacy = true;
 	public image: VImageEither;
 
-	constructor(
-			flags: number,
-			image?: VImageEither
-		) {
+	constructor(flags: number, image?: VImageEither) {
 		super(VHeaderTags.TAG_LEGACY_THUMB, flags);
 		this.image = image ?? new VEncodedImageData(new Uint8Array(0), 0, 0, VFormats.DXT1);
 		this.flags = (flags ^ (flags & NO_DATA)) | (this.hasImage() ? 0 : NO_DATA);
 	}
 
-	static decode(header: VHeader, view: DataBuffer | undefined, info: VFileHeader, options: VtfDecodeOptions): VThumbResource {
+	static decode(
+		header: VHeader,
+		view: DataBuffer | undefined,
+		info: VFileHeader,
+		options: VtfDecodeOptions,
+	): VThumbResource {
 		const codec = getCodec(info.thumb_format);
 		if (!view) {
-			if (info.thumb_width === 0 || info.thumb_height === 0) return new VThumbResource(header.flags);
-			throw Error('VThumbnailResource: Attempted to decode non-empty thumbnail without any data!');
+			if (info.thumb_width === 0 || info.thumb_height === 0)
+				return new VThumbResource(header.flags);
+
+			throw Error(
+				'VThumbnailResource: Attempted to decode non-empty thumbnail without any data!',
+			);
 		}
-		const data = view.read_u8array(codec.length(info.thumb_width, info.thumb_height), !options.noClone);
-		const image = new VEncodedImageData(data, info.thumb_width, info.thumb_height, info.thumb_format);
+		const data = view.read_u8array(
+			codec.length(info.thumb_width, info.thumb_height),
+			!options.noClone,
+		);
+		const image = new VEncodedImageData(
+			data,
+			info.thumb_width,
+			info.thumb_height,
+			info.thumb_format,
+		);
 		return new VThumbResource(header.flags, image);
 	}
 
@@ -256,7 +296,8 @@ export class VSheetResource extends VBaseResource {
 	constructor(
 		flags: number,
 		public version: number,
-		public sequences: SheetSequence[]) {
+		public sequences: SheetSequence[],
+	) {
 		super(VHeaderTags.TAG_SHEET, flags);
 	}
 
@@ -269,18 +310,18 @@ export class VSheetResource extends VBaseResource {
 		const sequenceCount = view.read_u32();
 		const sequences = new Array<SheetSequence>(sequenceCount);
 
-		for (let i=0; i<sequenceCount; i++) {
+		for (let i = 0; i < sequenceCount; i++) {
 			const id = view.read_u32();
 			const clamp = !!view.read_u32();
 			const frameCount = view.read_u32();
 			const duration = view.read_f32();
 
 			const frames = new Array<SheetFrame>(frameCount);
-			for (let j=0; j<frameCount; j++) {
+			for (let j = 0; j < frameCount; j++) {
 				const duration = view.read_f32();
 
 				const coords = new Array<Float32Array>(coordsPerFrame);
-				for (let k=0; k<coordsPerFrame; k++) {
+				for (let k = 0; k < coordsPerFrame; k++) {
 					coords[k] = view.read_f32array(4, true);
 				}
 
@@ -293,32 +334,33 @@ export class VSheetResource extends VBaseResource {
 		return new VSheetResource(header.flags, version, sequences);
 	}
 
-	encode(info: VFileHeader): ArrayBuffer {
+	encode(info: VFileHeader): ArrayBufferLike {
 		const coordsPerFrame = this.version === 1 ? 4 : 1;
 
 		let buffer_length = 4;
-		for (let i=0; i<this.sequences.length; i++) {
-			buffer_length +=
-				16 + this.sequences[i].frames.length * (4 + 16 * coordsPerFrame);
+		for (let i = 0; i < this.sequences.length; i++) {
+			buffer_length += 16 + this.sequences[i].frames.length * (4 + 16 * coordsPerFrame);
 		}
 
-		const view = new DataBuffer(buffer_length);
+		const view = DataBuffer.new(buffer_length);
 		view.write_u32(this.version);
 
-		for (let i=0; i<this.sequences.length; i++) {
+		for (let i = 0; i < this.sequences.length; i++) {
 			const sequence = this.sequences[i];
 			view.write_u32(sequence.id);
 			view.write_u32(sequence.clamp ? 0xff : 0x00);
 			view.write_u32(sequence.frames.length);
 			view.write_f32(sequence.duration);
 
-			for (let j=0; j<sequence.frames.length; j++) {
+			for (let j = 0; j < sequence.frames.length; j++) {
 				const frame = sequence.frames[j];
 				view.write_f32(frame.duration);
 
 				if (coordsPerFrame !== frame.coords.length)
-					throw Error(`VSheetResource: Expected ${coordsPerFrame} coordinate sets, but got ${frame.coords.length}!`);
-				for (let k=0; k<coordsPerFrame; k++) {
+					throw Error(
+						`VSheetResource: Expected ${coordsPerFrame} coordinate sets, but got ${frame.coords.length}!`,
+					);
+				for (let k = 0; k < coordsPerFrame; k++) {
 					if (frame.coords[k].length !== 4)
 						throw Error('VSheetResource: SheetFrame coords must be of length 4!');
 					view.write_f32array(frame.coords[k]);
@@ -333,7 +375,8 @@ export class VSheetResource extends VBaseResource {
 export class VExtendedSettingsResource extends VBaseResource {
 	constructor(
 		flags: number,
-		public textureFlags: number) {
+		public textureFlags: number,
+	) {
 		super(VHeaderTags.TAG_TS0, flags);
 	}
 
@@ -355,19 +398,14 @@ export class VLodControlResource extends VBaseResource {
 		public resolutionClampX: number,
 		public resolutionClampY: number,
 		public x360_resolutionClampX: number,
-		public x360_resolutionClampY: number) {
+		public x360_resolutionClampY: number,
+	) {
 		super(VHeaderTags.TAG_LOD, flags);
 	}
 
 	static decode(header: VHeader, view?: DataBuffer): VLodControlResource {
 		if (!view) throw Error(`VLodControlResource.decode: No body data present for resource!`);
-		return new VLodControlResource(
-			header.flags,
-			view[0],
-			view[1],
-			view[2],
-			view[3]
-		);
+		return new VLodControlResource(header.flags, view[0], view[1], view[2], view[3]);
 	}
 
 	encode(): ArrayBuffer {
@@ -399,42 +437,56 @@ export class HotspotRect {
 		public max_y: number,
 	) {}
 
-	get width(): number { return this.max_x - this.min_x; }
-	get height(): number { return this.max_y - this.min_y; }
+	get width(): number {
+		return this.max_x - this.min_x;
+	}
+	get height(): number {
+		return this.max_y - this.min_y;
+	}
 
-	canRotate(): boolean { return !!(this.flags & HotSpotRectFlags.AllowRotation); }
-	canReflect(): boolean { return !!(this.flags & HotSpotRectFlags.AllowReflection); }
-	isAltGroup(): boolean { return !!(this.flags & HotSpotRectFlags.AltGroup); }
-	canTileX(): boolean { return !!(this.flags & HotSpotRectFlags.TileX); }
-	canTileY(): boolean { return !!(this.flags & HotSpotRectFlags.TileY); }
+	canRotate(): boolean {
+		return !!(this.flags & HotSpotRectFlags.AllowRotation);
+	}
+	canReflect(): boolean {
+		return !!(this.flags & HotSpotRectFlags.AllowReflection);
+	}
+	isAltGroup(): boolean {
+		return !!(this.flags & HotSpotRectFlags.AltGroup);
+	}
+	canTileX(): boolean {
+		return !!(this.flags & HotSpotRectFlags.TileX);
+	}
+	canTileY(): boolean {
+		return !!(this.flags & HotSpotRectFlags.TileY);
+	}
 }
 
 /**
- * The Hotspot data resource. 
+ * The Hotspot data resource.
  * See {@link https://wiki.stratasource.org/modding/formats/vtf-hotspot-resource this page} for more information.
  */
 export class VHotspotResource extends VBaseResource {
 	constructor(
-			flags: number,
-			public version: number,
-			public editorFlags: number,
-			public rects: HotspotRect[]
-		) {
+		flags: number,
+		public version: number,
+		public editorFlags: number,
+		public rects: HotspotRect[],
+	) {
 		super(VHeaderTags.TAG_HOTSPOT, flags);
 	}
 
-	static decode(header: VHeader, view: DataBuffer, info: VFileHeader): VHotspotResource {
-		if (!header.hasData())
-			return new VHotspotResource(header.flags, 0, 0, []);
+	static decode(header: VHeader, view: DataBuffer): VHotspotResource {
+		if (!header.hasData()) return new VHotspotResource(header.flags, 0, 0, []);
 
 		const version = view.read_u8();
-		if (version !== 0x1) throw Error(`VSheetResource.decode: Invalid version! (Expected 1, got ${version})`);
+		if (version !== 0x1)
+			throw Error(`VSheetResource.decode: Invalid version! (Expected 1, got ${version})`);
 
-		const flags     = view.read_u8();
+		const flags = view.read_u8();
 		const rectCount = view.read_u16();
 
 		const rects = Array<HotspotRect>(rectCount);
-		for (let i=0; i<rectCount; i++) {
+		for (let i = 0; i < rectCount; i++) {
 			rects[i] = new HotspotRect(
 				view.read_u8(),
 				view.read_u16(),
@@ -447,18 +499,20 @@ export class VHotspotResource extends VBaseResource {
 		return new VHotspotResource(header.flags, version, flags, rects);
 	}
 
-	encode(info: VFileHeader): ArrayBuffer {
+	encode(): ArrayBufferLike {
 		if (this.version !== 0x1)
-			throw Error(`VHotspotResource.encode: Invalid version! (Expected 1, got ${this.version})`);
+			throw Error(
+				`VHotspotResource.encode: Invalid version! (Expected 1, got ${this.version})`,
+			);
 
 		const length = 4 + this.rects.length * 9;
-		const view = new DataBuffer(length);
+		const view = DataBuffer.new(length);
 
 		view.write_u8(this.version);
 		view.write_u8(this.editorFlags);
 		view.write_u16(this.rects.length);
 
-		for (let i=0; i<this.rects.length; i++) {
+		for (let i = 0; i < this.rects.length; i++) {
 			const rect = this.rects[i];
 			view.write_u8(rect.flags);
 			view.write_u16(rect.min_x);
@@ -470,7 +524,6 @@ export class VHotspotResource extends VBaseResource {
 		return view.buffer;
 	}
 }
-
 
 // #region Resource Types
 
@@ -494,15 +547,17 @@ export const VResourceTypes: Record<number, VResourceStatic> = {
 	[VHeaderTags.TAG_HOTSPOT]: VHotspotResource,
 } satisfies VResourceTypeMap;
 
-
 /** Registers a resource to be used when the specified tag is encountered. */
-export function registerResourceType<T extends keyof VResourceTypeMap>(resource: VResourceTypeMap[T], tag: T): void;
+export function registerResourceType<T extends keyof VResourceTypeMap>(
+	resource: VResourceTypeMap[T],
+	tag: T,
+): void;
 /**
  * @deprecated
  * Resource not defined in typings!
- * 
+ *
  * ## Add this resource by re-declaring `VResourceTypeMap` to get intellisense!
- * 
+ *
  * @example
  * ```ts
  * declare module "vtf-js/resources" {

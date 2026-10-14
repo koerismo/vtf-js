@@ -17,11 +17,11 @@ export const enum DxtFlags {
 
 const BLOCK_8 = (width: number, height: number) => {
 	return ceil4(width) * ceil4(height) * 0.5;
-}
+};
 
 const BLOCK_16 = (width: number, height: number) => {
 	return ceil4(width) * ceil4(height);
-}
+};
 
 // https://www.khronos.org/opengl/wiki/S3_Texture_Compression
 
