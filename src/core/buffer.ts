@@ -4,7 +4,7 @@ const TE = new TextEncoder();
 const TD = new TextDecoder();
 
 /** Wraps DataView with utility functions and pointer offsets. */
-export class DataBuffer extends Uint8Array {
+export class DataBuffer<T extends ArrayBufferLike = ArrayBufferLike> extends Uint8Array<T> {
 	view: DataView;
 	protected _internal_ptr = 0;
 	protected little = true;
@@ -14,22 +14,38 @@ export class DataBuffer extends Uint8Array {
 	}
 
 	set pointer(v: number) {
-		if (v < 0 || v > this.length) throw Error(`Attempted to seek outside buffer bounds! (${this._internal_ptr} to ${v})`);
+		if (v < 0 || v > this.length)
+			throw Error(`Attempted to seek outside buffer bounds! (${this._internal_ptr} to ${v})`);
 		this._internal_ptr = v;
 	}
 
-	constructor(length: number);
-	constructor(array: ArrayLike<number> | ArrayBufferLike);
-	constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number);
-	constructor(buffer: number | ArrayLike<number> | ArrayBufferLike, byteOffset?: number, length?: number) {
-
-		// @ts-expect-error When initializing a Uint8Array from another array, byteOffset and length
-		// are disregarded for some reason. This is just a quick hack to make it work as expected.
-		if (typeof buffer === 'object' && 'buffer' in buffer) buffer = buffer.buffer;
-
+	private constructor(length: number);
+	private constructor(array: ArrayLike<number>);
+	private constructor(buffer: ArrayBufferLike, byteOffset?: number, length?: number);
+	private constructor(
+		buffer: number | ArrayLike<number> | ArrayBufferLike,
+		byteOffset?: number,
+		length?: number,
+	) {
 		// @ts-expect-error JUST MAKE IT WORK.
 		super(buffer, byteOffset, length);
 		this.view = new DataView(this.buffer, this.byteOffset, this.byteLength);
+	}
+
+	static new(length: number): DataBuffer<ArrayBuffer> {
+		return new this(length);
+	}
+
+	static copy(array: Uint8Array | Uint8ClampedArray | ArrayBufferLike): DataBuffer<ArrayBuffer> {
+		return new this(ArrayBuffer.isView(array) ? array : new Uint8Array(array));
+	}
+
+	static ref<V extends ArrayBufferLike>(
+		array: Uint8Array<V> | Uint8ClampedArray<V> | V
+	): DataBuffer<V> {
+		if (ArrayBuffer.isView(array))
+			return new this(array.buffer, array.byteOffset, array.byteLength);
+		return new this(array);
 	}
 
 	/** Increments the pointer by the specified number of bytes. */
@@ -45,7 +61,7 @@ export class DataBuffer extends Uint8Array {
 	}
 
 	/** Creates a new DataBuffer within the specified bounds. */
-	ref(start=0, length: number=this.length - start): DataBuffer {
+	ref(start = 0, length: number = this.length - start): DataBuffer {
 		const buf = new DataBuffer(this.buffer, start + this.byteOffset, length);
 		buf.little = this.little;
 		return buf;
@@ -60,28 +76,32 @@ export class DataBuffer extends Uint8Array {
 		return this[this.pointer++];
 	}
 
-	read_u16(little=this.little): number {
+	read_u16(little = this.little): number {
 		return this.view.getUint16(this.inc(2), little);
 	}
 
-	read_i16(little=this.little): number {
+	read_i16(little = this.little): number {
 		return this.view.getInt16(this.inc(2), little);
 	}
 
-	read_u32(little=this.little): number {
+	read_u32(little = this.little): number {
 		return this.view.getUint32(this.inc(4), little);
 	}
 
-	read_f32(little=this.little): number {
+	read_f32(little = this.little): number {
 		return this.view.getFloat32(this.inc(4), little);
 	}
 
+	read_u8array(length: number, clone: true): Uint8Array<ArrayBuffer>;
+	read_u8array(length: number, clone: boolean): Uint8Array;
 	read_u8array(length: number, clone: boolean): Uint8Array {
 		const arr = this.subarray(this.inc(length), this._internal_ptr);
 		return clone ? arr.slice() : arr;
 	}
 
-	read_f32array(length: number, clone: boolean, little=this.little): Float32Array {
+	read_f32array(length: number, clone: true, little?: boolean): Float32Array<ArrayBuffer>;
+	read_f32array(length: number, clone: boolean, little?: boolean): Float32Array;
+	read_f32array(length: number, clone: boolean, little = this.little): Float32Array {
 		if (little === SYSTEM_ENDIAN) {
 			const source = this.read_u8array(length * 4, clone);
 			return new Float32Array(source.buffer, source.byteOffset, length);
@@ -95,31 +115,29 @@ export class DataBuffer extends Uint8Array {
 		}
 	}
 
-
 	write_u8(value: number): void {
 		this[this.pointer++] = value;
 	}
 
-	write_u16(value: number, little=this.little): void {
+	write_u16(value: number, little = this.little): void {
 		this.view.setUint16(this.inc(2), value, little);
 	}
 
-	write_i16(value: number, little=this.little): void {
+	write_i16(value: number, little = this.little): void {
 		this.view.setInt16(this.inc(2), value, little);
 	}
 
-	write_u32(value: number, little=this.little): void {
+	write_u32(value: number, little = this.little): void {
 		this.view.setUint32(this.inc(4), value, little);
 	}
 
-	write_i32(value: number, little=this.little): void {
+	write_i32(value: number, little = this.little): void {
 		this.view.setInt32(this.inc(4), value, little);
 	}
 
-	write_f32(value: number, little=this.little): void {
+	write_f32(value: number, little = this.little): void {
 		this.view.setFloat32(this.inc(4), value, little);
 	}
-
 
 	/** Do a fast-copy and return true if possible. Otherwise, return false. */
 	protected _try_write_le(value: ArrayBufferView, little: boolean): boolean {
@@ -132,7 +150,7 @@ export class DataBuffer extends Uint8Array {
 		this.set(value, this.inc(value.length));
 	}
 
-	write_u16array(value: Uint16Array, little=this.little): void {
+	write_u16array(value: Uint16Array, little = this.little): void {
 		if (!this._try_write_le(value, little)) {
 			const start = this.inc(value.length * 2);
 			for (let i = 0, idx = start; i < value.length; i++, idx += 2) {
@@ -141,7 +159,7 @@ export class DataBuffer extends Uint8Array {
 		}
 	}
 
-	write_u32array(value: Uint32Array, little=this.little): void {
+	write_u32array(value: Uint32Array, little = this.little): void {
 		if (!this._try_write_le(value, little)) {
 			const start = this.inc(value.length * 4);
 			for (let i = 0, idx = start; i < value.length; i++, idx += 4) {
@@ -150,7 +168,7 @@ export class DataBuffer extends Uint8Array {
 		}
 	}
 
-	write_f32array(value: Float32Array, little=this.little): void {
+	write_f32array(value: Float32Array, little = this.little): void {
 		if (!this._try_write_le(value, little)) {
 			const start = this.inc(value.length * 4);
 			for (let i = 0, idx = start; i < value.length; i++, idx += 4) {
@@ -164,6 +182,6 @@ export class DataBuffer extends Uint8Array {
 	}
 
 	write_str(str: string): void {
-		TE.encodeInto(str, this.ref(this.inc(str.length), str.length))
+		TE.encodeInto(str, this.ref(this.inc(str.length), str.length));
 	}
 }

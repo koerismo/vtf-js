@@ -15,7 +15,7 @@ function write_axc(info: VFileHeader) {
 
 	const face_count = getFaceCount(info);
 	const axc_length = 4 + info.frames * info.mipmaps * info.slices * face_count * 4;
-	const axc = new DataBuffer(axc_length);
+	const axc = DataBuffer.new(axc_length);
 	axc.write_i16(info.compression_level);
 	axc.write_i16(info.compression_method);
 
@@ -41,7 +41,7 @@ export default async function encode(this: Vtf): Promise<ArrayBuffer> {
 	if (info.compression_level !== 0) resource_count += 1;
 
 	const header_length = getHeaderLength(this.version, resource_count);
-	const header = new DataBuffer(header_length);
+	const header = DataBuffer.new(header_length);
 
 	header.write_str('VTF\0');
 	header.write_u32(7);
@@ -81,7 +81,7 @@ export default async function encode(this: Vtf): Promise<ArrayBuffer> {
 
 	// v7.1-7.2: Use non-chunked format:
 	if (this.version < 3) {
-		const file = new DataBuffer(header.byteLength + thumb_data.byteLength + body_data.byteLength);
+		const file = DataBuffer.new(header.byteLength + thumb_data.byteLength + body_data.byteLength);
 		file.write_u8array(header);
 		file.write_u8array(new Uint8Array(thumb_data));
 		file.write_u8array(new Uint8Array(body_data));
@@ -95,7 +95,7 @@ export default async function encode(this: Vtf): Promise<ArrayBuffer> {
 
 	// Begin collecting chunks and accumulating filesize
 	let filesize = header.byteLength;
-	const chunks = new Array<{ resource: VResource, data: ArrayBuffer | undefined }>(2);
+	const chunks = new Array<{ resource: VResource, data: ArrayBufferLike | undefined }>(2);
 	chunks[0] = { resource: body_resource, data: body_data };   filesize += body_data.byteLength;
 	chunks[1] = { resource: thumb_resource, data: thumb_data }; filesize += thumb_data.byteLength;
 
@@ -119,7 +119,7 @@ export default async function encode(this: Vtf): Promise<ArrayBuffer> {
 	});
 
 	// Write into file
-	const file = new DataBuffer(filesize);
+	const file = DataBuffer.new(filesize);
 	file.seek(header.byteLength);
 
 	for (const { resource, data } of chunks) {

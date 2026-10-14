@@ -19,6 +19,7 @@
 	"scripts": {
 		"test": "mocha --extension=js,ts",
 		"check": "eslint -c eslint.config.js",
+		"format": "prettier --config .prettierrc -w ./src/**/*",
 		"build": "tsc",
 		"watch": "tsc --watch"
 	},

@@ -118,11 +118,11 @@ export let compress: CompressFunction = async (data, method, level) => {
 	const compStream = new CompressionStream('deflate');
 	const outStream = inStream.pipeThrough(compStream);
 	const n = new Response(outStream);
-	return new Uint8Array(await n.arrayBuffer());
+	return await n.bytes();
 };
 
 /** Decompresses the specified Uint8Array with the given options and returns the result. `level` is not currently used, but is included in the signature for future compatibility. */
-export let decompress: DecompressFunction = async (data, method, _level) => {
+export let decompress: DecompressFunction = async (data, method) => {
 	let methodStr: string;
 	switch (method) {
 		case VCompressionMethods.Deflate: {
@@ -146,7 +146,7 @@ export let decompress: DecompressFunction = async (data, method, _level) => {
 	);
 	const outStream = inStream.pipeThrough(decompStream);
 	const n = new Response(outStream);
-	return new Uint8Array(await n.arrayBuffer());
+	return await n.bytes();
 };
 
 export function srgbToLinear(v: number): number {

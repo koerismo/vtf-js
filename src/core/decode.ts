@@ -53,9 +53,9 @@ export default async function decode(data: ArrayBufferLike, _options?: Partial<V
 	const options = parse_decode_options(_options);
 	const info = new VFileHeader();
 	info.compression_level = 0;
-	
 
-	const view = new DataBuffer(data);
+
+	const view = DataBuffer.ref(data);
 
 	const sign = view.read_str(4);
 	if (sign === 'VTFX') throw Error('Vtf.decode: Console vtfs are not supported!');

@@ -55,7 +55,7 @@ export interface VResource {
 	/** The flags of this resource. Accessed by `Vtf` to encode the resource header. */
 	flags: number;
 	/** Encode the body of this resource into an ArrayBuffer. */
-	encode(info: VFileHeader): Awaitable<ArrayBuffer | undefined>;
+	encode(info: VFileHeader): Awaitable<ArrayBufferLike | undefined>;
 }
 
 /** Implements a generic resource entry. This can be subclassed to quickly implement {@link VResource}. */
@@ -72,7 +72,7 @@ export class VBaseResource implements VResource {
 		return new VBaseResource(header.tag, header.flags, view);
 	}
 
-	encode(info: VFileHeader): Awaitable<ArrayBuffer | undefined> {
+	encode(info: VFileHeader): Awaitable<ArrayBufferLike | undefined> {
 		return this.raw?.buffer;
 	}
 }
@@ -134,7 +134,7 @@ export class VBodyResource extends VBaseResource {
 					if (info.compression_level !== 0) {
 						const compressed_length = info.compressed_lengths![x][y][z];
 						const slice_data = view.read_u8array(compressed_length, false);
-						subview = new DataBuffer(await decompress(slice_data, info.compression_method, info.compression_level));
+						subview = DataBuffer.ref(await decompress(slice_data, info.compression_method, info.compression_level));
 					} else {
 						const collated_length = uncompressed_length * info.slices;
 						subview = view.ref(view.inc(collated_length), collated_length);
@@ -152,7 +152,7 @@ export class VBodyResource extends VBaseResource {
 		return new VBodyResource(header.flags, collection);
 	}
 
-	async encode(info: VFileHeader): Promise<ArrayBuffer> {
+	async encode(info: VFileHeader): Promise<ArrayBufferLike> {
 		const face_count = getFaceCount(info);
 		const codec = getCodec(info.format);
 
@@ -170,7 +170,7 @@ export class VBodyResource extends VBaseResource {
 
 					const [width, height] = getMipSize(x, info.width, info.height);
 					const uncompressed_length = codec.length(width, height);
-					const subview = new DataBuffer(uncompressed_length * info.slices);
+					const subview = DataBuffer.new(uncompressed_length * info.slices);
 
 					for ( let w=0; w < info.slices; w++ ) { // slices
 						const slice = this.images.getRawImage(x, y, z, w);
@@ -194,7 +194,7 @@ export class VBodyResource extends VBaseResource {
 			}
 		}
 
-		const view = new DataBuffer(packed_length);
+		const view = DataBuffer.new(packed_length);
 		for (let i=0; i<packed_slices.length; i++) {
 			view.write_u8array(packed_slices[i]);
 		}
@@ -293,7 +293,7 @@ export class VSheetResource extends VBaseResource {
 		return new VSheetResource(header.flags, version, sequences);
 	}
 
-	encode(info: VFileHeader): ArrayBuffer {
+	encode(info: VFileHeader): ArrayBufferLike {
 		const coordsPerFrame = this.version === 1 ? 4 : 1;
 
 		let buffer_length = 4;
@@ -302,7 +302,7 @@ export class VSheetResource extends VBaseResource {
 				16 + this.sequences[i].frames.length * (4 + 16 * coordsPerFrame);
 		}
 
-		const view = new DataBuffer(buffer_length);
+		const view = DataBuffer.new(buffer_length);
 		view.write_u32(this.version);
 
 		for (let i=0; i<this.sequences.length; i++) {
@@ -423,7 +423,7 @@ export class VHotspotResource extends VBaseResource {
 		super(VHeaderTags.TAG_HOTSPOT, flags);
 	}
 
-	static decode(header: VHeader, view: DataBuffer, info: VFileHeader): VHotspotResource {
+	static decode(header: VHeader, view: DataBuffer): VHotspotResource {
 		if (!header.hasData())
 			return new VHotspotResource(header.flags, 0, 0, []);
 
@@ -447,12 +447,12 @@ export class VHotspotResource extends VBaseResource {
 		return new VHotspotResource(header.flags, version, flags, rects);
 	}
 
-	encode(info: VFileHeader): ArrayBuffer {
+	encode(): ArrayBufferLike {
 		if (this.version !== 0x1)
 			throw Error(`VHotspotResource.encode: Invalid version! (Expected 1, got ${this.version})`);
 
 		const length = 4 + this.rects.length * 9;
-		const view = new DataBuffer(length);
+		const view = DataBuffer.new(length);
 
 		view.write_u8(this.version);
 		view.write_u8(this.editorFlags);
