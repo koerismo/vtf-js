@@ -2,7 +2,13 @@ import { VFileHeader, Vtf } from '../vtf.js';
 import { DataBuffer } from './buffer.js';
 import { NO_DATA } from './enums.js';
 import { byteswap3, getFaceCount, getHeaderLength, isLegacy } from './utils.js';
-import { VBodyResource, VHeaderTags, VBaseResource, VThumbResource, VResource } from './resources.js';
+import {
+	VBodyResource,
+	VHeaderTags,
+	VBaseResource,
+	VThumbResource,
+	VResource,
+} from './resources.js';
 
 function write_header(buf: DataBuffer, res: VResource, pos: number) {
 	buf.write_u32((res.tag << 8) | (res.flags & 0xff), false);
@@ -10,7 +16,10 @@ function write_header(buf: DataBuffer, res: VResource, pos: number) {
 }
 
 function write_axc(info: VFileHeader) {
-	if (info.compressed_lengths == null) throw Error('write_axc: Compression header is not present. If this error is thrown, something has gone very very wrong!');
+	if (info.compressed_lengths == null)
+		throw Error(
+			'write_axc: Compression header is not present. If this error is thrown, something has gone very very wrong!',
+		);
 	if (info.version < 6) throw Error('write_axc: Compression requires VTF version 6+');
 
 	const face_count = getFaceCount(info);
@@ -20,7 +29,7 @@ function write_axc(info: VFileHeader) {
 	axc.write_i16(info.compression_method);
 
 	const mips = info.compressed_lengths;
-	for (let x = info.mipmaps-1; x >= 0; x--) {
+	for (let x = info.mipmaps - 1; x >= 0; x--) {
 		const frames = mips[x];
 		for (let y = 0; y < info.frames; y++) {
 			const faces = frames[y];
@@ -81,7 +90,9 @@ export default async function encode(this: Vtf): Promise<ArrayBuffer> {
 
 	// v7.1-7.2: Use non-chunked format:
 	if (this.version < 3) {
-		const file = DataBuffer.new(header.byteLength + thumb_data.byteLength + body_data.byteLength);
+		const file = DataBuffer.new(
+			header.byteLength + thumb_data.byteLength + body_data.byteLength,
+		);
 		file.write_u8array(header);
 		file.write_u8array(new Uint8Array(thumb_data));
 		file.write_u8array(new Uint8Array(body_data));
@@ -95,9 +106,11 @@ export default async function encode(this: Vtf): Promise<ArrayBuffer> {
 
 	// Begin collecting chunks and accumulating filesize
 	let filesize = header.byteLength;
-	const chunks = new Array<{ resource: VResource, data: ArrayBufferLike | undefined }>(2);
-	chunks[0] = { resource: body_resource, data: body_data };   filesize += body_data.byteLength;
-	chunks[1] = { resource: thumb_resource, data: thumb_data }; filesize += thumb_data.byteLength;
+	const chunks = new Array<{ resource: VResource; data: ArrayBufferLike | undefined }>(2);
+	chunks[0] = { resource: body_resource, data: body_data };
+	filesize += body_data.byteLength;
+	chunks[1] = { resource: thumb_resource, data: thumb_data };
+	filesize += thumb_data.byteLength;
 
 	// Append compression chunk if requested
 	if (info.compression_level !== 0) {

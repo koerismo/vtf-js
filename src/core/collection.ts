@@ -18,7 +18,6 @@ export interface VCollectionSize {
 	slices: number;
 }
 
-
 /** A class for storing collections of mipmaps, frames, faces, and slices. */
 export class VCollection {
 	protected vdata: (VImageEither | undefined)[][][][] = [];
@@ -31,7 +30,10 @@ export class VCollection {
 	protected width: number = 0;
 	protected height: number = 0;
 
-	static fromFrames(frameList: VImageEither[], options?: Partial<Omit<VCollectionSize, 'frames'>>): VCollection {
+	static fromFrames(
+		frameList: VImageEither[],
+		options?: Partial<Omit<VCollectionSize, 'frames'>>,
+	): VCollection {
 		if (!frameList.length)
 			throw Error(
 				'VDataCollection.fromFrames: Requires at least one item in the provided array!',
@@ -44,7 +46,10 @@ export class VCollection {
 		return col;
 	}
 
-	static fromFaces(faceList: VImageEither[], options?: Partial<Omit<VCollectionSize, 'faces'>>): VCollection {
+	static fromFaces(
+		faceList: VImageEither[],
+		options?: Partial<Omit<VCollectionSize, 'faces'>>,
+	): VCollection {
 		if (!faceList.length)
 			throw Error(
 				'VDataCollection.fromFaces: Requires at least one item in the provided array!',
@@ -180,9 +185,27 @@ export class VCollection {
 	 * If an image is decoded, it will replace the original in this collection automatically.
 	 * @see {@link VCollection.getRawImage()}
 	 */
-	getImage(mip: number, frame: number, face: number, slice: number, throwIfEmpty?: true): VImageData;
-	getImage(mip: number, frame: number, face: number, slice: number, throwIfEmpty: boolean): VImageData | undefined;
-	getImage(mip: number, frame: number, face: number, slice: number, throwIfEmpty: boolean = true): VImageData | undefined {
+	getImage(
+		mip: number,
+		frame: number,
+		face: number,
+		slice: number,
+		throwIfEmpty?: true,
+	): VImageData;
+	getImage(
+		mip: number,
+		frame: number,
+		face: number,
+		slice: number,
+		throwIfEmpty: boolean,
+	): VImageData | undefined;
+	getImage(
+		mip: number,
+		frame: number,
+		face: number,
+		slice: number,
+		throwIfEmpty: boolean = true,
+	): VImageData | undefined {
 		let image = this.getRawImage(mip, frame, face, slice, throwIfEmpty);
 		if (image && image.isEncoded) image = this.vdata[mip][frame][face][slice] = image.decode();
 		return image;
@@ -192,9 +215,27 @@ export class VCollection {
 	 * Gets the specified image from the collection without any decoding.
 	 * @see {@link VCollection.getImage()}
 	 */
-	getRawImage(mip: number, frame: number, face: number, slice: number, throwIfEmpty?: true): VImageEither;
-	getRawImage(mip: number, frame: number, face: number, slice: number, throwIfEmpty: boolean): VImageEither | undefined;
-	getRawImage(mip: number, frame: number, face: number, slice: number, throwIfEmpty: boolean = true): VImageEither | undefined {
+	getRawImage(
+		mip: number,
+		frame: number,
+		face: number,
+		slice: number,
+		throwIfEmpty?: true,
+	): VImageEither;
+	getRawImage(
+		mip: number,
+		frame: number,
+		face: number,
+		slice: number,
+		throwIfEmpty: boolean,
+	): VImageEither | undefined;
+	getRawImage(
+		mip: number,
+		frame: number,
+		face: number,
+		slice: number,
+		throwIfEmpty: boolean = true,
+	): VImageEither | undefined {
 		if (!this.isInBounds(mip, frame, face, slice))
 			throw Error(`VCollection.getRawImage: Attempted to get image out-of-bounds!`);
 

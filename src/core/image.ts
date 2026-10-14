@@ -15,9 +15,7 @@ export type VPixelArray<T extends ArrayBufferLike = ArrayBufferLike> =
 export type VImageEither<D extends VPixelArray = VPixelArray> = VImageData<D> | VEncodedImageData;
 
 /** A generic constructor for VPixelArray types. */
-export interface VPixelArrayConstructor<
-	T extends VPixelArray = VPixelArray<ArrayBuffer>,
-> {
+export interface VPixelArrayConstructor<T extends VPixelArray = VPixelArray<ArrayBuffer>> {
 	readonly BYTES_PER_ELEMENT: number;
 	new (): T;
 	new (length: number): T;
@@ -31,7 +29,7 @@ export interface VPixelArrayConstructor<
 
 /** An object that defines an image encoder/decoder for a given format. */
 export interface VCodec {
-	alpha: typeof VFlags['None' | 'OneBitAlpha' | 'EightBitAlpha'];
+	alpha: (typeof VFlags)['None' | 'OneBitAlpha' | 'EightBitAlpha'];
 	length(width: number, height: number): number;
 	encode(data: VImageData): VEncodedImageData;
 	decode(data: VEncodedImageData): VImageData;
@@ -41,8 +39,12 @@ export interface VCodec {
 export const HAS_FLOAT16 = typeof Float16Array !== 'undefined';
 
 /** Returns whether the given array contains float values. */
-export function isArrayFloat(arr: VPixelArray): arr is (Float32Array | Float64Array | Float16Array) {
-	return (arr instanceof Float32Array || arr instanceof Float64Array || (HAS_FLOAT16 && arr instanceof Float16Array));
+export function isArrayFloat(arr: VPixelArray): arr is Float32Array | Float64Array | Float16Array {
+	return (
+		arr instanceof Float32Array ||
+		arr instanceof Float64Array ||
+		(HAS_FLOAT16 && arr instanceof Float16Array)
+	);
 }
 
 /** Returns the maximum value for the given array. (ex. `255` for a Uint8Array, `1.0` for a Float32Array) */
@@ -61,9 +63,12 @@ export function registerCodec(format: VFormats, codec: VCodec) {
 
 export function getCodec(format: VFormats, strict?: true): VCodec;
 export function getCodec(format: VFormats, strict: boolean): VCodec | undefined;
-export function getCodec(format: VFormats, strict: boolean=true): VCodec | undefined {
+export function getCodec(format: VFormats, strict: boolean = true): VCodec | undefined {
 	const codec = VCodecs[format];
-	if (!codec && strict) throw Error(`getCodec: Could not get codec for format ${getEnumKey(VFormats, format) ?? 'UNKNOWN'} (id=${format})!`);
+	if (!codec && strict)
+		throw Error(
+			`getCodec: Could not get codec for format ${getEnumKey(VFormats, format) ?? 'UNKNOWN'} (id=${format})!`,
+		);
 	return codec;
 }
 
@@ -71,9 +76,9 @@ export function getCodec(format: VFormats, strict: boolean=true): VCodec | undef
 export class VImageData<D extends VPixelArray = VPixelArray> {
 	readonly isEncoded = false as const;
 
-	width:  number;
+	width: number;
 	height: number;
-	data:   D;
+	data: D;
 
 	constructor(data: D, width: number, height: number) {
 		this.data = data;
@@ -84,7 +89,11 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 	/**
 	 * Creates a blank image of the given datatype and size.
 	 */
-	static blank<T extends VPixelArray = VPixelArray>(width: number, height: number, dtype: VPixelArrayConstructor<T>): VImageData<T> {
+	static blank<T extends VPixelArray = VPixelArray>(
+		width: number,
+		height: number,
+		dtype: VPixelArrayConstructor<T>,
+	): VImageData<T> {
 		return new VImageData(new dtype(width * height * 4), width, height);
 	}
 
@@ -102,29 +111,26 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 	 */
 	convert<T extends VPixelArray = VPixelArray>(
 		type: VPixelArrayConstructor<T>,
-		do_clamp: boolean=true,
-		do_round: boolean=false,
+		do_clamp: boolean = true,
+		do_round: boolean = false,
 	): VImageData<T> {
+		if (this.data instanceof type) return this.copy() as unknown as VImageData<T>;
 
-		if (this.data instanceof type)
-			return this.copy() as unknown as VImageData<T>;
-			
 		const out = new type(this.data.length);
-		const is_input_int  = !isArrayFloat(this.data);
+		const is_input_int = !isArrayFloat(this.data);
 		const is_output_int = !isArrayFloat(out);
 
-		const input_max  = is_input_int  ? 2 ** (this.data.BYTES_PER_ELEMENT * 8) - 1 : 1;
-		const output_max = is_output_int ? 2 ** (      out.BYTES_PER_ELEMENT * 8) - 1 : 1;
+		const input_max = is_input_int ? 2 ** (this.data.BYTES_PER_ELEMENT * 8) - 1 : 1;
+		const output_max = is_output_int ? 2 ** (out.BYTES_PER_ELEMENT * 8) - 1 : 1;
 
-		const add_factor = (do_round && is_output_int) ? 0.5 : 0;
+		const add_factor = do_round && is_output_int ? 0.5 : 0;
 		const mult_factor = output_max / input_max;
 
 		if (do_clamp) {
-			for ( let i=0; i<this.data.length; i++ )
+			for (let i = 0; i < this.data.length; i++)
 				out[i] = clamp(this.data[i] * mult_factor + add_factor, 0, output_max);
-		}
-		else{
-			for ( let i=0; i<this.data.length; i++ )
+		} else {
+			for (let i = 0; i < this.data.length; i++)
 				out[i] = this.data[i] * mult_factor + add_factor;
 		}
 
@@ -146,7 +152,10 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 		const codec = getCodec(format);
 		const length = codec.length(this.width, this.height);
 		const out = codec.encode(this);
-		if (out.data.length !== length) throw Error(`VImageData.encode: Encoded ${getEnumKey(VFormats, format)} image failed length validation! (expected ${length} but got ${out.data.length})`);
+		if (out.data.length !== length)
+			throw Error(
+				`VImageData.encode: Encoded ${getEnumKey(VFormats, format)} image failed length validation! (expected ${length} but got ${out.data.length})`,
+			);
 		return out;
 	}
 
@@ -159,7 +168,11 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 	 * Returns a resampled copy of this image with the given dimensions.
 	 * ### If you are batch-resizing images, create and reuse a VImageScaler for better performance!
 	 */
-	resize(width: number, height: number, options: Partial<{ filter: VFilter }>={}): VImageData<D> {
+	resize(
+		width: number,
+		height: number,
+		options: Partial<{ filter: VFilter }> = {},
+	): VImageData<D> {
 		const scaler = new VImageScaler(this.width, this.height, width, height, options.filter);
 		const out = VImageData.blank(width, height, this.getDataConstructor());
 		return scaler.resize(this, out);
@@ -167,11 +180,11 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 
 	/** Retrieves the constructor of this image's data with a type-safe wrapper. */
 	getDataConstructor(): VPixelArrayConstructor<D> {
-		return <VPixelArrayConstructor<D>> this.data.constructor;
+		return <VPixelArrayConstructor<D>>this.data.constructor;
 	}
 
 	getIdx(x: number, y: number): number {
-		return (y * this.width + x) * 4
+		return (y * this.width + x) * 4;
 	}
 }
 
@@ -179,10 +192,10 @@ export class VImageData<D extends VPixelArray = VPixelArray> {
 export class VEncodedImageData {
 	readonly isEncoded = true as const;
 
-	width:  number;
+	width: number;
 	height: number;
 	format: VFormats;
-	data:   Uint8Array;
+	data: Uint8Array;
 
 	constructor(data: Uint8Array, width: number, height: number, format: VFormats) {
 		this.data = data;
@@ -195,7 +208,10 @@ export class VEncodedImageData {
 	decode(): VImageData {
 		const length = this.width * this.height * 4;
 		const out = getCodec(this.format).decode(this);
-		if (out.data.length !== length) throw Error(`VEncodedImageData.decode: Decoded ${getEnumKey(VFormats, this.format)} image failed length validation! (expected ${length} but got ${out.data.length})`);
+		if (out.data.length !== length)
+			throw Error(
+				`VEncodedImageData.decode: Decoded ${getEnumKey(VFormats, this.format)} image failed length validation! (expected ${length} but got ${out.data.length})`,
+			);
 		return out;
 	}
 

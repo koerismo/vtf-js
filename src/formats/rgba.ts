@@ -1,33 +1,47 @@
 import { VFormats, VFlags } from '../core/enums.js';
-import { VCodec, VEncodedImageData, VImageData, registerCodec, HAS_FLOAT16, type VPixelArrayConstructor } from '../core/image.js';
+import {
+	VCodec,
+	VEncodedImageData,
+	VImageData,
+	registerCodec,
+	HAS_FLOAT16,
+	type VPixelArrayConstructor,
+} from '../core/image.js';
 
 const PixelDataTypes = {
-	'Uint8': 1,
-	'Uint16': 2,
-	'Uint32': 4,
-	'Float16': 2,
-	'Float32': 4,
+	Uint8: 1,
+	Uint16: 2,
+	Uint32: 4,
+	Float16: 2,
+	Float32: 4,
 } as const;
 
 const PixelArrayTypes: Record<string, VPixelArrayConstructor> = {
-	'Uint8': Uint8Array,
-	'Uint16': Uint16Array,
-	'Uint32': Uint32Array,
-	'Float16': HAS_FLOAT16 ? Float16Array : null!,
-	'Float32': Float32Array,
+	Uint8: Uint8Array,
+	Uint16: Uint16Array,
+	Uint32: Uint32Array,
+	Float16: HAS_FLOAT16 ? Float16Array : null!,
+	Float32: Float32Array,
 } as const;
 
 const PixelFloatTypes = {
-	'Float16': true,
-	'Float32': true,
+	Float16: true,
+	Float32: true,
 } as const;
 
-function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, red: number|null, green: number|null, blue: number|null, alpha: number|null, avg: boolean=false): VCodec {
-
-	const SET = 'set' + type as `set${keyof typeof PixelDataTypes}`;
-	const GET = 'get' + type as `get${keyof typeof PixelDataTypes}`;
+function createGenericRGBA(
+	format: VFormats,
+	type: keyof typeof PixelDataTypes,
+	red: number | null,
+	green: number | null,
+	blue: number | null,
+	alpha: number | null,
+	avg: boolean = false,
+): VCodec {
+	const SET = ('set' + type) as `set${keyof typeof PixelDataTypes}`;
+	const GET = ('get' + type) as `get${keyof typeof PixelDataTypes}`;
 	const ARR = PixelArrayTypes[type];
-	const maxValue = (type in PixelFloatTypes) ? 1 : 2 ** (ARR.BYTES_PER_ELEMENT * 8) - 1;
+	const maxValue = type in PixelFloatTypes ? 1 : 2 ** (ARR.BYTES_PER_ELEMENT * 8) - 1;
 
 	const increment = +(red != null) + +(green != null) + +(blue != null) + +(alpha != null);
 	const bpp = PixelDataTypes[type] * increment;
@@ -47,13 +61,14 @@ function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, 
 			const out = new Uint8Array(length * bpp);
 			const view = new DataView(out.buffer);
 
-			for (let p=0; p<length; p++) {
+			// prettier-ignore
+			for (let p = 0; p < length; p++) {
 				const s = p * 4;
 				const t = p * bpp;
-				if (red != null)	view[SET](t + red, image.data[s], true);
-				if (green != null)	view[SET](t + green, image.data[s+1], true);
-				if (blue != null)	view[SET](t + blue, image.data[s+2], true);
-				if (alpha != null)	view[SET](t + alpha, image.data[s+3], true);
+				if (red != null)   view[SET](t + red,   image.data[s],     true);
+				if (green != null) view[SET](t + green, image.data[s + 1], true);
+				if (blue != null)  view[SET](t + blue,  image.data[s + 2], true);
+				if (alpha != null) view[SET](t + alpha, image.data[s + 3], true);
 			}
 
 			return new VEncodedImageData(out, image.width, image.height, format);
@@ -64,26 +79,25 @@ function createGenericRGBA(format: VFormats, type: keyof typeof PixelDataTypes, 
 			const length = source.width * source.height;
 			const out = new ARR(length * 4);
 
-			for (let p=0; p<length; p++) {
+			for (let p = 0; p < length; p++) {
 				const s = p * bpp;
 				const t = p * 4;
 
 				if (avg) {
-					out[t] = out[t+1] = out[t+2] = view[GET](s, true);
-					out[t+3] = maxValue;
+					out[t] = out[t + 1] = out[t + 2] = view[GET](s, true);
+					out[t + 3] = maxValue;
 					continue;
 				}
 
-				if (red != null)	out[t  ] = view[GET](s + red, true);
-				if (green != null)	out[t+1] = view[GET](s + green, true);
-				if (blue != null)	out[t+2] = view[GET](s + blue, true);
-				if (alpha != null)	out[t+3] = view[GET](s + alpha, true);
-				else out[t+3] = maxValue;
+				if (red != null) out[t] = view[GET](s + red, true);
+				if (green != null) out[t + 1] = view[GET](s + green, true);
+				if (blue != null) out[t + 2] = view[GET](s + blue, true);
+				if (alpha != null) out[t + 3] = view[GET](s + alpha, true);
+				else out[t + 3] = maxValue;
 			}
 
 			return new VImageData(out, source.width, source.height);
 		},
-
 	};
 }
 
@@ -103,29 +117,42 @@ registerCodec(VFormats.I8, createGenericRGBA(VFormats.I8, 'Uint8', 0, null, null
 registerCodec(VFormats.P8, createGenericRGBA(VFormats.P8, 'Uint8', 0, null, null, null, true));
 
 registerCodec(VFormats.R32F, createGenericRGBA(VFormats.R32F, 'Float32', 0, null, null, null));
-registerCodec(VFormats.RGB323232F, createGenericRGBA(VFormats.RGB323232F, 'Float32', 0, 4, 8, null));
-registerCodec(VFormats.RGBA16161616, createGenericRGBA(VFormats.RGBA16161616, 'Uint16', 0, 2, 4, 6));
-registerCodec(VFormats.RGBA32323232F, createGenericRGBA(VFormats.RGBA32323232F, 'Float32', 0, 4, 8, 12));
+registerCodec(
+	VFormats.RGB323232F,
+	createGenericRGBA(VFormats.RGB323232F, 'Float32', 0, 4, 8, null),
+);
+registerCodec(
+	VFormats.RGBA16161616,
+	createGenericRGBA(VFormats.RGBA16161616, 'Uint16', 0, 2, 4, 6),
+);
+registerCodec(
+	VFormats.RGBA32323232F,
+	createGenericRGBA(VFormats.RGBA32323232F, 'Float32', 0, 4, 8, 12),
+);
 
 if (HAS_FLOAT16) {
 	registerCodec(
 		VFormats.RGBA16161616F,
-		createGenericRGBA(VFormats.RGBA16161616F, 'Float16', 0, 2, 4, 6)
+		createGenericRGBA(VFormats.RGBA16161616F, 'Float16', 0, 2, 4, 6),
 	);
 } else {
 	registerCodec(VFormats.RGBA16161616F, {
 		alpha: VFlags.EightBitAlpha,
-	
+
 		length(width, height) {
 			return width * height * 8;
 		},
 
 		encode() {
-			throw Error('vtf-js: Failed to encode image. Your environment does not support Float16Array!');
+			throw Error(
+				'vtf-js: Failed to encode image. Your environment does not support Float16Array!',
+			);
 		},
 
 		decode() {
-			throw Error('vtf-js: Failed to decode image. Your environment does not support Float16Array!');
+			throw Error(
+				'vtf-js: Failed to decode image. Your environment does not support Float16Array!',
+			);
 		},
 	});
 }

@@ -13,10 +13,10 @@ function decode565(x1: number, x2: number, out: Uint8Array, o: number): number {
 	const g = (v >> 5) & 0x3f;
 	const b = v & 0x1f;
 
-	out[o]   = (r << 3) | (r >> 2);
-	out[o+1] = (g << 2) | (g >> 4);
-	out[o+2] = (b << 3) | (b >> 2);
-	out[o+3] = 255;
+	out[o] = (r << 3) | (r >> 2);
+	out[o + 1] = (g << 2) | (g >> 4);
+	out[o + 2] = (b << 3) | (b >> 2);
+	out[o + 3] = 255;
 
 	return v;
 }
@@ -34,6 +34,7 @@ function decompressColor(block: Uint8Array, flags: number, out_rgba: Uint8Array)
 	const oneBitAlpha = (flags & DxtFlags.OneBitAlpha) !== 0;
 
 	// Mode A
+	// prettier-ignore
 	if (isDxt1 && a <= b) {
 		codes[8]  = (codes[0] + codes[4]) / 2;
 		codes[9]  = (codes[1] + codes[5]) / 2;
@@ -42,70 +43,70 @@ function decompressColor(block: Uint8Array, flags: number, out_rgba: Uint8Array)
 		codes[15] = oneBitAlpha ? 0 : 255;
 	}
 	// Mode B
+	// prettier-ignore
 	else {
-		codes[8]  = (codes[0]*2 + codes[4]) / 3;
-		codes[9]  = (codes[1]*2 + codes[5]) / 3;
-		codes[10] = (codes[2]*2 + codes[6]) / 3;
-		codes[12] = (codes[0] + codes[4]*2) / 3;
-		codes[13] = (codes[1] + codes[5]*2) / 3;
-		codes[14] = (codes[2] + codes[6]*2) / 3;
+		codes[8]  = (codes[0] * 2 + codes[4]) / 3;
+		codes[9]  = (codes[1] * 2 + codes[5]) / 3;
+		codes[10] = (codes[2] * 2 + codes[6]) / 3;
+		codes[12] = (codes[0] + codes[4] * 2) / 3;
+		codes[13] = (codes[1] + codes[5] * 2) / 3;
+		codes[14] = (codes[2] + codes[6] * 2) / 3;
 		codes[11] = codes[15] = 255;
 	}
-	
+
 	// Unpack indices and choose from palette
 	let p = 0;
-	for (let byte=4; byte<8; byte++) {
+	for (let byte = 4; byte < 8; byte++) {
 		const bits = block[byte];
-		for (let i=0; i<4; i++, p+=4) {
+		for (let i = 0; i < 4; i++, p += 4) {
 			const idx = ((bits >> (i * 2)) & 3) * 4;
-			out_rgba[p]   = codes[idx];
-			out_rgba[p+1] = codes[idx+1];
-			out_rgba[p+2] = codes[idx+2];
-			out_rgba[p+3] = codes[idx+3];
+			out_rgba[p] = codes[idx];
+			out_rgba[p + 1] = codes[idx + 1];
+			out_rgba[p + 2] = codes[idx + 2];
+			out_rgba[p + 3] = codes[idx + 3];
 		}
 	}
 }
 
 function decompressDxt3Alpha(block: Uint8Array, out_rgba: Uint8Array) {
-	for (let i=0, c=0; i<8; i++, c+=8) {
+	for (let i = 0, c = 0; i < 8; i++, c += 8) {
 		const b = block[i];
-		const a0 = b & 0x0f; 
-		const a1 = b & 0xf0;  
-		out_rgba[c+3] = a0 | a0 << 4;
-		out_rgba[c+7] = a1 | a1 >> 4;
+		const a0 = b & 0x0f;
+		const a1 = b & 0xf0;
+		out_rgba[c + 3] = a0 | (a0 << 4);
+		out_rgba[c + 7] = a1 | (a1 >> 4);
 	}
 }
 
 function decompressDxt5Alpha(block: Uint8Array, out_rgba: Uint8Array) {
 	// const codes = new Uint8Array(8);
-	const a = codes[0] = block[0];
-	const b = codes[1] = block[1];
+	const a = (codes[0] = block[0]);
+	const b = (codes[1] = block[1]);
 
 	// 5-blend mode
 	if (a <= b) {
-		codes[2] = (a*4 + b  ) / 5;
-		codes[3] = (a*3 + b*2) / 5;
-		codes[4] = (a*2 + b*3) / 5;
-		codes[5] = (a   + b*4) / 5;
+		codes[2] = (a * 4 + b) / 5;
+		codes[3] = (a * 3 + b * 2) / 5;
+		codes[4] = (a * 2 + b * 3) / 5;
+		codes[5] = (a + b * 4) / 5;
 		codes[6] = 0;
 		codes[7] = 255;
-	}
-	else {
-		codes[2] = (a*6 + b  ) / 7;
-		codes[3] = (a*5 + b*2) / 7;
-		codes[4] = (a*4 + b*3) / 7;
-		codes[5] = (a*3 + b*4) / 7;
-		codes[6] = (a*2 + b*5) / 7;
-		codes[7] = (a   + b*6) / 7;
+	} else {
+		codes[2] = (a * 6 + b) / 7;
+		codes[3] = (a * 5 + b * 2) / 7;
+		codes[4] = (a * 4 + b * 3) / 7;
+		codes[5] = (a * 3 + b * 4) / 7;
+		codes[6] = (a * 2 + b * 5) / 7;
+		codes[7] = (a + b * 6) / 7;
 	}
 
 	// Unpack indices and choose from palette
 	let p = 0;
-	for (let byte=2; byte<8; byte+=3) {
-		const bits = block[byte] | (block[byte+1] << 8) | (block[byte+2] << 16);
-		for (let i=0; i<24; i+=3, p+=4) {
+	for (let byte = 2; byte < 8; byte += 3) {
+		const bits = block[byte] | (block[byte + 1] << 8) | (block[byte + 2] << 16);
+		for (let i = 0; i < 24; i += 3, p += 4) {
 			const idx = (bits >> i) & 7;
-			out_rgba[p+3] = codes[idx];
+			out_rgba[p + 3] = codes[idx];
 		}
 	}
 }
@@ -113,13 +114,11 @@ function decompressDxt5Alpha(block: Uint8Array, out_rgba: Uint8Array) {
 const HAS_ALPHA_BLOCK = DxtFlags.DXT3 | DxtFlags.DXT5;
 
 export function decompressBlock(block: Uint8Array, flags: number, out_rgba: Uint8Array) {
-	const colorData = (flags & HAS_ALPHA_BLOCK) ? block.subarray(8) : block;
+	const colorData = flags & HAS_ALPHA_BLOCK ? block.subarray(8) : block;
 	decompressColor(colorData, flags, out_rgba);
 
-	if (flags & DxtFlags.DXT5)
-		decompressDxt5Alpha(block, out_rgba);
-	else if (flags & DxtFlags.DXT3)
-		decompressDxt3Alpha(block, out_rgba);
+	if (flags & DxtFlags.DXT5) decompressDxt5Alpha(block, out_rgba);
+	else if (flags & DxtFlags.DXT3) decompressDxt3Alpha(block, out_rgba);
 	return;
 }
 
@@ -127,34 +126,32 @@ export function decompressImage(image: VEncodedImageData, flags: number) {
 	const data = image.data;
 	const out = new Uint8Array(image.width * image.height * 4);
 
-	const blockSize = (flags & HAS_ALPHA_BLOCK) ? 16 : 8;
+	const blockSize = flags & HAS_ALPHA_BLOCK ? 16 : 8;
 	const blockDest = new Uint8Array(64);
 
 	let blockIdx = 0;
-	for (let y=0; y<image.height; y+=4) {
-		for (let x=0; x<image.width; x+=4) {
-			
+	for (let y = 0; y < image.height; y += 4) {
+		for (let x = 0; x < image.width; x += 4) {
 			// Decompress block
 			const blockSrc = data.subarray(blockIdx, blockIdx + blockSize);
 			decompressBlock(blockSrc, flags, blockDest);
 
 			// Copy decompressed block to image
-			for (let by=0; by<4; by++) {
+			for (let by = 0; by < 4; by++) {
 				if (y + by >= image.height) break;
-				for (let bx=0; bx<4; bx++) {
+				for (let bx = 0; bx < 4; bx++) {
 					if (x + bx >= image.width) break;
-					const i_dst = ((y+by) * image.width + x+bx) * 4;
+					const i_dst = ((y + by) * image.width + x + bx) * 4;
 					const i_src = (by * 4 + bx) * 4;
 
-					out[i_dst]   = blockDest[i_src];
-					out[i_dst+1] = blockDest[i_src+1];
-					out[i_dst+2] = blockDest[i_src+2];
-					out[i_dst+3] = blockDest[i_src+3];
+					out[i_dst] = blockDest[i_src];
+					out[i_dst + 1] = blockDest[i_src + 1];
+					out[i_dst + 2] = blockDest[i_src + 2];
+					out[i_dst + 3] = blockDest[i_src + 3];
 				}
 			}
 
 			blockIdx += blockSize;
-
 		} // x in image.width
 	} // y in image.height
 

@@ -40,12 +40,29 @@ export class DataBuffer<T extends ArrayBufferLike = ArrayBufferLike> extends Uin
 		return new this(ArrayBuffer.isView(array) ? array : new Uint8Array(array));
 	}
 
+	/**
+	 * If `array` is an ArrayBuffer:
+	 * - byteOffset defaults to 0
+	 * - length defaults to entire ArrayBuffer starting at byteOffset.
+	 *
+	 * If `array` is a TypedArray:
+	 * - byteOffset is relative to the array's byteOffset
+	 * - length defaults to the array's length from byteOffset.
+	 */
 	static ref<V extends ArrayBufferLike>(
-		array: Uint8Array<V> | Uint8ClampedArray<V> | V
+		array: Uint8Array<V> | Uint8ClampedArray<V> | V,
+		byteOffset?: number,
+		length?: number,
 	): DataBuffer<V> {
-		if (ArrayBuffer.isView(array))
-			return new this(array.buffer, array.byteOffset, array.byteLength);
-		return new this(array);
+		if (ArrayBuffer.isView(array)) {
+			byteOffset ??= 0;
+			return new this(
+				array.buffer,
+				array.byteOffset + byteOffset,
+				length ?? array.length - byteOffset,
+			);
+		}
+		return new this(array, byteOffset, length);
 	}
 
 	/** Increments the pointer by the specified number of bytes. */
@@ -61,8 +78,8 @@ export class DataBuffer<T extends ArrayBufferLike = ArrayBufferLike> extends Uin
 	}
 
 	/** Creates a new DataBuffer within the specified bounds. */
-	ref(start = 0, length: number = this.length - start): DataBuffer {
-		const buf = new DataBuffer(this.buffer, start + this.byteOffset, length);
+	ref(start = 0, length: number = this.length - start): DataBuffer<T> {
+		const buf = new DataBuffer<T>(this.buffer, start + this.byteOffset, length);
 		buf.little = this.little;
 		return buf;
 	}
@@ -92,15 +109,20 @@ export class DataBuffer<T extends ArrayBufferLike = ArrayBufferLike> extends Uin
 		return this.view.getFloat32(this.inc(4), little);
 	}
 
-	read_u8array(length: number, clone: true): Uint8Array<ArrayBuffer>;
-	read_u8array(length: number, clone: boolean): Uint8Array;
+	read_u8array<C extends boolean>(
+		length: number,
+		clone: C,
+	): Uint8Array<C extends true ? ArrayBuffer : T>;
 	read_u8array(length: number, clone: boolean): Uint8Array {
 		const arr = this.subarray(this.inc(length), this._internal_ptr);
 		return clone ? arr.slice() : arr;
 	}
 
-	read_f32array(length: number, clone: true, little?: boolean): Float32Array<ArrayBuffer>;
-	read_f32array(length: number, clone: boolean, little?: boolean): Float32Array;
+	read_f32array<C extends boolean>(
+		length: number,
+		clone: C,
+		litte?: boolean,
+	): Float32Array<C extends true ? ArrayBuffer : T>;
 	read_f32array(length: number, clone: boolean, little = this.little): Float32Array {
 		if (little === SYSTEM_ENDIAN) {
 			const source = this.read_u8array(length * 4, clone);

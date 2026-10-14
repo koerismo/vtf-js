@@ -1,32 +1,19 @@
 import { VFileHeader } from '../vtf.js';
 import { VCompressionMethods, VFlags } from './enums.js';
-import {
-	VHeader,
-	VHeaderTags,
-	VResource,
-	VResourceTypes,
-} from './resources.js';
+import { VHeader, VHeaderTags, VResource, VResourceTypes } from './resources.js';
 
 export const LITTLE_ENDIAN: true = true as const;
 export const BIG_ENDIAN: false = false as const;
-export const SYSTEM_ENDIAN: boolean =
-	new Uint8Array(new Uint16Array([0x00_01]).buffer)[0] === 0x01;
+export const SYSTEM_ENDIAN: boolean = new Uint8Array(new Uint16Array([0x00_01]).buffer)[0] === 0x01;
 
 /** Returns the size of a given mipmap if mipmap 0 is of size `width`,`height` */
-export function getMipSize(
-	mipmap: number,
-	width: number,
-	height: number,
-): [number, number] {
+export function getMipSize(mipmap: number, width: number, height: number): [number, number] {
 	const div = 2 ** mipmap;
 	return [Math.ceil(width / div), Math.ceil(height / div)];
 }
 
 /** Returns an estimated header length for the given vtf version and resource count. */
-export function getHeaderLength(
-	version: number,
-	resources: number = 0,
-): number {
+export function getHeaderLength(version: number, resources: number = 0): number {
 	if (version < 2) return 63;
 	else if (version < 3) return 65;
 	return 80 + resources * 8;
@@ -40,11 +27,7 @@ export function getFaceCount(info: VFileHeader): 1 | 6 | 7 {
 }
 
 /** Returns the first mipmap which does not exceed `target` in width or height. */
-export function getThumbMip(
-	width: number,
-	height: number,
-	target = 16,
-): number {
+export function getThumbMip(width: number, height: number, target = 16): number {
 	const size = Math.max(width, height);
 	return Math.ceil(Math.log2(size)) - Math.log2(target);
 }
@@ -107,9 +90,7 @@ export let compress: CompressFunction = async (data, method, level) => {
 			'vtf-js: Default compression backend only supports compression level `-1`. Import a `vtf-js/addons/compress/*` module or call `setCompressionMethod` to better support encoding Strata-compressed Vtfs!',
 		);
 	if (method !== VCompressionMethods.Deflate)
-		throw Error(
-			`vtf-js: Default compression backend only supports Deflate compression!`,
-		);
+		throw Error(`vtf-js: Default compression backend only supports Deflate compression!`);
 
 	// Blob requires a non-shared buffer. Copy it beforehand...
 	if (!(data.buffer instanceof ArrayBuffer)) data = new Uint8Array(data);
@@ -141,9 +122,7 @@ export let decompress: DecompressFunction = async (data, method) => {
 	if (!(data.buffer instanceof ArrayBuffer)) data = new Uint8Array(data);
 
 	const inStream = new Blob([data as Uint8Array<ArrayBuffer>]).stream();
-	const decompStream = new DecompressionStream(
-		methodStr as CompressionFormat,
-	);
+	const decompStream = new DecompressionStream(methodStr as CompressionFormat);
 	const outStream = inStream.pipeThrough(decompStream);
 	const n = new Response(outStream);
 	return await n.bytes();
@@ -161,6 +140,6 @@ export function linearToSrgb(v: number): number {
 	if (v < 0.0031308) {
 		return v * 12.92;
 	}
-	v = 1.055 * (v ** (1.0 / 2.4)) - 0.055;
+	v = 1.055 * v ** (1.0 / 2.4) - 0.055;
 	return Math.min(1, Math.max(0, v));
 }
